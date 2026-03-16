@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, LogOut, Archive, ArchiveRestore, UserPlus, Check, Search } from "lucide-react";
+import { X, LogOut, Archive, ArchiveRestore, UserPlus, Check, Search, Trash2 } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { useConversationMembers } from "@/hooks/use-conversation-members";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
@@ -12,6 +12,7 @@ interface ChatInfoPanelProps {
   conversation: ConversationWithDetails;
   onlineUserIds: string[];
   currentUserId: string;
+  currentUserRole?: string;
   onClose: () => void;
   onConversationUpdate?: () => void;
 }
@@ -20,6 +21,7 @@ export function ChatInfoPanel({
   conversation,
   onlineUserIds,
   currentUserId,
+  currentUserRole,
   onClose,
   onConversationUpdate,
 }: ChatInfoPanelProps) {
@@ -31,8 +33,11 @@ export function ChatInfoPanel({
   const [availableUsers, setAvailableUsers] = useState<User[]>([]);
   const [adding, setAdding] = useState<string | null>(null);
 
+  const [deleting, setDeleting] = useState(false);
+
   const currentMember = members.find((member) => member.user_id === currentUserId);
   const isAdmin = currentMember?.role === "admin";
+  const isSystemAdmin = currentUserRole === "admin";
   const memberUserIds = members.map((member) => member.user_id);
 
   useEffect(() => {
@@ -99,6 +104,26 @@ export function ChatInfoPanel({
       .eq("conversation_id", conversation.id)
       .eq("user_id", currentUserId);
     router.push("/chat");
+  }
+
+  async function handleDeleteConversation() {
+    const otherName = conversation.other_user?.display_name || "this user";
+    if (!confirm(`Delete this conversation with ${otherName}? All messages and files will be permanently removed.`)) return;
+    setDeleting(true);
+    try {
+      const response = await fetch(`/api/conversations/${conversation.id}`, { method: "DELETE" });
+      if (response.ok) {
+        onConversationUpdate?.();
+        router.push("/chat");
+      } else {
+        const body = await response.json();
+        alert(body.error || "Failed to delete conversation");
+      }
+    } catch {
+      alert("Failed to delete conversation");
+    } finally {
+      setDeleting(false);
+    }
   }
 
   return (
@@ -247,6 +272,19 @@ export function ChatInfoPanel({
           >
             <LogOut className="w-4 h-4 inline mr-2" />
             Leave group
+          </button>
+        </div>
+      )}
+
+      {isSystemAdmin && (
+        <div className="px-5 py-4 border-t border-neutral-100">
+          <button
+            onClick={handleDeleteConversation}
+            disabled={deleting}
+            className="w-full text-left text-sm text-error hover:bg-red-50 px-3 py-2 rounded-lg transition disabled:opacity-50"
+          >
+            <Trash2 className="w-4 h-4 inline mr-2" />
+            {deleting ? "Deleting..." : "Delete conversation"}
           </button>
         </div>
       )}

@@ -150,6 +150,7 @@ export default function ConversationPage() {
           conversation={conversation}
           onlineUserIds={onlineUserIds}
           currentUserId={currentUser.id}
+          currentUserRole={currentUser.role}
           onClose={() => setShowInfo(false)}
           onConversationUpdate={refetchConversations}
         />
