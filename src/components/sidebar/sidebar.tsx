@@ -41,6 +41,7 @@ export function Sidebar({
   async function handleLogout() {
     const supabase = createBrowserSupabaseClient();
     await supabase.auth.signOut();
+    localStorage.removeItem("agent_playground_token");
     router.push("/login");
   }
 

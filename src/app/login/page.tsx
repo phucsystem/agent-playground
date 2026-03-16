@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { loginWithToken } from "@/lib/auth";
+import { loginWithToken, getSavedToken } from "@/lib/auth";
 import { Bot, Loader2 } from "lucide-react";
 
 export default function LoginPage() {
@@ -10,6 +10,23 @@ export default function LoginPage() {
   const [token, setToken] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [autoLogging, setAutoLogging] = useState(true);
+
+  useEffect(() => {
+    const savedToken = getSavedToken();
+    if (savedToken) {
+      loginWithToken(savedToken)
+        .then((loginUser) => {
+          router.push(loginUser.needsSetup ? "/setup" : "/chat");
+        })
+        .catch(() => {
+          localStorage.removeItem("agent_playground_token");
+          setAutoLogging(false);
+        });
+    } else {
+      setAutoLogging(false);
+    }
+  }, [router]);
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -26,6 +43,14 @@ export default function LoginPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  if (autoLogging) {
+    return (
+      <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
+        <Loader2 className="w-6 h-6 animate-spin text-neutral-400" />
+      </div>
+    );
   }
 
   return (
