@@ -157,7 +157,7 @@ export function ChatInput({
         </div>
       )}
 
-      <div className="flex items-end gap-2 bg-neutral-100 rounded-2xl px-4 py-3">
+      <div className="flex items-end gap-1.5 bg-neutral-100 rounded-2xl px-3 py-2.5">
         <input
           ref={fileInputRef}
           type="file"
@@ -167,47 +167,49 @@ export function ChatInput({
         />
         <button
           onClick={() => fileInputRef.current?.click()}
-          className="p-1 text-neutral-400 hover:text-neutral-600 transition shrink-0 mb-0.5"
+          className="p-1.5 text-neutral-400 hover:text-neutral-600 transition shrink-0 cursor-pointer"
         >
           <Paperclip className="w-5 h-5" />
         </button>
 
-        <div ref={pickerContainerRef} className="relative shrink-0 mb-0.5">
-          <button
-            onClick={() => {
-              setShowEmojiPicker(!showEmojiPicker);
-              setShowGifPicker(false);
-            }}
-            className="p-1 text-neutral-400 hover:text-neutral-600 transition"
-            title="Emoji"
-          >
-            <Smile className="w-5 h-5" />
-          </button>
-          {showEmojiPicker && (
-            <EmojiPicker
-              onSelect={handleEmojiSelect}
-              onClose={() => setShowEmojiPicker(false)}
-            />
-          )}
-        </div>
+        <div ref={pickerContainerRef} className="flex items-center gap-0.5 shrink-0">
+          <div className="relative">
+            <button
+              onClick={() => {
+                setShowEmojiPicker(!showEmojiPicker);
+                setShowGifPicker(false);
+              }}
+              className="p-1 text-neutral-400 hover:text-neutral-600 transition cursor-pointer"
+              title="Emoji"
+            >
+              <Smile className="w-5 h-5" />
+            </button>
+            {showEmojiPicker && (
+              <EmojiPicker
+                onSelect={handleEmojiSelect}
+                onClose={() => setShowEmojiPicker(false)}
+              />
+            )}
+          </div>
 
-        <div className="relative shrink-0 mb-0.5">
-          <button
-            onClick={() => {
-              setShowGifPicker(!showGifPicker);
-              setShowEmojiPicker(false);
-            }}
-            className="p-1 text-neutral-400 hover:text-neutral-600 transition"
-            title="GIF"
-          >
-            <ImageIcon className="w-5 h-5" />
-          </button>
-          {showGifPicker && (
-            <GifPicker
-              onSelect={handleGifSelect}
-              onClose={() => setShowGifPicker(false)}
-            />
-          )}
+          <div className="relative">
+            <button
+              onClick={() => {
+                setShowGifPicker(!showGifPicker);
+                setShowEmojiPicker(false);
+              }}
+              className="p-1 text-neutral-400 hover:text-neutral-600 transition cursor-pointer"
+              title="GIF"
+            >
+              <ImageIcon className="w-5 h-5" />
+            </button>
+            {showGifPicker && (
+              <GifPicker
+                onSelect={handleGifSelect}
+                onClose={() => setShowGifPicker(false)}
+              />
+            )}
+          </div>
         </div>
 
         <textarea
@@ -221,13 +223,13 @@ export function ChatInput({
           onKeyDown={handleKeyDown}
           placeholder={pendingFile ? "Press Send to upload file..." : placeholder}
           rows={1}
-          className="flex-1 bg-transparent resize-none outline-none text-neutral-700 placeholder:text-neutral-400 text-[15px] leading-relaxed max-h-[120px]"
+          className="flex-1 bg-transparent resize-none outline-none text-neutral-700 placeholder:text-neutral-400 text-[15px] leading-relaxed max-h-[120px] py-1"
         />
 
         <button
           onClick={handleSend}
           disabled={(!content.trim() && !pendingFile) || sending || uploading}
-          className="p-2 bg-neutral-900 hover:bg-neutral-800 disabled:bg-neutral-300 disabled:cursor-not-allowed text-white rounded-lg transition shrink-0"
+          className="p-2 bg-neutral-900 hover:bg-neutral-800 disabled:bg-neutral-300 disabled:cursor-not-allowed text-white rounded-xl transition shrink-0 cursor-pointer"
         >
           {sending || uploading ? (
             <Loader2 className="w-4 h-4 animate-spin" />

@@ -100,10 +100,7 @@ export function EmojiPicker({ onSelect, onClose }: EmojiPickerProps) {
         {filteredEmojis.map((emoji, index) => (
           <button
             key={`${emoji}-${index}`}
-            onClick={() => {
-              onSelect(emoji);
-              onClose();
-            }}
+            onClick={() => onSelect(emoji)}
             className="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-neutral-100 transition text-xl"
           >
             {emoji}

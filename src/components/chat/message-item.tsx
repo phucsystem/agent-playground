@@ -5,10 +5,10 @@ import { MarkdownContent } from "./markdown-content";
 import { FileCard } from "./file-card";
 import { ImagePreview } from "./image-preview";
 import { UrlPreview } from "./url-preview";
-import { ReactionPicker } from "./reaction-picker";
 import { MessageReactions } from "./message-reactions";
 import type { MessageWithSender } from "@/types/database";
 import { Heart } from "lucide-react";
+import { useState } from "react";
 import type { ReactionGroup } from "@/hooks/use-reactions";
 
 interface MessageItemProps {
@@ -77,17 +77,24 @@ function HeartButton({
   const heartReaction = reactions.find((reaction) => reaction.emoji === "❤️");
   const hasHearted = heartReaction?.userIds.includes(currentUserId);
   const heartCount = heartReaction?.count || 0;
+  const [animating, setAnimating] = useState(false);
+
+  function handleClick() {
+    setAnimating(true);
+    onToggle(messageId, "❤️");
+    setTimeout(() => setAnimating(false), 300);
+  }
 
   return (
     <button
-      onClick={() => onToggle(messageId, "❤️")}
-      className={`flex items-center gap-1 self-end mb-1 px-1.5 py-1 rounded-full transition-all ${
+      onClick={handleClick}
+      className={`flex items-center gap-1 self-end -mb-2 px-1.5 py-1 rounded-full transition-all cursor-pointer ${
         hasHearted
           ? "text-red-500"
           : "text-neutral-300 hover:text-red-400 opacity-0 group-hover:opacity-100"
       } ${heartCount > 0 ? "!opacity-100" : ""}`}
     >
-      <Heart className={`w-5 h-5 ${hasHearted ? "fill-red-500" : ""}`} />
+      <Heart className={`w-5 h-5 ${hasHearted ? "fill-red-500" : ""} ${animating ? "animate-reaction-pop" : ""}`} />
       {heartCount > 0 && (
         <span className="text-sm font-medium">{heartCount}</span>
       )}
@@ -105,13 +112,15 @@ export function MessageItem({
 }: MessageItemProps) {
   if (isCurrentUser) {
     return (
-      <div className="flex justify-end relative group px-2 py-1">
-        <HeartButton
-          messageId={message.id}
-          reactions={reactions}
-          currentUserId={currentUserId}
-          onToggle={onToggleReaction}
-        />
+      <div className="flex justify-end items-end relative group px-2 py-1">
+        <div className="-mr-5 z-10 self-end">
+          <HeartButton
+            messageId={message.id}
+            reactions={reactions}
+            currentUserId={currentUserId}
+            onToggle={onToggleReaction}
+          />
+        </div>
         <div className="max-w-[70%]">
           {!isGrouped && (
             <p className="text-[11px] text-neutral-400 text-right mb-0.5 mr-1">
@@ -178,12 +187,14 @@ export function MessageItem({
         />
       </div>
 
-      <HeartButton
-        messageId={message.id}
-        reactions={reactions}
-        currentUserId={currentUserId}
-        onToggle={onToggleReaction}
-      />
+      <div className="-ml-7 z-10 self-end">
+        <HeartButton
+          messageId={message.id}
+          reactions={reactions}
+          currentUserId={currentUserId}
+          onToggle={onToggleReaction}
+        />
+      </div>
     </div>
   );
 }

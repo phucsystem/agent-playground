@@ -82,8 +82,27 @@ export function useReactions(conversationId: string, currentUserId: string) {
       );
 
       if (myReaction) {
+        setReactionsByMessage((prev) => {
+          const updated = new Map(prev);
+          const msgReactions = updated.get(messageId) || [];
+          updated.set(messageId, msgReactions.filter((reaction) => reaction.id !== myReaction.id));
+          return updated;
+        });
         await supabase.from("reactions").delete().eq("id", myReaction.id);
       } else {
+        const tempId = crypto.randomUUID();
+        const optimistic: Reaction = {
+          id: tempId,
+          message_id: messageId,
+          user_id: currentUserId,
+          emoji,
+          created_at: new Date().toISOString(),
+        };
+        setReactionsByMessage((prev) => {
+          const updated = new Map(prev);
+          updated.set(messageId, [...(updated.get(messageId) || []), optimistic]);
+          return updated;
+        });
         await supabase.from("reactions").insert({
           message_id: messageId,
           user_id: currentUserId,
