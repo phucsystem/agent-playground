@@ -62,6 +62,7 @@ async function dispatchToAgent(
   config: AgentConfigRow,
 ): Promise<void> {
   if (!isValidWebhookUrl(config.webhook_url)) {
+    console.error(`[webhook] Invalid URL for agent ${config.user_id}: ${config.webhook_url}`);
     await supabase
       .from("webhook_delivery_logs")
       .insert({
@@ -87,9 +88,13 @@ async function dispatchToAgent(
     .select("id")
     .single();
 
-  if (!logEntry) return;
+  if (!logEntry) {
+    console.error(`[webhook] Failed to create log entry for message ${webhookPayload.message.id}`);
+    return;
+  }
 
   const logId = logEntry.id;
+  console.log(`[webhook] Dispatching to agent ${config.user_id} at ${config.webhook_url} (log: ${logId})`);
 
   // Send in simple format the agent expects
   const agentRequestPayload = {
@@ -131,6 +136,8 @@ async function dispatchToAgent(
       const isClientError = response.status >= 400 && response.status < 500;
       const responseBody = await response.text().catch(() => "(unreadable)");
 
+      console.log(`[webhook] Agent ${config.user_id} attempt ${attempt + 1}: ${response.status} ${response.statusText}`);
+
       await supabase
         .from("webhook_delivery_logs")
         .update({
@@ -150,15 +157,21 @@ async function dispatchToAgent(
           const replyContent = agentResponse.reply || agentResponse.message || agentResponse.content;
 
           if (replyContent) {
-            await supabase.from("messages").insert({
+            console.log(`[webhook] Agent ${config.user_id} replied: "${replyContent.slice(0, 100)}..."`);
+            const { error: insertError } = await supabase.from("messages").insert({
               conversation_id: webhookPayload.message.conversation_id,
               sender_id: webhookPayload.agent.id,
               content: replyContent,
               content_type: "text",
             });
+            if (insertError) {
+              console.error(`[webhook] Failed to insert agent reply: ${insertError.message}`);
+            }
+          } else {
+            console.log(`[webhook] Agent ${config.user_id} returned 200 but no reply field in response`);
           }
-        } catch {
-          // Response wasn't JSON or had no reply field — that's ok, just log it
+        } catch (parseError) {
+          console.error(`[webhook] Failed to parse agent response: ${parseError}`);
         }
       }
 
@@ -166,6 +179,7 @@ async function dispatchToAgent(
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : "Connection failed";
       const isLastAttempt = attempt + 1 >= MAX_RETRIES;
+      console.error(`[webhook] Agent ${config.user_id} attempt ${attempt + 1} failed: ${errorMessage}`);
 
       await supabase
         .from("webhook_delivery_logs")
@@ -182,12 +196,17 @@ async function dispatchToAgent(
 }
 
 Deno.serve(async (request) => {
+  console.log(`[webhook] Received request: ${request.method} ${request.url}`);
+
   let body: { type?: string; record?: Record<string, unknown> };
   try {
     body = await request.json();
-  } catch {
+  } catch (parseError) {
+    console.error(`[webhook] Invalid JSON body: ${parseError}`);
     return new Response("Invalid JSON", { status: 400 });
   }
+
+  console.log(`[webhook] Payload type: ${body.type}, has record: ${!!body.record}`);
 
   const record = body.record;
   if (!record) {
@@ -207,8 +226,11 @@ Deno.serve(async (request) => {
     .single();
 
   if (!sender || sender.is_agent) {
+    console.log(`[webhook] Skipped: sender ${senderId} is agent or not found`);
     return new Response("Skipped: agent sender or sender not found", { status: 200 });
   }
+
+  console.log(`[webhook] Processing message from ${sender.display_name} in conversation ${conversationId}`);
 
   const { data: message } = await supabase
     .from("messages")
@@ -254,8 +276,11 @@ Deno.serve(async (request) => {
     .eq("is_webhook_active", true);
 
   if (!agentConfigs || agentConfigs.length === 0) {
+    console.log(`[webhook] No active agent webhooks in conversation ${conversationId}`);
     return new Response("No active agent webhooks", { status: 200 });
   }
+
+  console.log(`[webhook] Found ${agentConfigs.length} active agent(s) to dispatch`);
 
   const dispatchPromises = agentConfigs.map((config: AgentConfigRow) => {
     const webhookPayload: WebhookPayload = {
