@@ -117,8 +117,8 @@ CREATE INDEX idx_conversations_workspace_id ON conversations(workspace_id);
 DROP POLICY IF EXISTS "conversations_select" ON conversations;
 CREATE POLICY "conversations_select" ON conversations FOR SELECT
   USING (
-    id = ANY(my_conversation_ids())
-    AND workspace_id = ANY(my_workspace_ids())
+    id IN (SELECT my_conversation_ids())
+    AND workspace_id IN (SELECT unnest(my_workspace_ids()))
   );
 
 DROP POLICY IF EXISTS "conversations_insert" ON conversations;
