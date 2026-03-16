@@ -1,3 +1,7 @@
+<div align="center">
+  <img src="public/banner.jpg" alt="Agent Playground Banner" width="100%" />
+</div>
+
 # Agent Playground
 
 A playground to integrate APIs easily via a chat interface. Humans and agents collaborate on conversations and projects with real-time communication and webhook-based integrations.
