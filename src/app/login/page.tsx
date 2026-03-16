@@ -17,8 +17,8 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      await loginWithToken(token);
-      router.push("/chat");
+      const loginUser = await loginWithToken(token);
+      router.push(loginUser.needsSetup ? "/setup" : "/chat");
     } catch (loginError: unknown) {
       const message =
         loginError instanceof Error ? loginError.message : "Login failed";
@@ -40,7 +40,7 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit}>
           <label className="block text-left text-xs font-semibold text-neutral-500 mb-1.5 uppercase tracking-wide">
-            Access Token
+            Enter your token
           </label>
           <input
             type="password"

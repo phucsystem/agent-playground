@@ -6,6 +6,7 @@
 CREATE TYPE conversation_type AS ENUM ('dm', 'group');
 CREATE TYPE member_role AS ENUM ('admin', 'member');
 CREATE TYPE content_type AS ENUM ('text', 'file', 'image', 'url');
+CREATE TYPE user_role AS ENUM ('admin', 'user', 'agent');
 
 -- ============================================================
 -- E-01: users
@@ -15,8 +16,10 @@ CREATE TABLE users (
   email text UNIQUE NOT NULL,
   display_name text NOT NULL,
   avatar_url text,
+  role user_role NOT NULL DEFAULT 'user',
   is_agent boolean NOT NULL DEFAULT false,
   is_active boolean NOT NULL DEFAULT true,
+  is_mock boolean NOT NULL DEFAULT false,
   token text UNIQUE NOT NULL,
   last_seen_at timestamptz,
   created_at timestamptz NOT NULL DEFAULT now()

@@ -26,16 +26,15 @@ export function OnlineUsers({ users, onClickUser }: OnlineUsersProps) {
         <button
           key={onlineUser.user_id}
           onClick={() => onClickUser(onlineUser.user_id)}
-          className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-neutral-100 transition text-left"
+          className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-neutral-200/60 transition text-left"
         >
           <Avatar
             displayName={onlineUser.display_name}
             avatarUrl={onlineUser.avatar_url}
             isAgent={onlineUser.is_agent}
             size="sm"
-            showPresence
-            isOnline
           />
+          <span className="w-2.5 h-2.5 rounded-full bg-success shrink-0" />
           <span className="text-sm text-neutral-700 truncate">
             {onlineUser.display_name}
           </span>

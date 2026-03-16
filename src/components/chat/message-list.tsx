@@ -2,8 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import { MessageItem } from "./message-item";
+import { TypingIndicator } from "./typing-indicator";
 import { Loader2, ArrowDown } from "lucide-react";
 import type { MessageWithSender } from "@/types/database";
+import type { ReactionGroup } from "@/hooks/use-reactions";
 
 interface MessageListProps {
   messages: MessageWithSender[];
@@ -11,6 +13,9 @@ interface MessageListProps {
   hasMore: boolean;
   loadMore: () => void;
   currentUserId: string;
+  typingUsers: { userId: string; displayName: string }[];
+  getGroupedReactions: (messageId: string) => ReactionGroup[];
+  onToggleReaction: (messageId: string, emoji: string) => void;
 }
 
 function shouldGroup(
@@ -22,7 +27,7 @@ function shouldGroup(
   const diffMs =
     new Date(current.created_at).getTime() -
     new Date(previous.created_at).getTime();
-  return diffMs < 300000; // 5 minutes
+  return diffMs < 300000;
 }
 
 export function MessageList({
@@ -31,6 +36,9 @@ export function MessageList({
   hasMore,
   loadMore,
   currentUserId,
+  typingUsers,
+  getGroupedReactions,
+  onToggleReaction,
 }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -99,9 +107,14 @@ export function MessageList({
             message={message}
             isGrouped={shouldGroup(message, messages[messageIndex - 1])}
             isCurrentUser={message.sender_id === currentUserId}
+            reactions={getGroupedReactions(message.id)}
+            currentUserId={currentUserId}
+            onToggleReaction={onToggleReaction}
           />
         ))}
       </div>
+
+      <TypingIndicator typingUsers={typingUsers} />
 
       <div ref={bottomRef} />
 

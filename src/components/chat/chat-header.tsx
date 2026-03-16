@@ -1,7 +1,7 @@
 "use client";
 
 import { Avatar } from "@/components/ui/avatar";
-import { Hash, Info, Users } from "lucide-react";
+import { Info, Users } from "lucide-react";
 import type { ConversationWithDetails } from "@/types/database";
 
 interface ChatHeaderProps {
@@ -26,16 +26,14 @@ export function ChatHeader({
             avatarUrl={conversation.other_user.avatar_url}
             isAgent={conversation.other_user.is_agent}
             size="sm"
-            showPresence
-            isOnline={isOnline}
           />
           <div>
-            <p className="text-sm font-semibold text-neutral-800">
+            <p className="text-sm font-bold text-neutral-800">
               {conversation.other_user.display_name}
             </p>
-            <p className="text-xs text-neutral-400 flex items-center gap-1">
+            <p className="text-xs text-neutral-500 flex items-center gap-1">
               <span
-                className={`w-1.5 h-1.5 rounded-full ${
+                className={`w-2 h-2 rounded-full ${
                   isOnline ? "bg-success" : "bg-neutral-400"
                 }`}
               />
@@ -45,27 +43,25 @@ export function ChatHeader({
         </>
       ) : (
         <>
-          <div className="w-8 h-8 rounded-full bg-neutral-200 flex items-center justify-center">
-            <Hash className="w-4 h-4 text-neutral-500" />
+          <div className="text-sm font-bold text-neutral-800">
+            # {conversation.name}
           </div>
-          <div>
-            <p className="text-sm font-semibold text-neutral-800">
-              {conversation.name}
-            </p>
-            {conversation.member_count && (
-              <p className="text-xs text-neutral-400 flex items-center gap-1">
-                <Users className="w-3 h-3" />
-                {conversation.member_count} members
-              </p>
-            )}
-          </div>
+          {conversation.member_count && (
+            <button
+              onClick={onToggleInfo}
+              className="text-xs text-neutral-500 flex items-center gap-1 hover:text-neutral-700 transition"
+            >
+              <Users className="w-3.5 h-3.5" />
+              {conversation.member_count} members
+            </button>
+          )}
         </>
       )}
 
       <div className="ml-auto">
         <button
           onClick={onToggleInfo}
-          className="p-2 rounded-lg text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition"
+          className="w-8 h-8 flex items-center justify-center rounded-lg text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition"
         >
           <Info className="w-5 h-5" />
         </button>

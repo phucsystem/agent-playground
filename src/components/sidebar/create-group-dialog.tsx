@@ -26,7 +26,7 @@ export function CreateGroupDialog({
     async function fetchUsers() {
       const supabase = createBrowserSupabaseClient();
       const { data } = await supabase
-        .from("users")
+        .from("users_public")
         .select("*")
         .eq("is_active", true)
         .neq("id", currentUserId);

@@ -15,21 +15,19 @@ export function UserProfile({ currentUser, onLogout }: UserProfileProps) {
       <Avatar
         displayName={currentUser.display_name}
         avatarUrl={currentUser.avatar_url}
-        showPresence
-        isOnline
       />
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-neutral-800 truncate">
+        <p className="text-sm font-bold text-neutral-800 truncate">
           {currentUser.display_name}
         </p>
-        <p className="text-xs text-neutral-400 flex items-center gap-1">
+        <p className="text-xs text-neutral-500 flex items-center gap-1">
           <span className="w-2 h-2 rounded-full bg-success inline-block" />
           Online
         </p>
       </div>
       <button
         onClick={onLogout}
-        className="p-1.5 rounded-md text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition"
+        className="p-1.5 rounded-md text-neutral-400 hover:text-neutral-700 hover:bg-neutral-200 transition"
         title="Logout"
       >
         <LogOut className="w-4 h-4" />

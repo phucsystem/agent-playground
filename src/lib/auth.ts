@@ -19,7 +19,10 @@ export async function loginWithToken(token: string) {
     refresh_token: data.refresh_token,
   });
 
-  return data.user;
+  return {
+    ...data.user,
+    needsSetup: !data.user.avatar_url,
+  };
 }
 
 export async function logout() {

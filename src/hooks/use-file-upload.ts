@@ -58,15 +58,17 @@ export function useFileUpload() {
       throw new Error(`Upload failed: ${error.message}`);
     }
 
-    const {
-      data: { publicUrl },
-    } = supabase.storage.from("attachments").getPublicUrl(storagePath);
+    const { data: signedUrlData } = await supabase.storage
+      .from("attachments")
+      .createSignedUrl(storagePath, 60 * 60 * 24 * 7); // 7 days
+
+    const fileUrl = signedUrlData?.signedUrl || "";
 
     setUploading(false);
     setProgress(100);
 
     return {
-      fileUrl: publicUrl,
+      fileUrl,
       storagePath,
       fileName: file.name,
       fileType: file.type,

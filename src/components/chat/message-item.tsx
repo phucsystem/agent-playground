@@ -5,12 +5,19 @@ import { MarkdownContent } from "./markdown-content";
 import { FileCard } from "./file-card";
 import { ImagePreview } from "./image-preview";
 import { UrlPreview } from "./url-preview";
+import { ReactionPicker } from "./reaction-picker";
+import { MessageReactions } from "./message-reactions";
 import type { MessageWithSender } from "@/types/database";
+import { Heart } from "lucide-react";
+import type { ReactionGroup } from "@/hooks/use-reactions";
 
 interface MessageItemProps {
   message: MessageWithSender;
   isGrouped: boolean;
   isCurrentUser: boolean;
+  reactions: ReactionGroup[];
+  currentUserId: string;
+  onToggleReaction: (messageId: string, emoji: string) => void;
 }
 
 function formatTimestamp(dateString: string) {
@@ -56,22 +63,72 @@ function MessageContent({ message }: { message: MessageWithSender }) {
   }
 }
 
+function HeartButton({
+  messageId,
+  reactions,
+  currentUserId,
+  onToggle,
+}: {
+  messageId: string;
+  reactions: ReactionGroup[];
+  currentUserId: string;
+  onToggle: (messageId: string, emoji: string) => void;
+}) {
+  const heartReaction = reactions.find((reaction) => reaction.emoji === "❤️");
+  const hasHearted = heartReaction?.userIds.includes(currentUserId);
+  const heartCount = heartReaction?.count || 0;
+
+  return (
+    <button
+      onClick={() => onToggle(messageId, "❤️")}
+      className={`flex items-center gap-1 self-end mb-1 px-1.5 py-1 rounded-full transition-all ${
+        hasHearted
+          ? "text-red-500"
+          : "text-neutral-300 hover:text-red-400 opacity-0 group-hover:opacity-100"
+      } ${heartCount > 0 ? "!opacity-100" : ""}`}
+    >
+      <Heart className={`w-5 h-5 ${hasHearted ? "fill-red-500" : ""}`} />
+      {heartCount > 0 && (
+        <span className="text-sm font-medium">{heartCount}</span>
+      )}
+    </button>
+  );
+}
+
 export function MessageItem({
   message,
   isGrouped,
   isCurrentUser,
+  reactions,
+  currentUserId,
+  onToggleReaction,
 }: MessageItemProps) {
   if (isCurrentUser) {
     return (
-      <div className="flex justify-end">
+      <div className="flex justify-end relative group px-2 py-1">
+        <HeartButton
+          messageId={message.id}
+          reactions={reactions}
+          currentUserId={currentUserId}
+          onToggle={onToggleReaction}
+        />
         <div className="max-w-[70%]">
           {!isGrouped && (
             <p className="text-[11px] text-neutral-400 text-right mb-0.5 mr-1">
               {formatTimestamp(message.created_at)}
             </p>
           )}
-          <div className="bg-neutral-100 rounded-2xl rounded-br-md px-4 py-2.5">
-            <MessageContent message={message} />
+          <div className="bg-primary-500 text-white rounded-2xl rounded-br-sm px-4 py-2.5 shadow-sm">
+            <div className="text-[15px] leading-relaxed [&_a]:text-white [&_a]:underline [&_pre]:bg-primary-600 [&_pre]:border-primary-400 [&_code]:text-primary-100">
+              <MessageContent message={message} />
+            </div>
+          </div>
+          <div className="flex justify-end">
+            <MessageReactions
+              reactions={reactions.filter((reaction) => reaction.emoji !== "❤️")}
+              currentUserId={currentUserId}
+              onToggle={(emoji) => onToggleReaction(message.id, emoji)}
+            />
           </div>
         </div>
       </div>
@@ -79,7 +136,7 @@ export function MessageItem({
   }
 
   return (
-    <div className="flex gap-2.5">
+    <div className="flex gap-2.5 px-2 py-1 relative group">
       {!isGrouped ? (
         <Avatar
           displayName={message.sender.display_name}
@@ -91,11 +148,11 @@ export function MessageItem({
         <div className="w-8 shrink-0" />
       )}
 
-      <div className="flex-1 min-w-0">
+      <div className="max-w-[70%] min-w-0">
         {!isGrouped && (
           <div className="flex items-baseline gap-2 mb-0.5">
             <span
-              className={`text-sm font-semibold ${
+              className={`text-sm font-bold ${
                 message.sender.is_agent
                   ? "text-primary-600"
                   : "text-neutral-800"
@@ -108,8 +165,25 @@ export function MessageItem({
             </span>
           </div>
         )}
-        <MessageContent message={message} />
+        <div className="bg-neutral-100 rounded-2xl rounded-bl-sm px-4 py-2.5">
+          <div className="text-[15px] leading-relaxed text-neutral-700">
+            <MessageContent message={message} />
+          </div>
+        </div>
+
+        <MessageReactions
+          reactions={reactions.filter((reaction) => reaction.emoji !== "❤️")}
+          currentUserId={currentUserId}
+          onToggle={(emoji) => onToggleReaction(message.id, emoji)}
+        />
       </div>
+
+      <HeartButton
+        messageId={message.id}
+        reactions={reactions}
+        currentUserId={currentUserId}
+        onToggle={onToggleReaction}
+      />
     </div>
   );
 }

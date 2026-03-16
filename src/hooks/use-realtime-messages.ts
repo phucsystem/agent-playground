@@ -65,7 +65,7 @@ export function useRealtimeMessages(conversationId: string) {
         async (payload) => {
           const newMessage = payload.new as MessageWithSender;
           const { data: senderData } = await supabase
-            .from("users")
+            .from("users_public")
             .select("id, display_name, avatar_url, is_agent")
             .eq("id", newMessage.sender_id)
             .single();

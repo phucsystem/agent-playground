@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { createHash } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import type { User } from "@/types/database";
 
@@ -45,7 +46,10 @@ export async function POST(request: NextRequest) {
   }
 
   const email = user.email;
-  const password = `agent-playground-${user.token}`;
+  const serverSecret = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+  const password = createHash("sha256")
+    .update(`${user.id}:${serverSecret}`)
+    .digest("hex");
 
   const { data: existingUsers } = await getSupabaseAdmin().auth.admin.listUsers();
   const authUser = existingUsers?.users?.find(
@@ -55,6 +59,7 @@ export async function POST(request: NextRequest) {
   if (!authUser) {
     const { error: createError } =
       await getSupabaseAdmin().auth.admin.createUser({
+        id: user.id,
         email,
         password,
         email_confirm: true,
@@ -72,6 +77,10 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
+  } else {
+    await getSupabaseAdmin().auth.admin.updateUserById(authUser.id, {
+      password,
+    });
   }
 
   const { data: signInData, error: signInError } =

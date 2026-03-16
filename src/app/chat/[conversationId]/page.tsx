@@ -10,6 +10,8 @@ import { useCurrentUser } from "@/hooks/use-current-user";
 import { useRealtimeMessages } from "@/hooks/use-realtime-messages";
 import { useConversations } from "@/hooks/use-conversations";
 import { useSupabasePresence } from "@/hooks/use-supabase-presence";
+import { useTypingIndicator } from "@/hooks/use-typing-indicator";
+import { useReactions } from "@/hooks/use-reactions";
 import { Loader2 } from "lucide-react";
 
 export default function ConversationPage() {
@@ -22,6 +24,17 @@ export default function ConversationPage() {
   const { conversations } = useConversations();
   const { onlineUsers } = useSupabasePresence(currentUser);
   const [showInfo, setShowInfo] = useState(false);
+
+  const { typingUsers, sendTyping } = useTypingIndicator(
+    conversationId,
+    currentUser?.id || "",
+    currentUser?.display_name || ""
+  );
+
+  const { fetchReactions, toggleReaction, getGroupedReactions } = useReactions(
+    conversationId,
+    currentUser?.id || ""
+  );
 
   const conversation = useMemo(
     () => conversations.find((conv) => conv.id === conversationId),
@@ -41,6 +54,11 @@ export default function ConversationPage() {
   useEffect(() => {
     markAsRead();
   }, [markAsRead, messages.length]);
+
+  useEffect(() => {
+    const messageIds = messages.map((message) => message.id);
+    fetchReactions(messageIds);
+  }, [messages, fetchReactions]);
 
   if (!currentUser) {
     return (
@@ -78,12 +96,16 @@ export default function ConversationPage() {
           hasMore={hasMore}
           loadMore={loadMore}
           currentUserId={currentUser.id}
+          typingUsers={typingUsers}
+          getGroupedReactions={getGroupedReactions}
+          onToggleReaction={toggleReaction}
         />
 
         <ChatInput
           conversationId={conversationId}
           senderId={currentUser.id}
           placeholder={inputPlaceholder}
+          onTyping={sendTyping}
         />
       </div>
 

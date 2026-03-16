@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { Avatar } from "@/components/ui/avatar";
-import { Hash, Users } from "lucide-react";
+import { Hash } from "lucide-react";
+import { CollapsibleSection } from "./collapsible-section";
 import type { ConversationWithDetails } from "@/types/database";
 
 interface ConversationListProps {
@@ -39,12 +40,9 @@ export function ConversationList({
   const groupConversations = conversations.filter((conv) => conv.type === "group");
 
   return (
-    <div className="px-3 py-2">
+    <>
       {dmConversations.length > 0 && (
-        <>
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500 px-2 mb-1">
-            Direct Messages
-          </p>
+        <CollapsibleSection title="Direct Messages" count={dmConversations.length}>
           {dmConversations.map((conv) => (
             <ConversationItem
               key={conv.id}
@@ -53,14 +51,11 @@ export function ConversationList({
               isOnline={conv.other_user ? onlineUserIds.includes(conv.other_user.id) : false}
             />
           ))}
-        </>
+        </CollapsibleSection>
       )}
 
       {groupConversations.length > 0 && (
-        <>
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500 px-2 mb-1 mt-3">
-            Groups
-          </p>
+        <CollapsibleSection title="Groups" count={groupConversations.length}>
           {groupConversations.map((conv) => (
             <ConversationItem
               key={conv.id}
@@ -69,9 +64,9 @@ export function ConversationList({
               isOnline={false}
             />
           ))}
-        </>
+        </CollapsibleSection>
       )}
-    </div>
+    </>
   );
 }
 
@@ -94,8 +89,8 @@ function ConversationItem({
       href={`/chat/${conversation.id}`}
       className={`flex items-center gap-2.5 px-2 py-2 rounded-lg transition ${
         isActive
-          ? "bg-neutral-100 text-primary-500"
-          : "hover:bg-neutral-100 text-neutral-700"
+          ? "bg-neutral-200/70 text-primary-500"
+          : "hover:bg-neutral-200/50 text-neutral-700"
       }`}
     >
       {isDM && conversation.other_user ? (
@@ -108,7 +103,7 @@ function ConversationItem({
           isOnline={isOnline}
         />
       ) : (
-        <div className="w-8 h-8 rounded-full bg-neutral-200 flex items-center justify-center">
+        <div className="w-8 h-8 rounded-full bg-neutral-200 flex items-center justify-center shrink-0">
           <Hash className="w-4 h-4 text-neutral-500" />
         </div>
       )}

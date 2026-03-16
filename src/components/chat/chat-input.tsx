@@ -10,12 +10,14 @@ interface ChatInputProps {
   conversationId: string;
   senderId: string;
   placeholder?: string;
+  onTyping?: () => void;
 }
 
 export function ChatInput({
   conversationId,
   senderId,
   placeholder = "Type a message...",
+  onTyping,
 }: ChatInputProps) {
   const [content, setContent] = useState("");
   const [sending, setSending] = useState(false);
@@ -145,6 +147,7 @@ export function ChatInput({
           onChange={(event) => {
             setContent(event.target.value);
             adjustHeight();
+            onTyping?.();
           }}
           onKeyDown={handleKeyDown}
           placeholder={pendingFile ? "Press Send to upload file..." : placeholder}

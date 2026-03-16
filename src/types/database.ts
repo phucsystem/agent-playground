@@ -1,14 +1,17 @@
 export type ConversationType = "dm" | "group";
 export type MemberRole = "admin" | "member";
 export type ContentType = "text" | "file" | "image" | "url";
+export type UserRole = "admin" | "user" | "agent";
 
 export interface User {
   id: string;
   email: string;
   display_name: string;
   avatar_url: string | null;
+  role: UserRole;
   is_agent: boolean;
   is_active: boolean;
+  is_mock: boolean;
   token: string;
   last_seen_at: string | null;
   created_at: string;

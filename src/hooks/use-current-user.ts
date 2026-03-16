@@ -18,15 +18,13 @@ export function useCurrentUser() {
         return;
       }
 
-      const appUserId = session.user.user_metadata?.app_user_id;
-      if (appUserId) {
-        const { data } = await supabase
-          .from("users")
-          .select("*")
-          .eq("id", appUserId)
-          .single();
-        setCurrentUser(data);
-      }
+      const userId = session.user.id;
+      const { data } = await supabase
+        .from("users_public")
+        .select("*")
+        .eq("id", userId)
+        .single();
+      setCurrentUser(data);
       setLoading(false);
     }
 
