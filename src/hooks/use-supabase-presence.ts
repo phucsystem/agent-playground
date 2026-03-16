@@ -96,5 +96,12 @@ export function useSupabasePresence(currentUser: User | null) {
     setNewlyOnlineUsers([]);
   }, []);
 
-  return { onlineUsers, newlyOnlineUsers, clearNewlyOnline };
+  const markUserOnline = useCallback((targetUserId: string) => {
+    setOnlineUsers((prev) => {
+      if (prev.some((user) => user.user_id === targetUserId)) return prev;
+      return [...prev, { user_id: targetUserId, display_name: "User", is_agent: false, avatar_url: null }];
+    });
+  }, []);
+
+  return { onlineUsers, newlyOnlineUsers, clearNewlyOnline, markUserOnline };
 }

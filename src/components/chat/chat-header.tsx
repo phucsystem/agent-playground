@@ -4,17 +4,20 @@ import { Avatar } from "@/components/ui/avatar";
 import { Info, Users, ArrowLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type { ConversationWithDetails } from "@/types/database";
+import type { AgentHealthStatus } from "@/hooks/use-agent-health";
 
 interface ChatHeaderProps {
   conversation: ConversationWithDetails;
   isOnline: boolean;
   onToggleInfo: () => void;
+  agentHealthStatus?: AgentHealthStatus;
 }
 
 export function ChatHeader({
   conversation,
   isOnline,
   onToggleInfo,
+  agentHealthStatus,
 }: ChatHeaderProps) {
   const isDM = conversation.type === "dm";
   const router = useRouter();
@@ -31,27 +34,38 @@ export function ChatHeader({
       </button>
 
       {isDM && conversation.other_user ? (
-        <>
-          <Avatar
-            displayName={conversation.other_user.display_name}
-            avatarUrl={conversation.other_user.avatar_url}
-            isAgent={conversation.other_user.is_agent}
-            size="sm"
-          />
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-bold text-neutral-800 truncate">
-              {conversation.other_user.display_name}
-            </p>
-            <p className="text-xs text-neutral-500 flex items-center gap-1">
-              <span
-                className={`w-2 h-2 rounded-full ${
-                  isOnline ? "bg-success" : "bg-neutral-400"
-                }`}
+        (() => {
+          const isAgent = conversation.other_user!.is_agent;
+          const effectiveOnline = isAgent ? agentHealthStatus === "healthy" : isOnline;
+          const statusLabel = isAgent
+            ? (agentHealthStatus === "healthy" ? "Available" : "Unavailable")
+            : (isOnline ? "Online" : "Offline");
+          return (
+            <>
+              <Avatar
+                displayName={conversation.other_user!.display_name}
+                avatarUrl={conversation.other_user!.avatar_url}
+                isAgent={isAgent}
+                size="sm"
+                healthStatus={isAgent ? agentHealthStatus : undefined}
               />
-              {isOnline ? "Online" : "Offline"}
-            </p>
-          </div>
-        </>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-bold text-neutral-800 truncate">
+                  {conversation.other_user!.display_name}
+                </p>
+                <p className="text-xs text-neutral-500 flex items-center gap-1">
+                  <span
+                    className={`w-2 h-2 rounded-full ${
+                      effectiveOnline ? "bg-success" : "bg-neutral-400"
+                    }`}
+                  />
+                  {statusLabel}
+                </p>
+              </div>
+            </>
+          );
+        })()
+
       ) : (
         <>
           <div className="text-sm font-bold text-neutral-800 truncate flex-1 min-w-0">

@@ -14,6 +14,7 @@ import { useTypingIndicator } from "@/hooks/use-typing-indicator";
 import { useReactions } from "@/hooks/use-reactions";
 import { useAgentThinking } from "@/hooks/use-agent-thinking";
 import { useConversationMembers } from "@/hooks/use-conversation-members";
+import { useAgentHealthContext } from "@/hooks/use-agent-health-context";
 import { Loader2 } from "lucide-react";
 
 export default function ConversationPage() {
@@ -53,6 +54,7 @@ export default function ConversationPage() {
     return onlineUserIds.includes(conversation.other_user.id);
   }, [conversation, onlineUserIds]);
 
+  const { getStatus: getAgentHealthStatus } = useAgentHealthContext();
   const { members } = useConversationMembers(conversationId);
   const hasAgent = useMemo(() => {
     if (conversation?.other_user?.is_agent) return true;
@@ -101,6 +103,11 @@ export default function ConversationPage() {
           conversation={conversation}
           isOnline={isOtherOnline}
           onToggleInfo={() => setShowInfo(!showInfo)}
+          agentHealthStatus={
+            conversation.other_user?.is_agent
+              ? getAgentHealthStatus(conversation.other_user.id)
+              : undefined
+          }
         />
 
         <MessageList

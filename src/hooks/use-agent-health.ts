@@ -73,5 +73,15 @@ export function useAgentHealth() {
     [healthMap],
   );
 
-  return { healthMap, transitions, clearTransitions, getStatus };
+  const markActive = useCallback((agentId: string) => {
+    setHealthMap((prev) => {
+      if (prev.get(agentId) === "healthy") return prev;
+      const updated = new Map(prev);
+      updated.set(agentId, "healthy");
+      return updated;
+    });
+    previousMapRef.current.set(agentId, "healthy");
+  }, []);
+
+  return { healthMap, transitions, clearTransitions, getStatus, markActive };
 }

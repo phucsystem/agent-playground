@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { toast, Toaster } from "sonner";
 import { PresenceToast } from "@/components/ui/presence-toast";
 import { formatRelativeTime } from "@/lib/session-utils";
@@ -12,6 +12,7 @@ import { useSupabasePresence } from "@/hooks/use-supabase-presence";
 import { useConversations } from "@/hooks/use-conversations";
 import { MobileSidebarProvider, useMobileSidebar } from "@/hooks/use-mobile-sidebar";
 import { useAgentHealth } from "@/hooks/use-agent-health";
+import { AgentHealthContext } from "@/hooks/use-agent-health-context";
 import { AgentHealthToast } from "@/components/ui/agent-health-toast";
 import { CreateGroupDialog } from "@/components/sidebar/create-group-dialog";
 import { Loader2 } from "lucide-react";
@@ -19,9 +20,9 @@ import { Loader2 } from "lucide-react";
 function ChatLayoutInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { currentUser, loading: userLoading } = useCurrentUser();
-  const { onlineUsers, newlyOnlineUsers, clearNewlyOnline } = useSupabasePresence(currentUser);
+  const { onlineUsers, newlyOnlineUsers, clearNewlyOnline, markUserOnline } = useSupabasePresence(currentUser);
   const { conversations } = useConversations();
-  const { getStatus: getAgentHealthStatus, transitions: healthTransitions, clearTransitions: clearHealthTransitions } = useAgentHealth();
+  const { getStatus: getAgentHealthStatus, transitions: healthTransitions, clearTransitions: clearHealthTransitions, markActive } = useAgentHealth();
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const { isOpen, close } = useMobileSidebar();
 
@@ -86,6 +87,20 @@ function ChatLayoutInner({ children }: { children: React.ReactNode }) {
     clearHealthTransitions();
   }, [healthTransitions, clearHealthTransitions, conversations]);
 
+  const handleMessageReceived = useCallback((event: Event) => {
+    const { senderId, isAgent } = (event as CustomEvent).detail;
+    if (isAgent) {
+      markActive(senderId);
+    } else {
+      markUserOnline(senderId);
+    }
+  }, [markActive, markUserOnline]);
+
+  useEffect(() => {
+    window.addEventListener("message-received", handleMessageReceived);
+    return () => window.removeEventListener("message-received", handleMessageReceived);
+  }, [handleMessageReceived]);
+
   const onlineUserIds = onlineUsers.map((onlineUser) => onlineUser.user_id);
 
   if (userLoading) {
@@ -137,7 +152,9 @@ function ChatLayoutInner({ children }: { children: React.ReactNode }) {
 
       {/* Main content area */}
       <main className="flex-1 flex flex-col min-h-dvh ml-0 md:ml-[var(--sidebar-width)]">
-        {children}
+        <AgentHealthContext.Provider value={{ getStatus: getAgentHealthStatus, markActive }}>
+          {children}
+        </AgentHealthContext.Provider>
       </main>
 
       {showCreateGroup && (

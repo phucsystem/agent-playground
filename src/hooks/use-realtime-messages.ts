@@ -101,6 +101,11 @@ export function useRealtimeMessages(conversationId: string) {
 
           if (senderData) {
             newMessage.sender = senderData;
+            window.dispatchEvent(
+              new CustomEvent("message-received", {
+                detail: { senderId: senderData.id, isAgent: senderData.is_agent },
+              }),
+            );
           }
 
           setMessages((prev) => {
