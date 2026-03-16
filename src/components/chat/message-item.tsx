@@ -50,17 +50,21 @@ function isRecentMessage(createdAt: string): boolean {
 }
 
 function AgentTextContent({ message, memberNames }: { message: MessageWithSender; memberNames?: string[] }) {
-  const shouldAnimate = !animatedMessageIds.has(message.id) && isRecentMessage(message.created_at);
+  const shouldAnimateRef = useRef(
+    !animatedMessageIds.has(message.id) && isRecentMessage(message.created_at)
+  );
 
   const { displayText, isAnimating, isComplete, skip } = useTypewriter(message.content, {
-    enabled: shouldAnimate,
+    enabled: shouldAnimateRef.current,
   });
 
   useEffect(() => {
-    trackAnimatedId(message.id);
-  }, [message.id]);
+    if (isComplete) {
+      trackAnimatedId(message.id);
+    }
+  }, [isComplete, message.id]);
 
-  if (isComplete || !shouldAnimate) {
+  if (!shouldAnimateRef.current || isComplete) {
     return <MarkdownContent content={message.content} memberNames={memberNames} />;
   }
 
