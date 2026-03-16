@@ -28,7 +28,7 @@ const colors = [
 
 const healthDotColors: Record<AgentHealthStatus, string> = {
   healthy: "bg-success",
-  unhealthy: "bg-error",
+  unhealthy: "bg-neutral-400",
   unknown: "bg-neutral-400",
 };
 
