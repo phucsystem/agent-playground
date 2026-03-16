@@ -78,13 +78,14 @@ export interface ConversationWithDetails extends Conversation {
 export interface Database {
   public: {
     Tables: {
-      users: { Row: User; Insert: Omit<User, "id" | "created_at">; Update: Partial<User> };
-      conversations: { Row: Conversation; Insert: Omit<Conversation, "id" | "created_at" | "updated_at">; Update: Partial<Conversation> };
-      conversation_members: { Row: ConversationMember; Insert: Omit<ConversationMember, "joined_at">; Update: Partial<ConversationMember> };
-      messages: { Row: Message; Insert: Omit<Message, "id" | "created_at">; Update: Partial<Message> };
-      attachments: { Row: Attachment; Insert: Omit<Attachment, "id" | "created_at">; Update: Partial<Attachment> };
-      reactions: { Row: Reaction; Insert: Omit<Reaction, "id" | "created_at">; Update: Partial<Reaction> };
+      users: { Row: User; Insert: Omit<User, "id" | "created_at">; Update: Partial<User>; Relationships: [] };
+      conversations: { Row: Conversation; Insert: Omit<Conversation, "id" | "created_at" | "updated_at">; Update: Partial<Conversation>; Relationships: [] };
+      conversation_members: { Row: ConversationMember; Insert: Omit<ConversationMember, "joined_at">; Update: Partial<ConversationMember>; Relationships: [] };
+      messages: { Row: Message; Insert: Omit<Message, "id" | "created_at">; Update: Partial<Message>; Relationships: [] };
+      attachments: { Row: Attachment; Insert: Omit<Attachment, "id" | "created_at">; Update: Partial<Attachment>; Relationships: [] };
+      reactions: { Row: Reaction; Insert: Omit<Reaction, "id" | "created_at">; Update: Partial<Reaction>; Relationships: [] };
     };
+    Views: Record<string, never>;
     Functions: {
       find_or_create_dm: { Args: { other_user_id: string }; Returns: string };
       get_unread_counts: { Args: Record<string, never>; Returns: { conversation_id: string; unread_count: number }[] };

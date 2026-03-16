@@ -1,0 +1,11 @@
+node_modules
+.next
+.git
+.gitignore
+.env*.local
+*.md
+plans
+prototypes
+docs
+.claude
+.worktrees

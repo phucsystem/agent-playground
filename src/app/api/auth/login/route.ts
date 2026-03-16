@@ -1,10 +1,18 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
+import type { User } from "@/types/database";
 
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+let adminClient: ReturnType<typeof createClient> | null = null;
+
+function getSupabaseAdmin() {
+  if (!adminClient) {
+    adminClient = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+  }
+  return adminClient;
+}
 
 export async function POST(request: NextRequest) {
   const { token } = await request.json();
@@ -16,11 +24,11 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { data: user, error: userError } = await supabaseAdmin
+  const { data: user, error: userError } = await getSupabaseAdmin()
     .from("users")
     .select("*")
     .eq("token", token)
-    .single();
+    .single<User>();
 
   if (userError || !user) {
     return NextResponse.json(
@@ -39,14 +47,14 @@ export async function POST(request: NextRequest) {
   const email = user.email;
   const password = `agent-playground-${user.token}`;
 
-  const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
+  const { data: existingUsers } = await getSupabaseAdmin().auth.admin.listUsers();
   const authUser = existingUsers?.users?.find(
     (authUserItem) => authUserItem.email === email
   );
 
   if (!authUser) {
     const { error: createError } =
-      await supabaseAdmin.auth.admin.createUser({
+      await getSupabaseAdmin().auth.admin.createUser({
         email,
         password,
         email_confirm: true,
@@ -67,7 +75,7 @@ export async function POST(request: NextRequest) {
   }
 
   const { data: signInData, error: signInError } =
-    await supabaseAdmin.auth.signInWithPassword({
+    await getSupabaseAdmin().auth.signInWithPassword({
       email,
       password,
     });
