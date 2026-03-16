@@ -38,7 +38,8 @@ export function ChatInput({
 }: ChatInputProps) {
   const [content, setContent] = useState("");
   const [sending, setSending] = useState(false);
-  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const previewUrlsRef = useRef<Map<File, string>>(new Map());
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showGifPicker, setShowGifPicker] = useState(false);
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
@@ -103,6 +104,53 @@ export function ChatInput({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  function getPreviewUrl(file: File): string | null {
+    if (!file.type.startsWith("image/")) return null;
+    const existing = previewUrlsRef.current.get(file);
+    if (existing) return existing;
+    const url = URL.createObjectURL(file);
+    previewUrlsRef.current.set(file, url);
+    return url;
+  }
+
+  function addFiles(files: File[]) {
+    const validFiles = files.filter((file) => {
+      if (file.size > MAX_FILE_SIZE) {
+        toast.error(`${file.name} exceeds 5MB limit`);
+        return false;
+      }
+      return true;
+    });
+    if (validFiles.length === 0) return;
+    setPendingFiles((prev) => [...prev, ...validFiles]);
+  }
+
+  function removeFile(fileToRemove: File) {
+    const url = previewUrlsRef.current.get(fileToRemove);
+    if (url) {
+      URL.revokeObjectURL(url);
+      previewUrlsRef.current.delete(fileToRemove);
+    }
+    setPendingFiles((prev) => prev.filter((file) => file !== fileToRemove));
+  }
+
+  function clearAllFiles() {
+    for (const url of previewUrlsRef.current.values()) {
+      URL.revokeObjectURL(url);
+    }
+    previewUrlsRef.current.clear();
+    setPendingFiles([]);
+  }
+
+  useEffect(() => {
+    const urlsRef = previewUrlsRef.current;
+    return () => {
+      for (const url of urlsRef.values()) {
+        URL.revokeObjectURL(url);
+      }
+    };
+  }, []);
+
   const adjustHeight = useCallback(() => {
     const textarea = textareaRef.current;
     if (textarea) {
@@ -132,24 +180,25 @@ export function ChatInput({
   async function handleSend() {
     if (sending || uploading) return;
 
-    if (pendingFile) {
+    if (pendingFiles.length > 0) {
       setSending(true);
-      try {
-        const messageId = crypto.randomUUID();
-        const result = await uploadFile(pendingFile, conversationId, messageId);
-        const isImage = pendingFile.type.startsWith("image/");
-        const contentType: ContentType = isImage ? "image" : "file";
-
-        await sendMessage(result.fileName, contentType, {
-          file_name: result.fileName,
-          file_size: result.fileSize,
-          file_type: result.fileType,
-          file_url: result.fileUrl,
-        });
-
-        setPendingFile(null);
-      } catch {
-        // upload error handled by hook
+      const filesToUpload = [...pendingFiles];
+      clearAllFiles();
+      for (const file of filesToUpload) {
+        try {
+          const messageId = crypto.randomUUID();
+          const result = await uploadFile(file, conversationId, messageId);
+          const isImage = file.type.startsWith("image/");
+          const contentType: ContentType = isImage ? "image" : "file";
+          await sendMessage(result.fileName, contentType, {
+            file_name: result.fileName,
+            file_size: result.fileSize,
+            file_type: result.fileType,
+            file_url: result.fileUrl,
+          });
+        } catch {
+          // upload error handled by hook
+        }
       }
       setSending(false);
       return;
@@ -217,16 +266,32 @@ export function ChatInput({
   const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
   function handleFileSelect(event: React.ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    if (file) {
-      if (file.size > MAX_FILE_SIZE) {
-        toast.error("File size exceeds 5MB limit");
-      } else {
-        setPendingFile(file);
-      }
+    const selectedFiles = event.target.files;
+    if (selectedFiles && selectedFiles.length > 0) {
+      addFiles(Array.from(selectedFiles));
     }
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
+    }
+  }
+
+  function handlePaste(event: React.ClipboardEvent) {
+    const items = event.clipboardData?.items;
+    if (!items) return;
+
+    const pastedFiles: File[] = [];
+    for (const item of items) {
+      if (item.type.startsWith("image/")) {
+        const blob = item.getAsFile();
+        if (!blob) continue;
+        const timestamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+        const extension = blob.type.split("/")[1] || "png";
+        pastedFiles.push(new File([blob], `paste-${timestamp}.${extension}`, { type: blob.type }));
+      }
+    }
+    if (pastedFiles.length > 0) {
+      event.preventDefault();
+      addFiles(pastedFiles);
     }
   }
 
@@ -247,25 +312,51 @@ export function ChatInput({
 
   return (
     <div className="mx-2 sm:mx-4 md:mx-6 mb-2 md:mb-4">
-      {pendingFile && (
-        <div className="flex items-center gap-2 mb-2 px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-xl">
-          <Paperclip className="w-4 h-4 text-neutral-400" />
-          <span className="text-sm text-neutral-600 truncate flex-1">
-            {pendingFile.name}
-          </span>
-          <span className="text-xs text-neutral-400">
-            {(pendingFile.size / 1024).toFixed(0)} KB
-          </span>
-          <button
-            onClick={() => setPendingFile(null)}
-            className="p-0.5 text-neutral-400 hover:text-neutral-600"
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
+      {pendingFiles.length > 0 && (
+        <div className="bg-neutral-100 rounded-2xl rounded-b-none px-3 pt-3 pb-2">
+          <div className="flex gap-2 overflow-x-auto">
+            {pendingFiles.map((file, fileIndex) => {
+              const previewUrl = getPreviewUrl(file);
+              return (
+                <div key={`${file.name}-${fileIndex}`} className="relative shrink-0 group rounded-xl border border-neutral-200 bg-white p-1 shadow-sm">
+                  {previewUrl ? (
+                    <img
+                      src={previewUrl}
+                      alt={file.name}
+                      className="h-28 max-w-[220px] rounded-lg object-cover"
+                    />
+                  ) : (
+                    <div className="flex items-center gap-2.5 px-3 py-2.5">
+                      <Paperclip className="w-4 h-4 text-neutral-400 shrink-0" />
+                      <div className="min-w-0">
+                        <p className="text-sm text-neutral-700 font-medium truncate max-w-[180px]">
+                          {file.name}
+                        </p>
+                        <p className="text-[11px] text-neutral-400">
+                          {(file.size / 1024).toFixed(0)} KB
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  <button
+                    onClick={() => removeFile(file)}
+                    className="absolute top-2 right-2 p-1 bg-black/50 backdrop-blur-sm rounded-full text-white opacity-0 group-hover:opacity-100 hover:bg-black/70 transition-opacity cursor-pointer"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                  {previewUrl && (
+                    <span className="absolute bottom-2 left-2 text-[10px] text-white/90 bg-black/50 backdrop-blur-sm rounded px-1.5 py-0.5">
+                      {(file.size / 1024).toFixed(0)} KB
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 
-      <div className="relative flex items-end gap-1.5 bg-neutral-100 rounded-2xl px-3 py-2.5">
+      <div className={`relative flex items-end gap-1.5 bg-neutral-100 rounded-2xl px-3 py-2.5 ${pendingFiles.length > 0 ? "rounded-t-none" : ""}`}>
         {mentionCandidates.length > 0 && (
           <MentionPicker
             candidates={mentionCandidates}
@@ -276,6 +367,7 @@ export function ChatInput({
         <input
           ref={fileInputRef}
           type="file"
+          multiple
           onChange={handleFileSelect}
           accept="image/jpeg,image/png,image/gif,image/webp,application/pdf,text/plain,text/markdown,text/csv"
           className="hidden"
@@ -340,15 +432,16 @@ export function ChatInput({
             setMentionQuery(query);
             setMentionIndex(0);
           }}
+          onPaste={handlePaste}
           onKeyDown={handleKeyDown}
-          placeholder={pendingFile ? "Press Send to upload file..." : placeholder}
+          placeholder={pendingFiles.length > 0 ? `${pendingFiles.length} file${pendingFiles.length > 1 ? "s" : ""} ready — press Send to upload` : placeholder}
           rows={1}
           className="flex-1 bg-transparent resize-none outline-none text-neutral-700 placeholder:text-neutral-400 text-[15px] leading-relaxed max-h-[120px] py-1"
         />
 
         <button
           onClick={handleSend}
-          disabled={(!content.trim() && !pendingFile) || sending || uploading}
+          disabled={(!content.trim() && pendingFiles.length === 0) || sending || uploading}
           className="p-2 bg-neutral-900 hover:bg-neutral-800 disabled:bg-neutral-300 disabled:cursor-not-allowed text-white rounded-xl transition shrink-0 cursor-pointer"
         >
           {sending || uploading ? (
