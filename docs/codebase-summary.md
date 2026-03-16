@@ -1,28 +1,28 @@
 # Codebase Summary
 
-**Generated:** 2026-03-16
+**Generated:** 2026-03-17
 **Repomix output:** `./repomix-output.xml`
-**Status:** ✅ Phases 1-5 complete. All core features + webhook agent integration implemented.
+**Status:** ✅ Phases 1-5 complete. All core features + webhook agent integration + agent thinking indicator implemented.
 
 ## Overview
 
-Agent Playground is a ~3,800 LOC Next.js chat application with Supabase backend + webhook agent integration. Organized into 50 source files across app pages, components, hooks, utilities, 7 database migrations, and 1 Supabase Edge Function.
+Agent Playground is a ~6,080 LOC Next.js chat application with Supabase backend + webhook agent integration + client-side agent thinking indicator. Organized into 52+ source files across app pages, components, hooks, utilities, 8 database migrations, and 1 Supabase Edge Function.
 
 ## File Counts & Distribution
 
 | Category | Count | Files |
 |----------|-------|-------|
 | **App Pages** | 8 | login/page.tsx, chat/layout.tsx, chat/page.tsx, [conversationId]/page.tsx, setup/page.tsx, admin/page.tsx, admin/webhooks/page.tsx, api/auth/login/route.ts, middleware.ts |
-| **Components** | 17 | chat (9: messages, input, header, markdown, file, image, url, info, reactions), sidebar (5: nav, users, conversations, create-group, user-profile), admin (3: webhook-config-form, agent-webhook-actions, webhook-log-row), ui (1: avatar) |
-| **Hooks** | 10 | use-current-user, use-conversations, use-realtime-messages, use-supabase-presence, use-file-upload, use-conversation-members, use-typing-indicator, use-reactions, use-agent-configs, use-webhook-logs |
+| **Components** | 24 | chat (10: messages, message-list, input, header, markdown, file, image, url, info, typing-indicator, reactions), sidebar (5: nav, users, conversations, create-group, user-profile), admin (3: webhook-config-form, agent-webhook-actions, webhook-log-row), ui (1: avatar) |
+| **Hooks** | 11 | use-current-user, use-conversations, use-realtime-messages, use-supabase-presence, use-file-upload, use-conversation-members, use-typing-indicator, use-agent-thinking (NEW), use-reactions, use-agent-configs, use-webhook-logs |
 | **Library/Utils** | 4 | auth.ts, supabase/client.ts, supabase/server.ts, middleware.ts |
 | **Types** | 1 | database.ts (generated from schema) |
-| **Migrations** | 7 | 001_initial, 002_user_role, 003_admin_management, 004_mock_flag, 005_security_fixes, 006_fix_rls_recursion, 007_agent_webhooks |
+| **Migrations** | 8 | 001_initial, 002_user_role, 003_admin_management, 004_mock_flag, 005_security_fixes, 006_fix_rls_recursion, 007_agent_webhooks, 008_webhook_debug_columns |
 | **Edge Functions** | 1 | webhook-dispatch/index.ts |
 | **Seed Data** | 1 | seed.sql (6 users, 2 conversations, 10 messages, 2 webhook configs) |
 | **Config** | 4 | tsconfig.json, package.json, next.config.ts, postcss.config.mjs |
 | **Docs** | 5 | SRD.md, UI_SPEC.md, DB_DESIGN.md, API_SPEC.md, system-architecture.md |
-| **Total** | 50+ | Source files + config |
+| **Total** | 52+ | Source files + config |
 
 ## Directory Structure
 
@@ -75,6 +75,7 @@ agent-playground/
 │   │   ├── use-file-upload.ts           # Upload to Storage + create record
 │   │   ├── use-conversation-members.ts  # Fetch conversation participants
 │   │   ├── use-typing-indicator.ts      # Broadcast & listen to typing
+│   │   ├── use-agent-thinking.ts        # Track agent thinking state (client-side heuristic)
 │   │   ├── use-reactions.ts             # Add/remove emoji reactions
 │   │   ├── use-agent-configs.ts         # CRUD agent webhook configs
 │   │   └── use-webhook-logs.ts          # Fetch + filter webhook delivery logs

@@ -1,6 +1,6 @@
 # System Architecture
 
-**Last updated:** 2026-03-16
+**Last updated:** 2026-03-17
 
 ## Overview
 
@@ -207,7 +207,7 @@ supabase.channel('online-users')
 
 **State:** Each user key in presence maps to an array of sessions. Shows "Alice (2 devices)" when helpful.
 
-#### 3. Broadcast (Typing Indicators — Phase 4)
+#### 3. Broadcast (Typing Indicators — Phase 3)
 
 **Channel:** `typing:{conversationId}`
 **Event:** broadcast typing
@@ -229,6 +229,27 @@ supabase.channel(`typing:${conversationId}`)
   })
   .subscribe()
 ```
+
+#### 4. Agent Thinking Indicator (Client-Side Heuristic)
+
+**Hook:** `use-agent-thinking.ts`
+**Trigger:** User sends message in agent DM conversation
+**State:** `agentThinking: true` → `false` when agent reply arrives or 30s timeout
+**Display:** "Agent is thinking..." with bouncing dots animation
+
+```typescript
+// Hook watches message array
+const { agentThinking } = useAgentThinking(conversation.other_user?.is_agent)
+
+// When user sends message → agentThinking = true
+// When agent message arrives → agentThinking = false
+// 30s timeout fallback (matches webhook timeout)
+
+// TypingIndicator component displays
+{agentThinking && <TypingIndicator message="Agent is thinking..." />}
+```
+
+**Why client-side?** No backend involvement. Agent messages may arrive via webhook dispatch or direct REST API. Client watches message stream and sets flag optimistically.
 
 ## Data Flow Patterns
 
@@ -638,7 +659,7 @@ Webhook Admin (admin/webhooks/page.tsx) — Phase 5
 | File upload fails | Storage path mismatch | Verify path pattern in code |
 | JWT always expires | Refresh token broken | Check cookie domain settings |
 
-## Webhook Dispatch Architecture (Phase 5)
+## Webhook Dispatch Architecture (Phase 5) — Updated with @Mention Routing & Debug Logging
 
 ### Flow Diagram
 
@@ -785,13 +806,25 @@ Stored in `agent_configs` table (one per agent). Created when admin checks "Is a
 
 After 3 failed attempts, marked `failed`. No further retries.
 
-### Loop Prevention
+### Loop Prevention & @Mention Routing
 
-Webhook dispatch skips:
-- Messages sent by agents (`is_agent = true`)
+**Group conversations only dispatch to @mentioned agents:**
+
+In group conversations with multiple agents, webhook-dispatch queries the message content for agent @mentions (case-insensitive match against agent display_name). Only agents that are explicitly mentioned receive the webhook.
+
+**Example:**
+- Message: "@Claude can you help?" → Only Claude's webhook fires
+- Message: "Hey everyone" (no @mention) → No webhooks fire (skip)
+- Message: "Claude" (not @mention format) → No webhooks fire
+
+**DM conversations dispatch to all agents:** Single-agent DMs always fire the webhook (no @mention needed).
+
+**Skip conditions:**
+- Messages sent by agents (`is_agent = true`) — unless @mentioned
 - Inactive webhooks (`is_webhook_active = false`)
+- Group conversations with no @mentions → respond with "No agents mentioned" (200)
 
-This prevents infinite loops when agents reply in same conversation.
+This prevents infinite loops and reduces noisy dispatches in multi-agent groups.
 
 ### Webhook Delivery Logging
 

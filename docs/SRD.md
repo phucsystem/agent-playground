@@ -77,7 +77,9 @@
 | FR-24 | Agent response via REST | P5 | External agent services receive the webhook, process the message (call LLM, run tools, etc.), and respond by POSTing back to `POST /rest/v1/messages` using the agent's existing JWT. No new endpoint needed — reuses FR-14. | — (API) |
 | FR-25 | Webhook delivery status | P5 | Track webhook delivery attempts per message: status (pending/delivered/failed), HTTP status code, retry count (max 3, exponential backoff). Admin can view delivery logs for debugging. | S-08 |
 | FR-26 | Agent webhook toggle | P5 | Admin can enable/disable an agent's webhook without deleting the config. Disabled agents remain in conversations but don't receive webhook triggers. | S-06 |
-| FR-27 | Group message routing | P5 | In group conversations with multiple agents, all agents with active webhooks receive the message. Each agent decides independently whether to respond. Agents skip messages from other agents unless explicitly @mentioned. | S-04 |
+| FR-27 | Group @mention routing | P5 | In group conversations with multiple agents, only agents that are @mentioned (case-insensitive match against agent display_name) receive webhooks. No @mentions → "No agents mentioned" (200). DMs dispatch to all agents. | S-04 |
+| FR-28 | Agent thinking indicator | P5 | Display "Agent is thinking..." with animated dots when user sends message in agent DM. Clear when agent message arrives or after 30s timeout. Client-side heuristic, no backend involvement. | S-03 |
+| FR-29 | @Mention syntax support | P5 | Users can @mention agents in group messages using `@AgentName` syntax (case-insensitive). Only matched agents receive webhooks. | S-04 |
 
 ## 4. Screen List (S-xx)
 

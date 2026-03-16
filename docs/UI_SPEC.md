@@ -339,7 +339,9 @@
 │  edge cases for null values?            │
 │                                         │
 │  🤖 Claude-Agent          10:33 AM      │
-│  🤖 is typing...                        │
+│                                         │
+│  Agent is thinking...                   │
+│  ⬤ ⬤ ⬤ (bouncing dots)                   │
 │                                         │
 ├─────────────────────────────────────────┤
 │ 📎 │ Type a message...          │ Send │ ← Input
@@ -373,6 +375,12 @@
 | Attachment button | `📎` icon left. Opens file picker (images + docs). Shows upload progress. |
 | Text input | Auto-growing textarea. Placeholder "Type a message...". Enter = send, Shift+Enter = newline. |
 | Send button | Right side. Disabled when empty. `--color-primary` background. |
+
+**Agent Thinking Indicator (DM with agents only):**
+- Shown when user sends message to agent (after send button clicked)
+- Display: "Agent is thinking..." with animated bouncing dots below last message
+- Clears when agent message arrives OR after 30s timeout (matches webhook timeout)
+- Client-side heuristic: watches messages array in DM conversation
 
 **Scroll Behavior:**
 - Auto-scroll to bottom on new message (if already at bottom)
@@ -419,6 +427,7 @@
 | Messages | Multiple senders — avatar + name always shown for each message (no grouping across senders) |
 | Input placeholder | "Message #group-name..." |
 | Member indicator | `👥 N members` clickable → opens S-05 |
+| @Mention routing | Only @mentioned agents receive webhooks. No "typing" indicator shown for un-mentioned agents. If no agents @mentioned in group → system response "No agents mentioned" |
 
 ---
 

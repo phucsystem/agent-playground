@@ -297,6 +297,9 @@ Tracks each webhook delivery attempt per message per agent. Used for admin debug
 | `last_error` | `text` | NULLABLE | `NULL` | Error message from last failed attempt. e.g., "Connection timed out after 30s", "500 Internal Server Error" |
 | `created_at` | `timestamptz` | NOT NULL | `now()` | When the webhook was first triggered |
 | `delivered_at` | `timestamptz` | NULLABLE | `NULL` | When delivery succeeded. NULL if still pending or failed. |
+| `request_payload` | `jsonb` | NULLABLE | `NULL` | Full request payload sent to webhook URL (debug support, added in M-008) |
+| `response_body` | `text` | NULLABLE | `NULL` | Response body from agent webhook (debug support, added in M-008) |
+| `webhook_url` | `text` | NULLABLE | `NULL` | URL webhook was POSTed to (debug support, added in M-008) |
 
 **Indexes:**
 - `idx_webhook_logs_agent_created` — on `(agent_id, created_at DESC)` (filter by agent + time range in S-08)
@@ -551,7 +554,7 @@ const signedUrl = data?.signedUrl;
 | `005_security_fixes.sql` | ✅ Applied | Add SECURITY DEFINER helpers, users_public view, update storage to signed URLs |
 | `006_fix_rls_recursion.sql` | ✅ Applied | Replace recursive RLS policies with DEFINER helpers |
 | `007_agent_webhooks.sql` | ✅ Applied | Create `delivery_status` enum, `agent_configs` table, `webhook_delivery_logs` table, RLS policies, `notify_webhook_dispatch` trigger |
-| `008_webhook_debug_columns.sql` | ✅ Applied | Add `request_payload`, `response_body`, `webhook_url` columns to `webhook_delivery_logs` (debug support) |
+| `008_webhook_debug_columns.sql` | ✅ Applied (Idempotent) | Add `request_payload` (jsonb), `response_body` (text), `webhook_url` (text) columns to `webhook_delivery_logs` (debug support). Includes IF NOT EXISTS guards. |
 
 **Running Migrations:**
 ```bash

@@ -813,6 +813,9 @@
     "last_error": null,
     "created_at": "2026-03-16T10:33:12Z",
     "delivered_at": "2026-03-16T10:33:13Z",
+    "request_payload": { "event": "message.created", "timestamp": "...", "message": {...} },
+    "response_body": "{\"reply\":\"Here is the analysis...\"}",
+    "webhook_url": "https://agent-service.example.com/webhook",
     "agent": {
       "id": "agent-uuid",
       "display_name": "Claude",
@@ -834,6 +837,9 @@
     "last_error": "Connection timed out after 30s",
     "created_at": "2026-03-16T10:30:15Z",
     "delivered_at": null,
+    "request_payload": { "event": "message.created", ... },
+    "response_body": null,
+    "webhook_url": "https://agent-service2.example.com/webhook",
     "agent": {
       "id": "agent-uuid-2",
       "display_name": "GPT-4",
@@ -847,6 +853,15 @@
   }
 ]
 ```
+
+**Debug columns (added in M-008):**
+| Column | Type | Content |
+|--------|------|---------|
+| `request_payload` | jsonb | Full webhook request body sent to agent webhook URL |
+| `response_body` | text | Response body from agent (200-299), or null if timeout/connection error |
+| `webhook_url` | text | URL the webhook was POSTed to |
+
+These columns help admins debug webhook delivery issues via S-08 Webhook Logs screen.
 
 **RLS:** Only admins can read. `USING (is_admin())`
 
@@ -867,8 +882,10 @@ messages INSERT
 ```
 
 **Skip conditions (prevent loops — FR-27):**
-- Skip if `sender.is_agent = true` (agent sent the message)
-- Exception: deliver if message contains `@agent_name` mention even from another agent
+- Skip if `sender.is_agent = true` (agent sent the message) — unless @mentioned
+- In **group conversations**: only dispatch to agents that are @mentioned (case-insensitive match: `@AgentDisplayName`)
+- In **DM conversations**: always dispatch (single agent, no @mention needed)
+- If group conversation has no @mentions → respond with `{ "message": "No agents mentioned" }` (200)
 - Skip if `agent_configs.is_webhook_active = false`
 
 **Webhook payload (POST to agent's webhook_url):**
