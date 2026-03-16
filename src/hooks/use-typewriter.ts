@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 
-const CHAR_INTERVAL_MS = 80;
+const CHAR_INTERVAL_MS = 40;
 const MIN_LENGTH_TO_ANIMATE = 20;
 
 interface UseTypewriterOptions {
