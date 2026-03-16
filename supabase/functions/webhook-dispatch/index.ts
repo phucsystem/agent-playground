@@ -104,6 +104,7 @@ async function dispatchToAgent(
     message_id: webhookPayload.message.id,
   };
   const agentRequestString = JSON.stringify(agentRequestPayload);
+  console.log(`[webhook] >>> Request to ${config.webhook_url}:`, agentRequestString);
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -135,6 +136,7 @@ async function dispatchToAgent(
       const isSuccess = response.ok;
       const isClientError = response.status >= 400 && response.status < 500;
       const responseBody = await response.text().catch(() => "(unreadable)");
+      console.log(`[webhook] <<< Response ${response.status}:`, responseBody);
 
       console.log(`[webhook] Agent ${config.user_id} attempt ${attempt + 1}: ${response.status} ${response.statusText}`);
 
@@ -259,7 +261,7 @@ Deno.serve(async (request) => {
 
   const { data: agentMembers } = await supabase
     .from("conversation_members")
-    .select("user_id")
+    .select("user_id, users!inner(display_name)")
     .eq("conversation_id", conversationId)
     .neq("user_id", senderId);
 
@@ -280,9 +282,38 @@ Deno.serve(async (request) => {
     return new Response("No active agent webhooks", { status: 200 });
   }
 
-  console.log(`[webhook] Found ${agentConfigs.length} active agent(s) to dispatch`);
+  // In group conversations, only dispatch to @mentioned agents
+  const messageContent = (record.content as string) || "";
+  const isGroup = conversation.type === "group";
+  let targetConfigs: AgentConfigRow[];
 
-  const dispatchPromises = agentConfigs.map((config: AgentConfigRow) => {
+  if (isGroup) {
+    const agentNameMap = new Map(
+      agentMembers.map((member: { user_id: string; users: { display_name: string } }) => [
+        member.user_id,
+        (member.users as { display_name: string }).display_name,
+      ]),
+    );
+
+    const mentionedAgentConfigs = agentConfigs.filter((config: AgentConfigRow) => {
+      const displayName = agentNameMap.get(config.user_id);
+      if (!displayName) return false;
+      return messageContent.toLowerCase().includes(`@${displayName.toLowerCase()}`);
+    });
+
+    if (mentionedAgentConfigs.length === 0) {
+      console.log(`[webhook] Group message but no agents @mentioned — skipping`);
+      return new Response("No agents mentioned", { status: 200 });
+    }
+
+    console.log(`[webhook] Group: ${mentionedAgentConfigs.length} @mentioned agent(s) of ${agentConfigs.length} total`);
+    targetConfigs = mentionedAgentConfigs;
+  } else {
+    console.log(`[webhook] DM: dispatching to all ${agentConfigs.length} active agent(s)`);
+    targetConfigs = agentConfigs;
+  }
+
+  const dispatchPromises = targetConfigs.map((config: AgentConfigRow) => {
     const webhookPayload: WebhookPayload = {
       event: "message.created",
       timestamp: new Date().toISOString(),
@@ -315,7 +346,7 @@ Deno.serve(async (request) => {
   await Promise.allSettled(dispatchPromises);
 
   return new Response(
-    JSON.stringify({ dispatched: agentConfigs.length }),
+    JSON.stringify({ dispatched: targetConfigs.length }),
     { status: 200, headers: { "Content-Type": "application/json" } },
   );
 });
