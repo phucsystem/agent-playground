@@ -22,7 +22,7 @@ export default function ConversationPage() {
   const { currentUser } = useCurrentUser();
   const { messages, loading, hasMore, loadMore, markAsRead } =
     useRealtimeMessages(conversationId);
-  const { conversations } = useConversations();
+  const { conversations, refetch: refetchConversations } = useConversations();
   const { onlineUsers } = useSupabasePresence(currentUser);
   const [showInfo, setShowInfo] = useState(false);
 
@@ -107,12 +107,18 @@ export default function ConversationPage() {
           onToggleReaction={toggleReaction}
         />
 
-        <ChatInput
-          conversationId={conversationId}
-          senderId={currentUser.id}
-          placeholder={inputPlaceholder}
-          onTyping={sendTyping}
-        />
+        {conversation.is_archived ? (
+          <div className="mx-6 mb-4 px-4 py-3 bg-neutral-100 rounded-2xl text-center">
+            <p className="text-sm text-neutral-500">This group is archived. You can read messages but cannot send new ones.</p>
+          </div>
+        ) : (
+          <ChatInput
+            conversationId={conversationId}
+            senderId={currentUser.id}
+            placeholder={inputPlaceholder}
+            onTyping={sendTyping}
+          />
+        )}
       </div>
 
       {showInfo && (
@@ -121,6 +127,7 @@ export default function ConversationPage() {
           onlineUserIds={onlineUserIds}
           currentUserId={currentUser.id}
           onClose={() => setShowInfo(false)}
+          onConversationUpdate={refetchConversations}
         />
       )}
     </div>

@@ -1,17 +1,19 @@
 "use client";
 
-import { X, LogOut } from "lucide-react";
+import { useState, useEffect } from "react";
+import { X, LogOut, Archive, ArchiveRestore, UserPlus, Check, Search } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { useConversationMembers } from "@/hooks/use-conversation-members";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
-import type { ConversationWithDetails } from "@/types/database";
+import type { ConversationWithDetails, User } from "@/types/database";
 
 interface ChatInfoPanelProps {
   conversation: ConversationWithDetails;
   onlineUserIds: string[];
   currentUserId: string;
   onClose: () => void;
+  onConversationUpdate?: () => void;
 }
 
 export function ChatInfoPanel({
@@ -19,10 +21,75 @@ export function ChatInfoPanel({
   onlineUserIds,
   currentUserId,
   onClose,
+  onConversationUpdate,
 }: ChatInfoPanelProps) {
-  const { members } = useConversationMembers(conversation.id);
+  const { members, refetch } = useConversationMembers(conversation.id);
   const router = useRouter();
   const isGroup = conversation.type === "group";
+  const [showAddMembers, setShowAddMembers] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [availableUsers, setAvailableUsers] = useState<User[]>([]);
+  const [adding, setAdding] = useState<string | null>(null);
+
+  const currentMember = members.find((member) => member.user_id === currentUserId);
+  const isAdmin = currentMember?.role === "admin";
+  const memberUserIds = members.map((member) => member.user_id);
+
+  useEffect(() => {
+    if (!showAddMembers) return;
+    async function fetchAvailableUsers() {
+      const supabase = createBrowserSupabaseClient();
+      const { data } = await supabase
+        .from("users_public")
+        .select("*")
+        .eq("is_active", true);
+      if (data) {
+        const nonMembers = (data as User[]).filter(
+          (appUser) => !memberUserIds.includes(appUser.id)
+        );
+        setAvailableUsers(nonMembers);
+      }
+    }
+    fetchAvailableUsers();
+  }, [showAddMembers, memberUserIds.join(",")]);
+
+  const filteredUsers = availableUsers.filter((appUser) =>
+    appUser.display_name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  async function handleAddMember(userId: string) {
+    setAdding(userId);
+    const supabase = createBrowserSupabaseClient();
+    const { error } = await supabase.from("conversation_members").insert({
+      conversation_id: conversation.id,
+      user_id: userId,
+      role: "member",
+    });
+    if (!error) {
+      setAvailableUsers((prev) => prev.filter((appUser) => appUser.id !== userId));
+      await refetch();
+    }
+    setAdding(null);
+  }
+
+  async function handleRemoveMember(userId: string) {
+    const supabase = createBrowserSupabaseClient();
+    await supabase
+      .from("conversation_members")
+      .delete()
+      .eq("conversation_id", conversation.id)
+      .eq("user_id", userId);
+    await refetch();
+  }
+
+  async function handleToggleArchive() {
+    const supabase = createBrowserSupabaseClient();
+    await supabase
+      .from("conversations")
+      .update({ is_archived: !conversation.is_archived })
+      .eq("id", conversation.id);
+    onConversationUpdate?.();
+  }
 
   async function handleLeaveGroup() {
     const supabase = createBrowserSupabaseClient();
@@ -46,13 +113,77 @@ export function ChatInfoPanel({
         </button>
       </div>
 
+      {conversation.is_archived && (
+        <div className="mx-5 mt-4 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg">
+          <p className="text-xs text-amber-700 font-medium">This group is archived. Messages are read-only.</p>
+        </div>
+      )}
+
       <div className="px-5 py-4 border-b border-neutral-100">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500 mb-3">
-          Members ({members.length})
-        </p>
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500">
+            Members ({members.length})
+          </p>
+          {isGroup && isAdmin && !conversation.is_archived && (
+            <button
+              onClick={() => setShowAddMembers(!showAddMembers)}
+              className="flex items-center gap-1 text-xs text-primary-600 hover:text-primary-700 transition"
+            >
+              <UserPlus className="w-3.5 h-3.5" />
+              Add
+            </button>
+          )}
+        </div>
+
+        {showAddMembers && (
+          <div className="mb-3 border border-neutral-200 rounded-lg overflow-hidden">
+            <div className="flex items-center gap-2 px-3 py-2 border-b border-neutral-100">
+              <Search className="w-3.5 h-3.5 text-neutral-400" />
+              <input
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="Search users..."
+                autoFocus
+                className="flex-1 text-sm bg-transparent outline-none placeholder:text-neutral-400"
+              />
+            </div>
+            <div className="max-h-40 overflow-y-auto">
+              {filteredUsers.length === 0 ? (
+                <p className="text-xs text-neutral-400 px-3 py-3 text-center">
+                  No users to add
+                </p>
+              ) : (
+                filteredUsers.map((appUser) => (
+                  <button
+                    key={appUser.id}
+                    onClick={() => handleAddMember(appUser.id)}
+                    disabled={adding === appUser.id}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-neutral-50 transition text-left"
+                  >
+                    <Avatar
+                      displayName={appUser.display_name}
+                      avatarUrl={appUser.avatar_url}
+                      isAgent={appUser.is_agent}
+                      size="sm"
+                    />
+                    <span className="text-sm text-neutral-700 flex-1 truncate">
+                      {appUser.display_name}
+                    </span>
+                    {adding === appUser.id ? (
+                      <span className="text-xs text-neutral-400">Adding...</span>
+                    ) : (
+                      <Check className="w-3.5 h-3.5 text-primary-500 opacity-0 group-hover:opacity-100" />
+                    )}
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+
         <div className="space-y-2">
           {members.map((member) => (
-            <div key={member.user_id} className="flex items-center gap-2.5">
+            <div key={member.user_id} className="flex items-center gap-2.5 group">
               <Avatar
                 displayName={member.user.display_name}
                 avatarUrl={member.user.avatar_url}
@@ -71,13 +202,39 @@ export function ChatInfoPanel({
                   admin
                 </span>
               )}
+              {isGroup && isAdmin && member.user_id !== currentUserId && member.role !== "admin" && (
+                <button
+                  onClick={() => handleRemoveMember(member.user_id)}
+                  className="text-[10px] text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition px-1.5 py-0.5"
+                >
+                  Remove
+                </button>
+              )}
             </div>
           ))}
         </div>
       </div>
 
       {isGroup && (
-        <div className="px-5 py-4">
+        <div className="px-5 py-4 space-y-1">
+          {isAdmin && (
+            <button
+              onClick={handleToggleArchive}
+              className="w-full text-left text-sm text-neutral-600 hover:bg-neutral-50 px-3 py-2 rounded-lg transition"
+            >
+              {conversation.is_archived ? (
+                <>
+                  <ArchiveRestore className="w-4 h-4 inline mr-2" />
+                  Unarchive group
+                </>
+              ) : (
+                <>
+                  <Archive className="w-4 h-4 inline mr-2" />
+                  Archive group
+                </>
+              )}
+            </button>
+          )}
           <button
             onClick={handleLeaveGroup}
             className="w-full text-left text-sm text-error hover:bg-red-50 px-3 py-2 rounded-lg transition"

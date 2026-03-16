@@ -49,34 +49,18 @@ export function CreateGroupDialog({
 
     const supabase = createBrowserSupabaseClient();
 
-    const { data: conversation } = await supabase
-      .from("conversations")
-      .insert({
-        type: "group",
-        name: groupName.trim(),
-        created_by: currentUserId,
-      })
-      .select()
-      .single();
+    const { data: conversationId, error } = await supabase.rpc("create_group", {
+      group_name: groupName.trim(),
+      member_ids: selectedUsers,
+    });
 
-    if (!conversation) {
+    if (error || !conversationId) {
       setCreating(false);
       return;
     }
 
-    const memberRows = [
-      { conversation_id: conversation.id, user_id: currentUserId, role: "admin" },
-      ...selectedUsers.map((userId) => ({
-        conversation_id: conversation.id,
-        user_id: userId,
-        role: "member",
-      })),
-    ];
-
-    await supabase.from("conversation_members").insert(memberRows);
-
     onClose();
-    router.push(`/chat/${conversation.id}`);
+    router.push(`/chat/${conversationId}`);
   }
 
   return (

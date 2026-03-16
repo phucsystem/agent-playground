@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Avatar } from "@/components/ui/avatar";
-import { Hash } from "lucide-react";
+import { Hash, Archive } from "lucide-react";
 import { CollapsibleSection } from "./collapsible-section";
 import type { ConversationWithDetails } from "@/types/database";
 
@@ -37,7 +37,8 @@ export function ConversationList({
   onlineUserIds,
 }: ConversationListProps) {
   const dmConversations = conversations.filter((conv) => conv.type === "dm");
-  const groupConversations = conversations.filter((conv) => conv.type === "group");
+  const activeGroups = conversations.filter((conv) => conv.type === "group" && !conv.is_archived);
+  const archivedGroups = conversations.filter((conv) => conv.type === "group" && conv.is_archived);
 
   return (
     <>
@@ -54,9 +55,22 @@ export function ConversationList({
         </CollapsibleSection>
       )}
 
-      {groupConversations.length > 0 && (
-        <CollapsibleSection title="Groups" count={groupConversations.length}>
-          {groupConversations.map((conv) => (
+      {activeGroups.length > 0 && (
+        <CollapsibleSection title="Groups" count={activeGroups.length}>
+          {activeGroups.map((conv) => (
+            <ConversationItem
+              key={conv.id}
+              conversation={conv}
+              isActive={conv.id === activeConversationId}
+              isOnline={false}
+            />
+          ))}
+        </CollapsibleSection>
+      )}
+
+      {archivedGroups.length > 0 && (
+        <CollapsibleSection title="Archived" count={archivedGroups.length} defaultOpen={false}>
+          {archivedGroups.map((conv) => (
             <ConversationItem
               key={conv.id}
               conversation={conv}
@@ -104,7 +118,11 @@ function ConversationItem({
         />
       ) : (
         <div className="w-8 h-8 rounded-full bg-neutral-200 flex items-center justify-center shrink-0">
-          <Hash className="w-4 h-4 text-neutral-500" />
+          {conversation.is_archived ? (
+            <Archive className="w-4 h-4 text-neutral-400" />
+          ) : (
+            <Hash className="w-4 h-4 text-neutral-500" />
+          )}
         </div>
       )}
 
