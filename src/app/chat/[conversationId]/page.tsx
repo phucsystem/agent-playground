@@ -96,6 +96,7 @@ export default function ConversationPage() {
           hasMore={hasMore}
           loadMore={loadMore}
           currentUserId={currentUser.id}
+          conversationId={conversationId}
           typingUsers={typingUsers}
           getGroupedReactions={getGroupedReactions}
           onToggleReaction={toggleReaction}

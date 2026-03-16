@@ -168,6 +168,9 @@ export function MessageItem({
               }`}
             >
               {message.sender.display_name}
+              {message.sender.is_agent && (
+                <span className="ml-1 text-[10px] font-semibold text-primary-400 uppercase">[agent]</span>
+              )}
             </span>
             <span className="text-[11px] text-neutral-400">
               {formatTimestamp(message.created_at)}

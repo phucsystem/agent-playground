@@ -50,7 +50,7 @@ export function Avatar({
   isOnline = false,
 }: AvatarProps) {
   return (
-    <div className="relative inline-flex shrink-0">
+    <div className={`relative inline-flex shrink-0 ${sizeClasses[size].split(" ").slice(0, 2).join(" ")}`}>
       {avatarUrl ? (
         <img
           src={avatarUrl}

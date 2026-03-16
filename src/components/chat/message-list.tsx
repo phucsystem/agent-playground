@@ -13,6 +13,7 @@ interface MessageListProps {
   hasMore: boolean;
   loadMore: () => void;
   currentUserId: string;
+  conversationId: string;
   typingUsers: { userId: string; displayName: string }[];
   getGroupedReactions: (messageId: string) => ReactionGroup[];
   onToggleReaction: (messageId: string, emoji: string) => void;
@@ -36,6 +37,7 @@ export function MessageList({
   hasMore,
   loadMore,
   currentUserId,
+  conversationId,
   typingUsers,
   getGroupedReactions,
   onToggleReaction,
@@ -43,7 +45,7 @@ export function MessageList({
   const bottomRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [showScrollDown, setShowScrollDown] = useState(false);
-  const prevMessageCount = useRef(messages.length);
+  const prevMessageCount = useRef(0);
   const isAtBottomRef = useRef(true);
 
   function scrollToBottom() {
@@ -51,15 +53,22 @@ export function MessageList({
   }
 
   useEffect(() => {
+    prevMessageCount.current = 0;
+  }, [conversationId]);
+
+  useEffect(() => {
+    if (messages.length > 0 && prevMessageCount.current === 0) {
+      const scrollToEnd = () => bottomRef.current?.scrollIntoView();
+      requestAnimationFrame(scrollToEnd);
+      const delayedScroll = setTimeout(scrollToEnd, 500);
+      prevMessageCount.current = messages.length;
+      return () => clearTimeout(delayedScroll);
+    }
     if (messages.length > prevMessageCount.current && isAtBottomRef.current) {
       bottomRef.current?.scrollIntoView({ behavior: "smooth" });
     }
     prevMessageCount.current = messages.length;
   }, [messages.length]);
-
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView();
-  }, []);
 
   function handleScroll() {
     const container = containerRef.current;
