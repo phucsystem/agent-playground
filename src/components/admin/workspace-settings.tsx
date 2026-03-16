@@ -61,17 +61,6 @@ export function WorkspaceSettings({ workspace, onClose, onSaved }: WorkspaceSett
         </div>
 
         <div className="space-y-3 mb-4">
-          {/* Avatar preview */}
-          <div className="flex items-center gap-3">
-            <WorkspaceAvatar workspace={previewWorkspace} size="lg" />
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-neutral-700 truncate">{name || "Workspace"}</p>
-              <p className="text-xs text-neutral-400">
-                {avatarUrl.trim() ? "Custom image" : "Letter avatar"}
-              </p>
-            </div>
-          </div>
-
           <div>
             <label className="block text-xs font-medium text-neutral-500 mb-1">Name</label>
             <input
@@ -91,41 +80,54 @@ export function WorkspaceSettings({ workspace, onClose, onSaved }: WorkspaceSett
             />
           </div>
 
-          {/* Color picker */}
-          {!avatarUrl.trim() && (
-            <div>
-              <label className="block text-xs font-medium text-neutral-500 mb-1.5">Avatar Color</label>
-              <div className="flex flex-wrap gap-1.5">
-                {AVATAR_COLORS.map((color) => {
-                  const isSelected = selectedColor === color;
-                  const isDefault = !selectedColor && color === defaultColor;
-                  return (
-                    <button
-                      key={color}
-                      onClick={() => setSelectedColor(color === defaultColor && !selectedColor ? "" : color)}
-                      className={`w-7 h-7 rounded-full transition-all cursor-pointer ${
-                        isSelected || isDefault
-                          ? "ring-2 ring-offset-1 ring-neutral-800 scale-110"
-                          : "hover:scale-110"
-                      }`}
-                      style={{ backgroundColor: color }}
-                      title={isDefault ? `${color} (default)` : color}
-                    />
-                  );
-                })}
+          {/* Avatar section */}
+          <div>
+            <label className="block text-xs font-medium text-neutral-500 mb-2">Icon</label>
+            <div className="flex items-center gap-3 mb-3">
+              <WorkspaceAvatar workspace={previewWorkspace} size="lg" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-neutral-700 truncate">{name || "Workspace"}</p>
+                {avatarUrl.trim() ? (
+                  <button
+                    onClick={() => setAvatarUrl("")}
+                    className="text-xs text-primary-500 hover:text-primary-700 cursor-pointer"
+                  >
+                    Remove image, use letter
+                  </button>
+                ) : (
+                  <p className="text-xs text-neutral-400">Pick a color below</p>
+                )}
               </div>
             </div>
-          )}
 
-          <div>
-            <label className="block text-xs font-medium text-neutral-500 mb-1">
-              Image URL <span className="text-neutral-300 font-normal">(optional, overrides color)</span>
-            </label>
+            {/* Color picker - always visible */}
+            <div className="flex flex-wrap gap-1.5 mb-3">
+              {AVATAR_COLORS.map((color) => {
+                const isSelected = selectedColor === color;
+                const isDefault = !selectedColor && color === defaultColor;
+                return (
+                  <button
+                    key={color}
+                    onClick={() => {
+                      setSelectedColor(color);
+                      setAvatarUrl("");
+                    }}
+                    className={`w-7 h-7 rounded-full transition-all cursor-pointer ${
+                      isSelected || isDefault
+                        ? "ring-2 ring-offset-1 ring-neutral-800 scale-110"
+                        : "hover:scale-110"
+                    }`}
+                    style={{ backgroundColor: color }}
+                  />
+                );
+              })}
+            </div>
+
             <input
               value={avatarUrl}
               onChange={(event) => setAvatarUrl(event.target.value)}
-              placeholder="https://..."
-              className="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg font-mono focus:outline-none focus:border-primary-500"
+              placeholder="Or paste image URL..."
+              className="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg font-mono focus:outline-none focus:border-primary-500 text-neutral-500"
             />
           </div>
         </div>
