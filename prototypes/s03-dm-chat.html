@@ -1,0 +1,234 @@
+<!--
+  Screen: S-03 DM Chat
+  CJX Stage: Usage
+  FR Mapping: FR-04 (Direct Messaging), FR-05 (Code Blocks)
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agent Playground - Claude-Agent</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="components.css">
+</head>
+<body class="cjx-usage">
+
+  <div class="app-layout">
+
+    <!-- Sidebar -->
+    <nav class="sidebar hide-mobile">
+      <div class="user-profile">
+        <div class="avatar avatar-purple">P</div>
+        <div>
+          <div class="user-profile-name">Phuc</div>
+          <div class="user-profile-status">
+            <span class="presence-dot online"></span> Online
+          </div>
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-section-title">Online (3)</div>
+        <div class="online-user-item">
+          <div class="avatar avatar-sm avatar-pink">A</div>
+          <span class="presence-dot online"></span>
+          <span class="online-user-name">Alice</span>
+        </div>
+        <div class="online-user-item">
+          <div class="avatar avatar-sm avatar-blue" style="position:relative;">
+            G
+            <span class="bot-badge">&#x1F916;</span>
+          </div>
+          <span class="presence-dot online"></span>
+          <span class="online-user-name">GPT-4</span>
+        </div>
+        <div class="online-user-item">
+          <div class="avatar avatar-sm avatar-teal" style="position:relative;">
+            C
+            <span class="bot-badge">&#x1F916;</span>
+          </div>
+          <span class="presence-dot online"></span>
+          <span class="online-user-name">Claude</span>
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-section-title">DMs</div>
+        <div class="conversation-item">
+          <div class="avatar avatar-sm avatar-pink">A</div>
+          <div class="conversation-info">
+            <div class="conversation-name">Alice</div>
+            <div class="conversation-preview">Hey, can you check the latest...</div>
+          </div>
+        </div>
+        <div class="conversation-item active">
+          <div class="avatar avatar-sm avatar-teal" style="position:relative;">
+            C
+            <span class="bot-badge">&#x1F916;</span>
+          </div>
+          <div class="conversation-info">
+            <div class="conversation-name">Claude-Agent</div>
+            <div class="conversation-preview">Here's the analysis you reques...</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-section-title">Groups</div>
+        <a href="s04-group-chat.html" class="conversation-item" style="text-decoration:none;">
+          <div class="conversation-info">
+            <div class="conversation-name"># test-agents</div>
+            <div class="conversation-preview">Bob: @GPT-4 can you summarize...</div>
+          </div>
+          <span class="unread-badge">5</span>
+        </a>
+      </div>
+
+      <div class="sidebar-section" style="margin-top:auto; padding-bottom:var(--space-lg);">
+        <button class="new-conversation-btn">
+          <span style="font-size:18px;">+</span>
+          <span class="new-conversation-text">New Conversation</span>
+        </button>
+      </div>
+    </nav>
+
+    <!-- Main Content: DM Chat -->
+    <main class="main-content" data-cjx-entrance>
+
+      <!-- Chat Header -->
+      <div class="chat-header">
+        <button class="hamburger-btn">&#9776;</button>
+        <div class="avatar avatar-teal" style="position:relative;">
+          C
+          <span class="bot-badge">&#x1F916;</span>
+        </div>
+        <div>
+          <div class="chat-header-name">Claude-Agent</div>
+          <div class="chat-header-status">
+            <span class="presence-dot online"></span> Online
+          </div>
+        </div>
+        <div class="chat-header-right">
+          <button class="info-btn" title="Chat Info">&#x2139;</button>
+        </div>
+      </div>
+
+      <!-- Message List -->
+      <div class="message-list">
+
+        <!-- Message from Agent -->
+        <div class="message">
+          <div class="avatar avatar-teal" style="position:relative;">
+            C
+            <span class="bot-badge">&#x1F916;</span>
+          </div>
+          <div class="message-body">
+            <div class="message-header">
+              <span class="message-sender agent">Claude-Agent</span>
+              <span class="message-timestamp">10:32 AM</span>
+            </div>
+            <div class="message-content">
+              Here's the analysis you requested:
+              <div class="code-block">
+                <div class="code-block-header">
+                  <span>python</span>
+                  <button class="code-block-copy">Copy</button>
+                </div>
+                <pre><span class="keyword">def</span> <span class="function">analyze</span>(data):
+    <span class="keyword">return</span> data.<span class="function">describe</span>()</pre>
+              </div>
+            </div>
+          </div>
+          <div class="message-actions">
+            <button class="message-action-btn" title="React">&#x1F600;</button>
+            <button class="message-action-btn" title="More">&#x22EE;</button>
+          </div>
+        </div>
+
+        <!-- Message from User -->
+        <div class="message">
+          <div class="avatar avatar-purple">P</div>
+          <div class="message-body">
+            <div class="message-header">
+              <span class="message-sender">Phuc</span>
+              <span class="message-timestamp">10:33 AM</span>
+            </div>
+            <div class="message-content">
+              Looks good! Can you also check the edge cases for null values?
+            </div>
+          </div>
+          <div class="message-actions">
+            <button class="message-action-btn" title="React">&#x1F600;</button>
+            <button class="message-action-btn" title="More">&#x22EE;</button>
+          </div>
+        </div>
+
+        <!-- Typing Indicator -->
+        <div class="message">
+          <div class="avatar avatar-teal" style="position:relative;">
+            C
+            <span class="bot-badge">&#x1F916;</span>
+          </div>
+          <div class="message-body">
+            <div class="typing-indicator">
+              <div class="typing-dots">
+                <span></span><span></span><span></span>
+              </div>
+              Claude-Agent is typing...
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Chat Input -->
+      <div class="chat-input-bar">
+        <button class="attach-btn" title="Attach file">&#x1F4CE;</button>
+        <textarea class="chat-input" placeholder="Type a message..." rows="1"></textarea>
+        <button class="send-btn" disabled title="Send">&#x27A4;</button>
+      </div>
+
+    </main>
+
+    <!-- Info Panel (S-05 for DM) -->
+    <aside class="info-panel">
+      <div class="info-panel-header">
+        <span class="info-panel-title">Chat Info</span>
+        <button class="close-btn">&times;</button>
+      </div>
+
+      <div class="info-section">
+        <div class="info-section-title">Members (2)</div>
+        <div class="info-member-item">
+          <div class="avatar avatar-sm avatar-teal" style="position:relative;">
+            C
+            <span class="bot-badge">&#x1F916;</span>
+          </div>
+          <span class="info-member-name">Claude-Agent</span>
+          <span class="presence-dot online"></span>
+        </div>
+        <div class="info-member-item">
+          <div class="avatar avatar-sm avatar-purple">P</div>
+          <span class="info-member-name">Phuc</span>
+          <span class="presence-dot online"></span>
+        </div>
+      </div>
+
+      <div class="info-section">
+        <div class="info-section-title">Shared Files</div>
+        <div class="info-file-item">
+          <span class="info-file-icon">&#x1F4C4;</span>
+          <span class="info-file-name">analysis-results.csv</span>
+          <span class="info-file-date">Mar 15</span>
+        </div>
+      </div>
+    </aside>
+
+  </div>
+
+  <script src="interactions.js"></script>
+</body>
+</html>

@@ -1,0 +1,476 @@
+# Basic Design (UI Specification)
+
+## 1. Design System
+
+### Reference Source
+- Style: Nuxt AI Chat template ([chat-template.nuxt.dev](https://chat-template.nuxt.dev))
+- Color System: [phucsystem/mobile-app-design-systems](https://github.com/phucsystem/mobile-app-design-systems) (spacing, radius, typography, sizing)
+- Extracted: 2026-03-16
+
+### Primary Scale (Blue)
+
+| Token | Value | Usage |
+|-------|-------|-------|
+| `--primary-50` | `#eff6ff` | Subtle tint backgrounds |
+| `--primary-100` | `#dbeafe` | New chat button bg, selected state |
+| `--primary-200` | `#bedbff` | Light accent |
+| `--primary-300` | `#8ec5ff` | Hover accent |
+| `--primary-400` | `#50a2ff` | Links hover |
+| `--primary-500` | `#2b7fff` | Primary actions, links, active chat item text |
+| `--primary-600` | `#155dfc` | Primary buttons, strong accent |
+| `--primary-700` | `#1447e6` | Primary pressed |
+| `--primary-800` | `#193cb8` | Dark accent |
+| `--primary-900` | `#22378e` | Deepest accent |
+| `--primary-950` | `#162556` | Near-black accent |
+
+### Neutral Scale (Zinc)
+
+| Token | Value | Usage |
+|-------|-------|-------|
+| `--neutral-50` | `#f9fafb` | Code block bg, muted bg |
+| `--neutral-100` | `#f4f4f5` | User message bubble, elevated bg, input bg |
+| `--neutral-200` | `#e4e4e7` | Borders, dividers |
+| `--neutral-300` | `#d4d4d8` | Stronger borders |
+| `--neutral-400` | `#9f9fa9` | Dimmed text, placeholder |
+| `--neutral-500` | `#71717b` | Muted text, timestamps |
+| `--neutral-600` | `#52525c` | Toned text, secondary |
+| `--neutral-700` | `#3f3f47` | Primary text |
+| `--neutral-800` | `#27272a` | Strong text, headings |
+| `--neutral-900` | `#18181b` | Send button bg, inverted bg |
+| `--neutral-950` | `#0a0a0c` | Deepest dark |
+
+### Semantic Colors
+
+| Token | Value | Usage |
+|-------|-------|-------|
+| `--color-success` | `#00c950` | Online indicator |
+| `--color-warning` | `#f0b100` | Idle/away status |
+| `--color-error` | `#fb2c36` | Errors, destructive actions, unread badge |
+| `--color-info` | `#2b7fff` | Agent badge (same as primary-500) |
+
+### Theme Tokens (Light Mode)
+
+| Token | Value | Usage |
+|-------|-------|-------|
+| `--color-background` | `#FFFFFF` | Main content background |
+| `--color-background-soft` | `#f9fafb` | Code block bg, subtle areas (--neutral-50) |
+| `--color-background-muted` | `#f4f4f5` | User bubble, input bg, elevated (--neutral-100) |
+| `--color-text` | `#3f3f47` | Primary text (--neutral-700) |
+| `--color-text-highlighted` | `#18181b` | Headings, strong text (--neutral-900) |
+| `--color-text-muted` | `#71717b` | Timestamps, secondary (--neutral-500) |
+| `--color-text-dimmed` | `#9f9fa9` | Placeholder, dimmed (--neutral-400) |
+| `--color-text-inverted` | `#FFFFFF` | Text on dark bg (send button) |
+| `--color-border` | `#e4e4e7` | Dividers, subtle borders (--neutral-200) |
+| `--color-shadow` | `rgba(0,0,0,0.08)` | Shadow color base |
+| `--color-card-bg` | `#FFFFFF` | Card/panel backgrounds |
+| `--color-overlay` | `rgba(0,0,0,0.5)` | Modal/lightbox overlay |
+
+### Sidebar Colors (Light sidebar — Nuxt Chat style)
+
+| Token | Value | Usage |
+|-------|-------|-------|
+| `--color-sidebar` | `#FFFFFF` | Sidebar background (same as content bg) |
+| `--color-sidebar-hover` | `#f4f4f5` | Sidebar item hover (--neutral-100) |
+| `--color-sidebar-active` | `#f4f4f5` | Active conversation bg (--neutral-100) |
+| `--color-sidebar-text` | `#3f3f47` | Sidebar text primary (--neutral-700) |
+| `--color-sidebar-text-muted` | `#71717b` | Sidebar text secondary (--neutral-500) |
+| `--color-sidebar-accent` | `#2b7fff` | Active chat item text, "New chat" text (--primary-500) |
+| `--color-sidebar-new-chat-bg` | `#dbeafe` | "New chat" button bg (--primary-100) |
+| `--color-sidebar-border` | `#e4e4e7` | Sidebar right border (--neutral-200) |
+
+### Typography
+
+| Token | Value |
+|-------|-------|
+| `--font-heading` | `-apple-system, 'SF Pro Display', 'Roboto', system-ui, sans-serif` |
+| `--font-body` | `-apple-system, 'SF Pro Text', 'Roboto', system-ui, sans-serif` |
+| `--font-mono` | `'SF Mono', 'Roboto Mono', 'JetBrains Mono', monospace` |
+| `--text-h1` | `28px / 34px / 700` |
+| `--text-h2` | `24px / 30px / 600` |
+| `--text-h3` | `20px / 26px / 600` |
+| `--text-h4` | `18px / 24px / 500` |
+| `--text-body1` | `16px / 24px / 400` |
+| `--text-body2` | `14px / 20px / 400` |
+| `--text-caption` | `12px / 16px / 400` |
+| `--text-button` | `16px / 20px / 500` |
+| `--text-overline` | `11px / 16px / 600` |
+
+### Spacing Scale
+
+| Token | Value |
+|-------|-------|
+| `--space-0` | `0px` |
+| `--space-xs` | `4px` |
+| `--space-sm` | `8px` |
+| `--space-md` | `16px` |
+| `--space-lg` | `24px` |
+| `--space-xl` | `32px` |
+| `--space-2xl` | `48px` |
+
+### Border Radius
+
+| Token | Value | Usage |
+|-------|-------|-------|
+| `--radius-xs` | `4px` | Badges, small chips |
+| `--radius-sm` | `8px` | Buttons, inputs |
+| `--radius-md` | `12px` | Cards, panels |
+| `--radius-lg` | `16px` | Sheets, modals |
+| `--radius-xl` | `24px` | Large avatars |
+| `--radius-full` | `9999px` | Pills, circular avatars |
+
+### Shadows
+
+| Token | Value |
+|-------|-------|
+| `--shadow-sm` | `0 1px 3px rgba(0,0,0,0.12)` |
+| `--shadow-md` | `0 4px 12px rgba(0,0,0,0.12)` |
+| `--shadow-lg` | `0 8px 24px rgba(0,0,0,0.12)` |
+| `--shadow-xl` | `0 16px 48px rgba(0,0,0,0.12)` |
+
+### Size Tokens
+
+| Token | Value | Usage |
+|-------|-------|-------|
+| `--icon-sm` | `16px` | Inline icons |
+| `--icon-md` | `24px` | Action icons |
+| `--icon-lg` | `32px` | Feature icons |
+| `--touch-target` | `44px` | Minimum tap area |
+| `--avatar-sm` | `32px` | Compact message avatar |
+| `--avatar-md` | `48px` | Sidebar/profile avatar |
+| `--avatar-lg` | `80px` | Profile header |
+| `--header-height` | `56px` | Chat header, app bar |
+
+### CJX Stage Variables
+
+| Stage | Screens | Goal |
+|-------|---------|------|
+| **Onboarding** | S-01 Login | Frictionless token entry, immediate access |
+| **Usage** | S-02 Sidebar, S-03 DM, S-04 Group | Core value — chat with agents and testers |
+| **Retention** | S-03, S-04 (message history) | Persistent history brings users back |
+| **Discovery** | S-02 (presence list), S-05 (info panel) | Find new agents/testers to interact with |
+
+### Component Patterns
+
+**User Message:** Right-aligned, rounded bubble with `--neutral-100` bg, `--neutral-700` text. No avatar shown for user messages.
+
+**AI/Agent Message:** Left-aligned, no bubble (flat text on white bg). Content rendered as markdown. Avatar shown for agent messages.
+
+**Human Message (DM/Group):** Left-aligned with avatar, sender name (`--neutral-800`, bold), content below. Subtle hover state (`--neutral-50`).
+
+**Code Block:** Light background (`--neutral-50`), syntax highlighted, copy button top-right. Colored bottom-border accent (blue gradient). `--font-mono` with `--text-body2`.
+
+**Input Bar:** Rounded container with `--neutral-100` bg, no visible border. Attachment icon (left), auto-grow textarea (center), send button (right, dark `--neutral-900` bg, white arrow icon, rounded `--radius-sm`).
+
+**Avatar:** `--avatar-sm` (32px) in messages, `--avatar-md` (48px) in sidebar profile. Circle with initials fallback. Agent avatars have a small bot badge (bottom-right, `--color-info`).
+
+**Presence Dot:** 10px circle, positioned bottom-right of avatar. `--color-success` = online, `--neutral-400` = offline.
+
+**New Chat Button:** Full-width, `--primary-100` bg, `--primary-500` text, rounded `--radius-sm`.
+
+---
+
+## 2. Screen Flow
+
+```
+[S-01: Login]
+    │
+    ▼ (valid token)
+[S-02: Main Layout]
+    ├── Sidebar (left, fixed 260px)
+    │   ├── User profile section (top)
+    │   ├── Online users / Presence list
+    │   ├── DM conversations
+    │   ├── Group conversations
+    │   └── New conversation button
+    │
+    ├── Chat Area (right, flexible)
+    │   ├── [S-03: DM Chat] ← click DM conversation
+    │   └── [S-04: Group Chat] ← click group conversation
+    │
+    └── [S-05: Chat Info Panel] ← click conversation header info icon
+        (slide-over from right, 320px)
+```
+
+**Navigation Rules:**
+- Login → Main Layout (auto-redirect if session valid)
+- Sidebar conversation click → loads chat in right panel
+- Click user in presence list → opens/creates DM
+- Info icon in chat header → toggles info panel slide-over
+- Logout → back to Login
+
+---
+
+## 3. Screen Specifications
+
+### S-01: Login
+
+**Phase:** P1
+**Layout:** Centered card on neutral background
+**CJX Stage:** Onboarding
+
+```
+┌─────────────────────────────────────────────┐
+│                                             │
+│                                             │
+│         ┌───────────────────────┐           │
+│         │   🤖 Agent Playground │           │
+│         │                       │           │
+│         │  Enter your token     │           │
+│         │  ┌─────────────────┐  │           │
+│         │  │ paste-token-here│  │           │
+│         │  └─────────────────┘  │           │
+│         │                       │           │
+│         │  [ Sign In          ] │           │
+│         │                       │           │
+│         │  Token provided by    │           │
+│         │  your admin.          │           │
+│         └───────────────────────┘           │
+│                                             │
+└─────────────────────────────────────────────┘
+```
+
+**Elements:**
+| Element | Type | Details |
+|---------|------|---------|
+| App title | Text (h1) | "Agent Playground" with icon |
+| Token input | Input (text, password-masked) | Placeholder: "Paste your access token". Auto-focus on load. |
+| Sign In button | Button (primary) | Full-width. Disabled until token entered. Loading spinner on submit. |
+| Helper text | Caption | "Token provided by your admin." |
+| Error state | Toast/inline | "Invalid or expired token" / "Account disabled" |
+
+**Transitions:**
+- Valid token → S-02 Main Layout (redirect with session cookie)
+- Invalid token → inline error message, input border turns `--color-danger`
+- Disabled account → "Your account has been disabled. Contact admin."
+
+---
+
+### S-02: Main Layout (Sidebar)
+
+**Phase:** P1
+**Layout:** Fixed sidebar (260px) + flexible chat area
+**CJX Stage:** Usage + Discovery
+
+```
+┌──────────┬─────────────────────────────────────┐
+│ SIDEBAR  │                                     │
+│ 260px    │                                     │
+│          │                                     │
+│ ┌──────┐ │         Select a conversation       │
+│ │ Phuc │ │         to start chatting            │
+│ │●online│ │                                     │
+│ └──────┘ │                                     │
+│          │                                     │
+│ ONLINE(3)│                                     │
+│ ● Alice  │                                     │
+│ 🤖 GPT-4 │                                     │
+│ 🤖 Claude│                                     │
+│          │                                     │
+│ DMs      │                                     │
+│ Alice    │                                     │
+│ GPT-4 🤖 │                                     │
+│          │                                     │
+│ GROUPS   │                                     │
+│ # test-a │                                     │
+│ # agents │                                     │
+│          │                                     │
+│ [+ New]  │                                     │
+└──────────┴─────────────────────────────────────┘
+```
+
+**Sidebar Sections:**
+
+| Section | Details |
+|---------|---------|
+| User profile | Current user avatar + name + online dot. Click → logout option. |
+| Online users | Supabase Presence. Show avatar + name + green dot. Click → open/create DM. Agents have bot badge. |
+| DM conversations | Sorted by last message time. Show other participant name + last message preview (truncated 40 chars) + unread badge (count). |
+| Group conversations | Sorted by last message time. Show `#` prefix + group name + last message preview + unread badge. |
+| New conversation | Button at bottom. Opens modal to create group (name + select members). |
+
+**Empty State:** Center text "Select a conversation to start chatting" with subtle illustration.
+
+**Responsive:** Sidebar collapses to icon-only on screens <768px. Hamburger menu to toggle.
+
+---
+
+### S-03: DM Chat
+
+**Phase:** P1 (text), P2 (files/URLs)
+**Layout:** Chat header (56px) + scrollable message list + fixed input bar (56px)
+**CJX Stage:** Usage
+
+```
+┌─────────────────────────────────────────┐
+│ 🤖 Claude-Agent        ● Online    ℹ️   │ ← Header
+├─────────────────────────────────────────┤
+│                                         │
+│  🤖 Claude-Agent          10:32 AM      │
+│  Here's the analysis you requested:     │
+│  ┌─────────────────────────────────┐    │
+│  │ ```python                       │    │
+│  │ def analyze(data):              │    │
+│  │     return data.describe()      │    │
+│  │ ```                        📋   │    │
+│  └─────────────────────────────────┘    │
+│                                         │
+│  Phuc                      10:33 AM     │
+│  Looks good! Can you also check the     │
+│  edge cases for null values?            │
+│                                         │
+│  🤖 Claude-Agent          10:33 AM      │
+│  🤖 is typing...                        │
+│                                         │
+├─────────────────────────────────────────┤
+│ 📎 │ Type a message...          │ Send │ ← Input
+└─────────────────────────────────────────┘
+```
+
+**Header Elements:**
+| Element | Details |
+|---------|---------|
+| Avatar + name | Other participant. Bot badge for agents. |
+| Status | Online dot + "Online" / "Offline" / "Last seen 2h ago" |
+| Info button | Opens S-05 Chat Info Panel (slide-over) |
+
+**Message List:**
+| Element | Details |
+|---------|---------|
+| Message group | Messages from same sender within 5 min grouped (no repeated avatar/name). |
+| Avatar | 36px, left-aligned. Bot badge for agents. |
+| Sender name | Bold, `--text-body` weight 700. Agent names in `--color-agent-badge`. |
+| Timestamp | Right of sender name, `--text-caption`, `--color-text-muted`. Relative ("2m ago") within 1h, then "10:32 AM". |
+| Content | `--text-body`. Markdown rendered via react-markdown. |
+| Code block | Dark bg, syntax highlight (rehype-highlight), copy button. |
+| Image (P2) | Inline thumbnail (max 300px wide). Click → lightbox. |
+| File (P2) | Card with file icon + name + size. Click → download. |
+| URL (P2) | Clickable link. Optional OG preview card below (title + description + favicon). |
+| Hover toolbar | On message hover: emoji reaction picker, more options (⋮). |
+
+**Input Bar:**
+| Element | Details |
+|---------|---------|
+| Attachment button | `📎` icon left. Opens file picker (images + docs). Shows upload progress. |
+| Text input | Auto-growing textarea. Placeholder "Type a message...". Enter = send, Shift+Enter = newline. |
+| Send button | Right side. Disabled when empty. `--color-primary` background. |
+
+**Scroll Behavior:**
+- Auto-scroll to bottom on new message (if already at bottom)
+- "New messages" pill when scrolled up and new messages arrive
+- Infinite scroll up for history (load 50 messages per page)
+
+---
+
+### S-04: Group Chat
+
+**Phase:** P2
+**Layout:** Same as S-03 + member list in header
+**CJX Stage:** Usage
+
+```
+┌─────────────────────────────────────────┐
+│ # test-agents       👥 5 members    ℹ️   │ ← Header
+├─────────────────────────────────────────┤
+│                                         │
+│  Alice                     10:30 AM     │
+│  Hey everyone, let's test the new       │
+│  agent capabilities.                    │
+│                                         │
+│  🤖 GPT-4                  10:31 AM     │
+│  Ready to assist! What would you like   │
+│  me to help with?                       │
+│                                         │
+│  🤖 Claude                 10:31 AM     │
+│  I'm here too. Fire away.              │
+│                                         │
+│  Bob                       10:32 AM     │
+│  @GPT-4 can you summarize this doc?     │
+│  📄 requirements.pdf (2.4 MB)           │
+│                                         │
+├─────────────────────────────────────────┤
+│ 📎 │ Message #test-agents...    │ Send │
+└─────────────────────────────────────────┘
+```
+
+**Differences from S-03:**
+| Element | Details |
+|---------|---------|
+| Header | Shows `#` + group name, member count badge, info button |
+| Messages | Multiple senders — avatar + name always shown for each message (no grouping across senders) |
+| Input placeholder | "Message #group-name..." |
+| Member indicator | `👥 N members` clickable → opens S-05 |
+
+---
+
+### S-05: Chat Info Panel
+
+**Phase:** P2
+**Layout:** Slide-over panel from right (320px width), overlays chat area
+**CJX Stage:** Discovery
+
+```
+                          ┌──────────────┐
+                          │ ✕  Chat Info  │
+                          ├──────────────┤
+                          │              │
+                          │ MEMBERS (5)  │
+                          │ ● Alice      │
+                          │ ● Bob        │
+                          │ 🤖 GPT-4 ●   │
+                          │ 🤖 Claude ●   │
+                          │ ○ Charlie    │
+                          │              │
+                          │ SHARED FILES │
+                          │ 📄 reqs.pdf  │
+                          │ 🖼 chart.png  │
+                          │ 📄 notes.md  │
+                          │              │
+                          │ SETTINGS     │
+                          │ [Leave group]│
+                          └──────────────┘
+```
+
+**Sections:**
+| Section | Details |
+|---------|---------|
+| Header | "Chat Info" title + close (✕) button |
+| Members | List with avatar, name, online dot, role badge (admin). For DMs: just the other participant. |
+| Shared Files | Recent files shared in conversation. Click → download. Show file icon + name + date. Max 10, "View all" link. |
+| Settings | Leave group (for groups). For DMs: no settings. |
+
+---
+
+## 4. Design Rationale
+
+| Decision | Rationale |
+|----------|-----------|
+| Nuxt Chat-style minimal design | Clean, spacious, modern. White bg with zinc neutrals. Proven pattern for AI chat apps. |
+| Light sidebar (white, border-separated) | Cohesive light theme. No harsh dark/light contrast. Softer visual hierarchy. Sidebar border is sufficient separator. |
+| User messages: right-aligned bubble | Familiar chat pattern (iMessage/WhatsApp). Clear visual distinction between user and AI/agent without color-coding. |
+| Agent messages: flat (no bubble) | Agent responses are often long (code, markdown). No bubble maximizes content width. |
+| Light code blocks with accent border | Matches the Nuxt Chat pattern. Better readability than dark-on-light. Blue bottom border provides visual accent. |
+| Dark send button (neutral-900) | High contrast, clear call-to-action. Matches Nuxt Chat template. Distinct from the light input area. |
+| Agent bot badge (blue) | Subtle identification. Badge on avatar corner, not color-coded messages. Keeps UI clean. |
+| Relative timestamps within 1h | Reduces cognitive load. "2m ago" is more useful than "10:31 AM" for recent messages. |
+
+## 5. Responsive Breakpoints
+
+| Breakpoint | Layout |
+|------------|--------|
+| `≥1024px` | Full layout: sidebar (260px) + chat + optional info panel (320px) |
+| `768px–1023px` | Sidebar collapses to 60px (icons only). Chat full width. Info panel overlays. |
+| `<768px` | Sidebar hidden (hamburger toggle). Chat full width. Info panel full-screen modal. |
+
+---
+
+## 🚦 GATE 2: Requirements Validation
+
+Before proceeding to `/ipa:design`:
+
+- [ ] Stakeholders reviewed SRD.md
+- [ ] Feature priorities (P1/P2/P3) confirmed
+- [ ] Scope still matches /lean output (3 phases, no creep)
+- [ ] Design System tokens approved (colors, typography)
+- [ ] No scope creep detected
+
+**Next:** `/ipa:design` to generate HTML prototypes

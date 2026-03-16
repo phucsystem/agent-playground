@@ -1,0 +1,285 @@
+/* Design Tokens — Nuxt AI Chat template colors + phucsystem spacing/sizing */
+:root {
+  /* Primary Scale (Blue) */
+  --primary-50: #eff6ff;
+  --primary-100: #dbeafe;
+  --primary-200: #bedbff;
+  --primary-300: #8ec5ff;
+  --primary-400: #50a2ff;
+  --primary-500: #2b7fff;
+  --primary-600: #155dfc;
+  --primary-700: #1447e6;
+  --primary-800: #193cb8;
+  --primary-900: #22378e;
+  --primary-950: #162556;
+
+  /* Neutral Scale (Zinc) */
+  --neutral-50: #f9fafb;
+  --neutral-100: #f4f4f5;
+  --neutral-200: #e4e4e7;
+  --neutral-300: #d4d4d8;
+  --neutral-400: #9f9fa9;
+  --neutral-500: #71717b;
+  --neutral-600: #52525c;
+  --neutral-700: #3f3f47;
+  --neutral-800: #27272a;
+  --neutral-900: #18181b;
+  --neutral-950: #0a0a0c;
+
+  /* Semantic Colors */
+  --color-success: #00c950;
+  --color-warning: #f0b100;
+  --color-error: #fb2c36;
+  --color-info: var(--primary-500);
+
+  /* Theme Tokens (Light Mode) */
+  --color-background: #ffffff;
+  --color-background-soft: var(--neutral-50);
+  --color-background-muted: var(--neutral-100);
+  --color-text: var(--neutral-700);
+  --color-text-highlighted: var(--neutral-900);
+  --color-text-muted: var(--neutral-500);
+  --color-text-dimmed: var(--neutral-400);
+  --color-text-inverted: #ffffff;
+  --color-border: var(--neutral-200);
+  --color-shadow: rgba(0,0,0,0.08);
+  --color-card-bg: #ffffff;
+  --color-overlay: rgba(0,0,0,0.5);
+
+  /* Sidebar (Light — Nuxt Chat style) */
+  --color-sidebar: var(--neutral-100);
+  --color-sidebar-hover: var(--neutral-100);
+  --color-sidebar-active: var(--neutral-100);
+  --color-sidebar-text: var(--neutral-700);
+  --color-sidebar-text-muted: var(--neutral-500);
+  --color-sidebar-accent: var(--primary-500);
+  --color-sidebar-new-chat-bg: var(--primary-100);
+  --color-sidebar-border: var(--neutral-200);
+
+  /* Legacy aliases (components.css compat) */
+  --white: #ffffff;
+  --black: #000000;
+  --color-primary: var(--primary-500);
+  --color-primary-hover: var(--primary-400);
+  --color-primary-dark: var(--primary-600);
+  --color-primary-bg: var(--primary-50);
+  --color-bg: var(--color-background);
+  --color-bg-secondary: var(--color-background-soft);
+  --color-danger: var(--color-error);
+  --color-text-soft: var(--color-text-muted);
+  --color-text-light: var(--color-text-dimmed);
+  --color-border-light: var(--neutral-200);
+  --color-agent-badge: var(--color-info);
+  --color-message-highlight: var(--primary-50);
+
+  /* Typography */
+  --font-heading: -apple-system, 'SF Pro Display', 'Roboto', system-ui, sans-serif;
+  --font-body: -apple-system, 'SF Pro Text', 'Roboto', system-ui, sans-serif;
+  --font-mono: 'SF Mono', 'Roboto Mono', 'JetBrains Mono', monospace;
+  --font-sans: var(--font-body);
+
+  /* Type Scale */
+  --text-h1-size: 28px;
+  --text-h1-lh: 34px;
+  --text-h1-weight: 700;
+  --text-h2-size: 24px;
+  --text-h2-lh: 30px;
+  --text-h2-weight: 600;
+  --text-h3-size: 20px;
+  --text-h3-lh: 26px;
+  --text-h3-weight: 600;
+  --text-h4-size: 18px;
+  --text-h4-lh: 24px;
+  --text-h4-weight: 500;
+  --text-body1-size: 16px;
+  --text-body1-lh: 24px;
+  --text-body2-size: 14px;
+  --text-body2-lh: 20px;
+  --text-caption-size: 12px;
+  --text-caption-lh: 16px;
+  --text-button-size: 16px;
+  --text-button-lh: 20px;
+  --text-button-weight: 500;
+  --text-overline-size: 11px;
+  --text-overline-lh: 16px;
+  --text-overline-weight: 600;
+
+  /* Legacy font aliases */
+  --text-h1: var(--text-h1-size);
+  --text-h2: var(--text-h2-size);
+  --text-h3: var(--text-h3-size);
+  --text-body: var(--text-body1-size);
+  --text-caption: var(--text-caption-size);
+  --text-tiny: var(--text-overline-size);
+
+  /* Spacing */
+  --space-0: 0px;
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 48px;
+
+  /* Border Radius */
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-full: 9999px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 3px var(--color-shadow);
+  --shadow-md: 0 4px 12px var(--color-shadow);
+  --shadow-lg: 0 8px 24px var(--color-shadow);
+  --shadow-xl: 0 16px 48px var(--color-shadow);
+  --shadow-popover: var(--shadow-lg);
+
+  /* Size Tokens */
+  --icon-sm: 16px;
+  --icon-md: 24px;
+  --icon-lg: 32px;
+  --touch-target: 44px;
+  --avatar-sm: 32px;
+  --avatar-md: 48px;
+  --avatar-lg: 80px;
+  --header-height: 56px;
+
+  /* Layout */
+  --sidebar-width: 260px;
+  --info-panel-width: 320px;
+  --chat-header-height: var(--header-height);
+  --chat-input-height: var(--header-height);
+}
+
+/* Reset */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-body);
+  font-size: var(--text-body1-size);
+  line-height: var(--text-body1-lh);
+  color: var(--color-text);
+  background: var(--color-background);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1 { font-family: var(--font-heading); font-size: var(--text-h1-size); line-height: var(--text-h1-lh); font-weight: var(--text-h1-weight); color: var(--color-text-highlighted); }
+h2 { font-family: var(--font-heading); font-size: var(--text-h2-size); line-height: var(--text-h2-lh); font-weight: var(--text-h2-weight); color: var(--color-text-highlighted); }
+h3 { font-family: var(--font-heading); font-size: var(--text-h3-size); line-height: var(--text-h3-lh); font-weight: var(--text-h3-weight); color: var(--color-text-highlighted); }
+h4 { font-family: var(--font-heading); font-size: var(--text-h4-size); line-height: var(--text-h4-lh); font-weight: var(--text-h4-weight); }
+
+a {
+  color: var(--primary-500);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+button {
+  font-family: var(--font-body);
+  cursor: pointer;
+  border: none;
+  background: none;
+  font-size: var(--text-button-size);
+  font-weight: var(--text-button-weight);
+}
+
+input, textarea {
+  font-family: var(--font-body);
+  font-size: var(--text-body1-size);
+  outline: none;
+}
+
+/* App Layout */
+.app-layout {
+  display: flex;
+  min-height: 100vh;
+}
+
+.main-content {
+  flex: 1;
+  margin-left: var(--sidebar-width);
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* Sidebar — Light style (Nuxt Chat) */
+.sidebar {
+  width: var(--sidebar-width);
+  background: var(--color-sidebar);
+  color: var(--color-sidebar-text);
+  border-right: 1px solid var(--color-sidebar-border);
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  z-index: 100;
+}
+
+/* Login page */
+.login-page {
+  background: var(--color-background-soft);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.login-card {
+  background: var(--color-card-bg);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: var(--space-xl) 40px;
+  width: 100%;
+  max-width: 400px;
+  text-align: center;
+}
+
+/* Scrollbar */
+.sidebar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+  background: var(--neutral-300);
+  border-radius: var(--radius-full);
+}
+
+/* Responsive */
+@media (max-width: 1023px) {
+  :root {
+    --sidebar-width: 60px;
+  }
+  .sidebar .sidebar-section-title,
+  .sidebar .conversation-preview,
+  .sidebar .user-profile-name,
+  .sidebar .user-profile-status,
+  .sidebar .online-user-name,
+  .sidebar .new-conversation-text {
+    display: none;
+  }
+}
+
+@media (max-width: 767px) {
+  .hide-mobile {
+    display: none !important;
+  }
+  .main-content {
+    margin-left: 0;
+  }
+  .hamburger-btn {
+    display: flex !important;
+  }
+}

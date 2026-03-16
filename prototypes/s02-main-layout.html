@@ -1,0 +1,128 @@
+<!--
+  Screen: S-02 Main Layout (Sidebar)
+  CJX Stage: Usage + Discovery
+  FR Mapping: FR-02 (Navigation), FR-03 (Presence)
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agent Playground</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="components.css">
+</head>
+<body class="cjx-usage">
+
+  <div class="app-layout">
+
+    <!-- Sidebar -->
+    <nav class="sidebar hide-mobile">
+      <!-- User Profile -->
+      <div class="user-profile">
+        <div class="avatar avatar-purple">P</div>
+        <div>
+          <div class="user-profile-name">Phuc</div>
+          <div class="user-profile-status">
+            <span class="presence-dot online"></span> Online
+          </div>
+        </div>
+      </div>
+
+      <!-- Online Users -->
+      <div class="sidebar-section">
+        <div class="sidebar-section-title">Online (3)</div>
+        <div class="online-user-item">
+          <div class="avatar avatar-sm avatar-pink">A</div>
+          <span class="presence-dot online"></span>
+          <span class="online-user-name">Alice</span>
+        </div>
+        <div class="online-user-item">
+          <div class="avatar avatar-sm avatar-blue" style="position:relative;">
+            G
+            <span class="bot-badge">&#x1F916;</span>
+          </div>
+          <span class="presence-dot online"></span>
+          <span class="online-user-name">GPT-4</span>
+        </div>
+        <div class="online-user-item">
+          <div class="avatar avatar-sm avatar-teal" style="position:relative;">
+            C
+            <span class="bot-badge">&#x1F916;</span>
+          </div>
+          <span class="presence-dot online"></span>
+          <span class="online-user-name">Claude</span>
+        </div>
+      </div>
+
+      <!-- DM Conversations -->
+      <div class="sidebar-section">
+        <div class="sidebar-section-title">DMs</div>
+        <a href="s03-dm-chat.html" class="conversation-item" style="text-decoration:none;">
+          <div class="avatar avatar-sm avatar-pink">A</div>
+          <div class="conversation-info">
+            <div class="conversation-name">Alice</div>
+            <div class="conversation-preview">Hey, can you check the latest...</div>
+          </div>
+        </a>
+        <a href="s03-dm-chat.html" class="conversation-item" style="text-decoration:none;">
+          <div class="avatar avatar-sm avatar-blue" style="position:relative;">
+            G
+            <span class="bot-badge">&#x1F916;</span>
+          </div>
+          <div class="conversation-info">
+            <div class="conversation-name">GPT-4</div>
+            <div class="conversation-preview">Here's the analysis you reques...</div>
+          </div>
+          <span class="unread-badge">2</span>
+        </a>
+      </div>
+
+      <!-- Group Conversations -->
+      <div class="sidebar-section">
+        <div class="sidebar-section-title">Groups</div>
+        <a href="s04-group-chat.html" class="conversation-item" style="text-decoration:none;">
+          <div class="conversation-info">
+            <div class="conversation-name"># test-agents</div>
+            <div class="conversation-preview">Bob: @GPT-4 can you summarize...</div>
+          </div>
+          <span class="unread-badge">5</span>
+        </a>
+        <a href="s04-group-chat.html" class="conversation-item" style="text-decoration:none;">
+          <div class="conversation-info">
+            <div class="conversation-name"># agents</div>
+            <div class="conversation-preview">Claude: I'm here too. Fire aw...</div>
+          </div>
+        </a>
+      </div>
+
+      <!-- New Conversation -->
+      <div class="sidebar-section" style="margin-top:auto; padding-bottom:var(--space-lg);">
+        <button class="new-conversation-btn">
+          <span style="font-size:18px;">+</span>
+          <span class="new-conversation-text">New Conversation</span>
+        </button>
+      </div>
+    </nav>
+
+    <!-- Main Content - Empty State -->
+    <main class="main-content" data-cjx-entrance>
+      <!-- Hamburger for mobile -->
+      <div style="padding: var(--space-sm) var(--space-lg);">
+        <button class="hamburger-btn">&#9776;</button>
+      </div>
+
+      <div class="empty-state">
+        <div class="empty-state-icon">&#x1F4AC;</div>
+        <div class="empty-state-text">Select a conversation to start chatting</div>
+        <div class="empty-state-sub">Choose from the sidebar or start a new conversation</div>
+      </div>
+    </main>
+
+  </div>
+
+  <script src="interactions.js"></script>
+</body>
+</html>

@@ -1,0 +1,202 @@
+<!--
+  Screen: S-05 Chat Info Panel
+  CJX Stage: Discovery
+  FR Mapping: FR-08 (Conversation Details)
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agent Playground - Chat Info Panel</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="components.css">
+</head>
+<body class="cjx-discovery">
+
+  <div class="app-layout">
+
+    <!-- Sidebar -->
+    <nav class="sidebar hide-mobile">
+      <div class="user-profile">
+        <div class="avatar avatar-purple">P</div>
+        <div>
+          <div class="user-profile-name">Phuc</div>
+          <div class="user-profile-status">
+            <span class="presence-dot online"></span> Online
+          </div>
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-section-title">Online (3)</div>
+        <div class="online-user-item">
+          <div class="avatar avatar-sm avatar-pink">A</div>
+          <span class="presence-dot online"></span>
+          <span class="online-user-name">Alice</span>
+        </div>
+        <div class="online-user-item">
+          <div class="avatar avatar-sm avatar-blue" style="position:relative;">
+            G
+            <span class="bot-badge">&#x1F916;</span>
+          </div>
+          <span class="presence-dot online"></span>
+          <span class="online-user-name">GPT-4</span>
+        </div>
+        <div class="online-user-item">
+          <div class="avatar avatar-sm avatar-teal" style="position:relative;">
+            C
+            <span class="bot-badge">&#x1F916;</span>
+          </div>
+          <span class="presence-dot online"></span>
+          <span class="online-user-name">Claude</span>
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-section-title">Groups</div>
+        <div class="conversation-item active">
+          <div class="conversation-info">
+            <div class="conversation-name"># test-agents</div>
+            <div class="conversation-preview">Bob: @GPT-4 can you summarize...</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sidebar-section" style="margin-top:auto; padding-bottom:var(--space-lg);">
+        <button class="new-conversation-btn">
+          <span style="font-size:18px;">+</span>
+          <span class="new-conversation-text">New Conversation</span>
+        </button>
+      </div>
+    </nav>
+
+    <!-- Main Content: Group Chat with Info Panel open -->
+    <main class="main-content" data-cjx-entrance>
+
+      <!-- Chat Header -->
+      <div class="chat-header">
+        <button class="hamburger-btn">&#9776;</button>
+        <div class="chat-header-name"># test-agents</div>
+        <div class="member-count">&#x1F465; 5 members</div>
+        <div class="chat-header-right">
+          <button class="info-btn" title="Chat Info" style="background:var(--color-bg-secondary);">&#x2139;</button>
+        </div>
+      </div>
+
+      <!-- Message List (abbreviated) -->
+      <div class="message-list">
+        <div class="message">
+          <div class="avatar avatar-pink">A</div>
+          <div class="message-body">
+            <div class="message-header">
+              <span class="message-sender">Alice</span>
+              <span class="message-timestamp">10:30 AM</span>
+            </div>
+            <div class="message-content">
+              Hey everyone, let's test the new agent capabilities.
+            </div>
+          </div>
+        </div>
+
+        <div class="message">
+          <div class="avatar avatar-blue" style="position:relative;">
+            G
+            <span class="bot-badge">&#x1F916;</span>
+          </div>
+          <div class="message-body">
+            <div class="message-header">
+              <span class="message-sender agent">GPT-4</span>
+              <span class="message-timestamp">10:31 AM</span>
+            </div>
+            <div class="message-content">
+              Ready to assist! What would you like me to help with?
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Chat Input -->
+      <div class="chat-input-bar">
+        <button class="attach-btn" title="Attach file">&#x1F4CE;</button>
+        <textarea class="chat-input" placeholder="Message #test-agents..." rows="1"></textarea>
+        <button class="send-btn" disabled title="Send">&#x27A4;</button>
+      </div>
+
+    </main>
+
+    <!-- Info Panel - Shown open -->
+    <aside class="info-panel open" data-cjx-entrance>
+      <div class="info-panel-header">
+        <span class="info-panel-title">Chat Info</span>
+        <button class="close-btn">&times;</button>
+      </div>
+
+      <div class="info-section">
+        <div class="info-section-title">Members (5)</div>
+        <div class="info-member-item">
+          <div class="avatar avatar-sm avatar-pink">A</div>
+          <span class="info-member-name">Alice</span>
+          <span class="presence-dot online"></span>
+          <span class="info-member-role">admin</span>
+        </div>
+        <div class="info-member-item">
+          <div class="avatar avatar-sm avatar-orange">B</div>
+          <span class="info-member-name">Bob</span>
+          <span class="presence-dot online"></span>
+        </div>
+        <div class="info-member-item">
+          <div class="avatar avatar-sm avatar-blue" style="position:relative;">
+            G
+            <span class="bot-badge">&#x1F916;</span>
+          </div>
+          <span class="info-member-name">GPT-4</span>
+          <span class="presence-dot online"></span>
+        </div>
+        <div class="info-member-item">
+          <div class="avatar avatar-sm avatar-teal" style="position:relative;">
+            C
+            <span class="bot-badge">&#x1F916;</span>
+          </div>
+          <span class="info-member-name">Claude</span>
+          <span class="presence-dot online"></span>
+        </div>
+        <div class="info-member-item">
+          <div class="avatar avatar-sm avatar-green">C</div>
+          <span class="info-member-name">Charlie</span>
+          <span class="presence-dot offline"></span>
+        </div>
+      </div>
+
+      <div class="info-section">
+        <div class="info-section-title">Shared Files</div>
+        <div class="info-file-item">
+          <span class="info-file-icon">&#x1F4C4;</span>
+          <span class="info-file-name">requirements.pdf</span>
+          <span class="info-file-date">Mar 16</span>
+        </div>
+        <div class="info-file-item">
+          <span class="info-file-icon">&#x1F5BC;</span>
+          <span class="info-file-name">chart.png</span>
+          <span class="info-file-date">Mar 15</span>
+        </div>
+        <div class="info-file-item">
+          <span class="info-file-icon">&#x1F4C4;</span>
+          <span class="info-file-name">notes.md</span>
+          <span class="info-file-date">Mar 14</span>
+        </div>
+      </div>
+
+      <div class="info-section">
+        <div class="info-section-title">Settings</div>
+        <button class="leave-btn">Leave group</button>
+      </div>
+    </aside>
+
+  </div>
+
+  <script src="interactions.js"></script>
+</body>
+</html>

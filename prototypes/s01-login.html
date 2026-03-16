@@ -1,0 +1,44 @@
+<!--
+  Screen: S-01 Login
+  CJX Stage: Onboarding
+  FR Mapping: FR-01 (Authentication)
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agent Playground - Login</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="components.css">
+</head>
+<body class="cjx-onboarding">
+
+  <div class="login-page">
+    <div class="login-card" data-cjx-entrance>
+      <div class="login-title">
+        <span class="login-title-icon">&#x1F916;</span>
+        Agent Playground
+      </div>
+
+      <label class="login-label" for="token-input">Enter your token</label>
+      <input
+        type="password"
+        id="token-input"
+        class="login-input"
+        placeholder="Paste your access token"
+        autofocus
+      >
+      <div class="login-error" id="login-error">Invalid or expired token</div>
+
+      <button class="login-btn" id="sign-in-btn" disabled>Sign In</button>
+
+      <p class="login-helper">Token provided by your admin.</p>
+    </div>
+  </div>
+
+  <script src="interactions.js"></script>
+</body>
+</html>
