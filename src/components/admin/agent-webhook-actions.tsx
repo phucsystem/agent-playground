@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Webhook, Pause, Play, FileText, Pencil, X, Check } from "lucide-react";
+import { Webhook, Pause, Play, FileText, X, Check } from "lucide-react";
 import type { AgentConfig } from "@/types/database";
 
 interface AgentWebhookActionsProps {
@@ -106,10 +106,10 @@ export function AgentWebhookActions({
     <div className="flex items-center gap-1">
       <button
         onClick={handleStartEdit}
-        className="p-1.5 rounded-md text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition"
+        className="p-1.5 rounded-md text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition cursor-pointer"
         title="Edit Webhook"
       >
-        <Pencil className="w-4 h-4" />
+        <Webhook className="w-4 h-4" />
       </button>
       <button
         onClick={handleToggle}
