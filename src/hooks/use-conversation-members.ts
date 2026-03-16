@@ -2,14 +2,23 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
-import type { User, MemberRole } from "@/types/database";
 
 interface MemberWithUser {
   conversation_id: string;
   user_id: string;
-  role: MemberRole;
+  role: string;
   joined_at: string;
-  user: Pick<User, "id" | "display_name" | "avatar_url" | "is_agent">;
+  user: { id: string; display_name: string; avatar_url: string | null; is_agent: boolean };
+}
+
+interface RpcMemberRow {
+  conversation_id: string;
+  user_id: string;
+  role: string;
+  joined_at: string;
+  display_name: string;
+  avatar_url: string | null;
+  is_agent: boolean;
 }
 
 export function useConversationMembers(conversationId: string | null) {
@@ -20,13 +29,24 @@ export function useConversationMembers(conversationId: string | null) {
     if (!conversationId) return;
 
     const supabase = createBrowserSupabaseClient();
-    const { data } = await supabase
-      .from("conversation_members")
-      .select("*, user:users!conversation_members_user_id_fkey(id, display_name, avatar_url, is_agent)")
-      .eq("conversation_id", conversationId);
+    const { data } = await supabase.rpc("get_conversation_members", {
+      target_conversation_id: conversationId,
+    });
 
     if (data) {
-      setMembers(data as unknown as MemberWithUser[]);
+      const mapped = (data as RpcMemberRow[]).map((row) => ({
+        conversation_id: row.conversation_id,
+        user_id: row.user_id,
+        role: row.role,
+        joined_at: row.joined_at,
+        user: {
+          id: row.user_id,
+          display_name: row.display_name,
+          avatar_url: row.avatar_url,
+          is_agent: row.is_agent,
+        },
+      }));
+      setMembers(mapped);
     }
     setLoading(false);
   }, [conversationId]);
