@@ -7,12 +7,14 @@ import { Hash, Archive, Pin } from "lucide-react";
 import { CollapsibleSection } from "./collapsible-section";
 import { usePinnedConversations } from "@/hooks/use-pinned-conversations";
 import type { ConversationWithDetails } from "@/types/database";
+import type { AgentHealthStatus } from "@/hooks/use-agent-health";
 
 interface ConversationListProps {
   conversations: ConversationWithDetails[];
   activeConversationId?: string;
   onlineUserIds: string[];
   currentUserId: string;
+  getAgentHealthStatus?: (agentId: string) => AgentHealthStatus;
 }
 
 function formatTime(dateString: string) {
@@ -57,6 +59,7 @@ export function ConversationList({
   activeConversationId,
   onlineUserIds,
   currentUserId,
+  getAgentHealthStatus,
 }: ConversationListProps) {
   const { pinnedIds, togglePin, cleanStalePins } =
     usePinnedConversations(currentUserId);
@@ -105,6 +108,7 @@ export function ConversationList({
                   }
                   isPinned={pinnedSet.has(conv.id)}
                   onTogglePin={() => togglePin(conv.id)}
+                  getAgentHealthStatus={getAgentHealthStatus}
                 />
               </div>
             );
@@ -167,6 +171,7 @@ function ConversationItem({
   isPinned,
   onTogglePin,
   hidePin = false,
+  getAgentHealthStatus,
 }: {
   conversation: ConversationWithDetails;
   isActive: boolean;
@@ -174,6 +179,7 @@ function ConversationItem({
   isPinned: boolean;
   onTogglePin: () => void;
   hidePin?: boolean;
+  getAgentHealthStatus?: (agentId: string) => AgentHealthStatus;
 }) {
   const isDM = conversation.type === "dm";
   const displayName = getDisplayName(conversation);
@@ -195,6 +201,11 @@ function ConversationItem({
           size="sm"
           showPresence
           isOnline={isOnline}
+          healthStatus={
+            conversation.other_user.is_agent && getAgentHealthStatus
+              ? getAgentHealthStatus(conversation.other_user.id)
+              : undefined
+          }
         />
       ) : (
         <div className="w-8 h-8 rounded-full bg-neutral-200 flex items-center justify-center shrink-0">

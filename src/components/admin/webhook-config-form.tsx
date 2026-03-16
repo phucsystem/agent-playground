@@ -1,20 +1,24 @@
 "use client";
 
 import { useState } from "react";
-import { Eye, EyeOff, Info } from "lucide-react";
+import { Eye, EyeOff, Info, HeartPulse } from "lucide-react";
 
 interface WebhookConfigFormProps {
   webhookUrl: string;
   webhookSecret: string;
+  healthCheckUrl: string;
   onUrlChange: (url: string) => void;
   onSecretChange: (secret: string) => void;
+  onHealthCheckUrlChange: (url: string) => void;
 }
 
 export function WebhookConfigForm({
   webhookUrl,
   webhookSecret,
+  healthCheckUrl,
   onUrlChange,
   onSecretChange,
+  onHealthCheckUrlChange,
 }: WebhookConfigFormProps) {
   const [showSecret, setShowSecret] = useState(false);
 
@@ -58,6 +62,24 @@ export function WebhookConfigForm({
         <p className="flex items-center gap-1 mt-1 text-xs text-neutral-400">
           <Info className="w-3 h-3" />
           Sent as Bearer token in Authorization header
+        </p>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-neutral-700 mb-1">
+          Health Check URL
+          <span className="text-neutral-400 font-normal ml-1">(optional)</span>
+        </label>
+        <input
+          type="url"
+          value={healthCheckUrl}
+          onChange={(event) => onHealthCheckUrlChange(event.target.value)}
+          placeholder="https://your-agent.com/health"
+          className="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+        />
+        <p className="flex items-center gap-1 mt-1 text-xs text-neutral-400">
+          <HeartPulse className="w-3 h-3" />
+          GET endpoint returning 200 = agent is available
         </p>
       </div>
     </div>

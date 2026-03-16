@@ -187,6 +187,7 @@ export default function AdminPage() {
   const [inviteName, setInviteName] = useState("");
   const [webhookUrl, setWebhookUrl] = useState("");
   const [webhookSecret, setWebhookSecret] = useState("");
+  const [healthCheckUrl, setHealthCheckUrl] = useState("");
   const { configs, createConfig, updateConfig, toggleWebhook } = useAgentConfigs();
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [editingWebhookUserId, setEditingWebhookUserId] = useState<string | null>(null);
@@ -257,7 +258,7 @@ export default function AdminPage() {
         .single();
 
       if (newUsers) {
-        const configResult = await createConfig(newUsers.id, webhookUrl, webhookSecret || undefined);
+        const configResult = await createConfig(newUsers.id, webhookUrl, webhookSecret || undefined, healthCheckUrl || undefined);
         if (configResult.error) {
           alert(`User created but webhook config failed: ${configResult.error}`);
         }
@@ -276,6 +277,7 @@ export default function AdminPage() {
     setGeneratedToken(null);
     setWebhookUrl("");
     setWebhookSecret("");
+    setHealthCheckUrl("");
   }
 
   async function toggleUserActive(userId: string, currentlyActive: boolean) {
@@ -451,8 +453,10 @@ export default function AdminPage() {
                   <WebhookConfigForm
                     webhookUrl={webhookUrl}
                     webhookSecret={webhookSecret}
+                    healthCheckUrl={healthCheckUrl}
                     onUrlChange={setWebhookUrl}
                     onSecretChange={setWebhookSecret}
+                    onHealthCheckUrlChange={setHealthCheckUrl}
                   />
                 )}
 
@@ -547,20 +551,23 @@ function InlineWebhookEditor({
   userId: string;
   config: import("@/types/database").AgentConfig | undefined;
   onClose: () => void;
-  onUpdate: (userId: string, updates: { webhook_url?: string; webhook_secret?: string }) => Promise<{ error: string | null }>;
+  onUpdate: (userId: string, updates: { webhook_url?: string; webhook_secret?: string; health_check_url?: string | null }) => Promise<{ error: string | null }>;
   onToggle: (userId: string, isActive: boolean) => Promise<{ error: string | null }>;
 }) {
   const [editUrl, setEditUrl] = useState(config?.webhook_url || "");
   const [editSecret, setEditSecret] = useState("");
+  const [editHealthUrl, setEditHealthUrl] = useState(config?.health_check_url || "");
   const [saving, setSaving] = useState(false);
 
   if (!config) return null;
 
   async function handleSave() {
     setSaving(true);
-    const updates: { webhook_url?: string; webhook_secret?: string } = {};
+    const updates: { webhook_url?: string; webhook_secret?: string; health_check_url?: string | null } = {};
     if (editUrl !== config!.webhook_url) updates.webhook_url = editUrl;
     if (editSecret) updates.webhook_secret = editSecret;
+    const newHealthUrl = editHealthUrl.trim() || null;
+    if (newHealthUrl !== (config!.health_check_url || null)) updates.health_check_url = newHealthUrl;
 
     if (Object.keys(updates).length > 0) {
       const result = await onUpdate(userId, updates);
@@ -606,6 +613,18 @@ function InlineWebhookEditor({
               onChange={(event) => setEditSecret(event.target.value)}
               placeholder="whsec_..."
               className="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg font-mono focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-neutral-500 mb-1">
+              Health check URL <span className="text-neutral-300 font-normal">(optional)</span>
+            </label>
+            <input
+              type="url"
+              value={editHealthUrl}
+              onChange={(event) => setEditHealthUrl(event.target.value)}
+              placeholder="https://your-agent.com/health"
+              className="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
             />
           </div>
         </div>

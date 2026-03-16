@@ -11,6 +11,8 @@ import { useCurrentUser } from "@/hooks/use-current-user";
 import { useSupabasePresence } from "@/hooks/use-supabase-presence";
 import { useConversations } from "@/hooks/use-conversations";
 import { MobileSidebarProvider, useMobileSidebar } from "@/hooks/use-mobile-sidebar";
+import { useAgentHealth } from "@/hooks/use-agent-health";
+import { AgentHealthToast } from "@/components/ui/agent-health-toast";
 import { CreateGroupDialog } from "@/components/sidebar/create-group-dialog";
 import { Loader2 } from "lucide-react";
 
@@ -19,6 +21,7 @@ function ChatLayoutInner({ children }: { children: React.ReactNode }) {
   const { currentUser, loading: userLoading } = useCurrentUser();
   const { onlineUsers, newlyOnlineUsers, clearNewlyOnline } = useSupabasePresence(currentUser);
   const { conversations } = useConversations();
+  const { getStatus: getAgentHealthStatus, transitions: healthTransitions, clearTransitions: clearHealthTransitions } = useAgentHealth();
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const { isOpen, close } = useMobileSidebar();
 
@@ -57,6 +60,32 @@ function ChatLayoutInner({ children }: { children: React.ReactNode }) {
 
     clearNewlyOnline();
   }, [newlyOnlineUsers, clearNewlyOnline]);
+
+  useEffect(() => {
+    if (healthTransitions.length === 0) return;
+
+    for (const transition of healthTransitions) {
+      const agentConv = conversations.find(
+        (conv) => conv.type === "dm" && conv.other_user?.id === transition.agentId && conv.other_user?.is_agent,
+      );
+      const agentName = agentConv?.other_user?.display_name || "Agent";
+      const avatarUrl = agentConv?.other_user?.avatar_url || null;
+
+      toast.custom(
+        () => (
+          <AgentHealthToast
+            displayName={agentName}
+            avatarUrl={avatarUrl}
+            status={transition.newStatus}
+          />
+        ),
+        { id: `health-${transition.agentId}`, duration: 4000 },
+      );
+    }
+
+    clearHealthTransitions();
+  }, [healthTransitions, clearHealthTransitions, conversations]);
+
   const onlineUserIds = onlineUsers.map((onlineUser) => onlineUser.user_id);
 
   if (userLoading) {
@@ -102,6 +131,7 @@ function ChatLayoutInner({ children }: { children: React.ReactNode }) {
           conversations={conversations}
           activeConversationId={activeConversationId}
           onCreateGroup={() => setShowCreateGroup(true)}
+          getAgentHealthStatus={getAgentHealthStatus}
         />
       </div>
 

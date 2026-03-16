@@ -9,6 +9,7 @@ import { Settings, X } from "lucide-react";
 import Link from "next/link";
 import { useMobileSidebar } from "@/hooks/use-mobile-sidebar";
 import type { User, ConversationWithDetails } from "@/types/database";
+import type { AgentHealthStatus } from "@/hooks/use-agent-health";
 
 interface SidebarProps {
   currentUser: User;
@@ -17,6 +18,7 @@ interface SidebarProps {
   conversations: ConversationWithDetails[];
   activeConversationId?: string;
   onCreateGroup: () => void;
+  getAgentHealthStatus?: (agentId: string) => AgentHealthStatus;
 }
 
 export function Sidebar({
@@ -26,6 +28,7 @@ export function Sidebar({
   conversations,
   activeConversationId,
   onCreateGroup,
+  getAgentHealthStatus,
 }: SidebarProps) {
   const router = useRouter();
   const { close } = useMobileSidebar();
@@ -68,6 +71,7 @@ export function Sidebar({
           activeConversationId={activeConversationId}
           onlineUserIds={onlineUserIds}
           currentUserId={currentUser.id}
+          getAgentHealthStatus={getAgentHealthStatus}
         />
 
         <AllUsers

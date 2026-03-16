@@ -75,6 +75,7 @@ export interface AgentConfig {
   webhook_url: string;
   webhook_secret: string | null;
   is_webhook_active: boolean;
+  health_check_url: string | null;
   created_at: string;
   updated_at: string;
 }
