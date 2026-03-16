@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import { toast, Toaster } from "sonner";
 import { PresenceToast } from "@/components/ui/presence-toast";
+import { formatRelativeTime } from "@/lib/session-utils";
+import type { KickedSession } from "@/types/database";
 import { usePathname } from "next/navigation";
 import { Sidebar } from "@/components/sidebar/sidebar";
 import { useCurrentUser } from "@/hooks/use-current-user";
@@ -21,6 +23,22 @@ function ChatLayoutInner({ children }: { children: React.ReactNode }) {
   const { isOpen, close } = useMobileSidebar();
 
   const activeConversationId = pathname.split("/chat/")[1];
+
+  useEffect(() => {
+    const kickedRaw = sessionStorage.getItem("kicked_session");
+    if (kickedRaw) {
+      sessionStorage.removeItem("kicked_session");
+      try {
+        const kicked = JSON.parse(kickedRaw) as KickedSession;
+        toast.info(
+          `Signed out from ${kicked.device_name} (${formatRelativeTime(kicked.last_active_at)})`,
+          { duration: 5000 }
+        );
+      } catch {
+        // Ignore malformed data
+      }
+    }
+  }, []);
 
   useEffect(() => {
     if (newlyOnlineUsers.length === 0) return;

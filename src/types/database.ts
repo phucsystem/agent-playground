@@ -94,6 +94,21 @@ export interface WebhookDeliveryLog {
   delivered_at: string | null;
 }
 
+export interface UserSession {
+  id: string;
+  user_id: string;
+  supabase_session_id: string | null;
+  device_name: string;
+  user_agent: string | null;
+  last_active_at: string;
+  created_at: string;
+}
+
+export interface KickedSession {
+  device_name: string;
+  last_active_at: string;
+}
+
 export interface WebhookLogWithDetails extends WebhookDeliveryLog {
   agent: Pick<User, "id" | "display_name" | "avatar_url">;
   message: Pick<Message, "id" | "content" | "sender_id">;
@@ -121,6 +136,7 @@ export interface Database {
       reactions: { Row: Reaction; Insert: Omit<Reaction, "id" | "created_at">; Update: Partial<Reaction>; Relationships: [] };
       agent_configs: { Row: AgentConfig; Insert: Omit<AgentConfig, "id" | "created_at" | "updated_at">; Update: Partial<AgentConfig>; Relationships: [] };
       webhook_delivery_logs: { Row: WebhookDeliveryLog; Insert: Omit<WebhookDeliveryLog, "id" | "created_at">; Update: Partial<WebhookDeliveryLog>; Relationships: [] };
+      user_sessions: { Row: UserSession; Insert: Omit<UserSession, "id" | "created_at">; Update: Partial<UserSession>; Relationships: [] };
     };
     Views: Record<string, never>;
     Functions: {

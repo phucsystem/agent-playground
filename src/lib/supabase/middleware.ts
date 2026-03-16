@@ -1,5 +1,21 @@
 import { createServerClient } from "@supabase/ssr";
+import { createClient } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
+
+const ACTIVITY_DEBOUNCE_MS = 5 * 60 * 1000; // 5 minutes
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let serviceClient: ReturnType<typeof createClient<any>> | null = null;
+
+function getServiceClient() {
+  if (!serviceClient) {
+    serviceClient = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+  }
+  return serviceClient;
+}
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
@@ -42,6 +58,22 @@ export async function updateSession(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = "/chat";
     return NextResponse.redirect(url);
+  }
+
+  if (user) {
+    const sessionRecordId = request.cookies.get("session_record_id")?.value;
+    if (sessionRecordId) {
+      const fiveMinutesAgo = new Date(
+        Date.now() - ACTIVITY_DEBOUNCE_MS
+      ).toISOString();
+      Promise.resolve(
+        getServiceClient()
+          .from("user_sessions")
+          .update({ last_active_at: new Date().toISOString() })
+          .eq("id", sessionRecordId)
+          .lt("last_active_at", fiveMinutesAgo)
+      ).catch(() => {});
+    }
   }
 
   return supabaseResponse;

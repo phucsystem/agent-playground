@@ -12,11 +12,21 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [autoLogging, setAutoLogging] = useState(true);
 
+  function storeKickedSession(loginUser: Awaited<ReturnType<typeof loginWithToken>>) {
+    if (loginUser.kickedSession) {
+      sessionStorage.setItem(
+        "kicked_session",
+        JSON.stringify(loginUser.kickedSession)
+      );
+    }
+  }
+
   useEffect(() => {
     const savedToken = getSavedToken();
     if (savedToken) {
       loginWithToken(savedToken)
         .then((loginUser) => {
+          storeKickedSession(loginUser);
           router.push(loginUser.needsSetup ? "/setup" : "/chat");
         })
         .catch(() => {
@@ -35,6 +45,7 @@ export default function LoginPage() {
 
     try {
       const loginUser = await loginWithToken(token);
+      storeKickedSession(loginUser);
       router.push(loginUser.needsSetup ? "/setup" : "/chat");
     } catch (loginError: unknown) {
       const message =
