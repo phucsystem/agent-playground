@@ -93,6 +93,15 @@ async function dispatchToAgent(
 
   const logId = logEntry.id;
 
+  // Send in simple format the agent expects
+  const agentRequestPayload = {
+    message: webhookPayload.message.content,
+    sender: webhookPayload.message.sender_name,
+    conversation_id: webhookPayload.message.conversation_id,
+    message_id: webhookPayload.message.id,
+  };
+  const agentRequestString = JSON.stringify(agentRequestPayload);
+
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     "X-Webhook-ID": logId,
@@ -115,7 +124,7 @@ async function dispatchToAgent(
       const response = await fetch(config.webhook_url, {
         method: "POST",
         headers,
-        body: payloadString,
+        body: agentRequestString,
         signal: controller.signal,
       });
       clearTimeout(timeoutId);
@@ -135,6 +144,25 @@ async function dispatchToAgent(
           response_body: responseBody.slice(0, 4000),
         })
         .eq("id", logId);
+
+      // On success, parse agent reply and insert as message in conversation
+      if (isSuccess && responseBody) {
+        try {
+          const agentResponse = JSON.parse(responseBody);
+          const replyContent = agentResponse.reply || agentResponse.message || agentResponse.content;
+
+          if (replyContent) {
+            await supabase.from("messages").insert({
+              conversation_id: webhookPayload.message.conversation_id,
+              sender_id: webhookPayload.agent.id,
+              content: replyContent,
+              content_type: "text",
+            });
+          }
+        } catch {
+          // Response wasn't JSON or had no reply field — that's ok, just log it
+        }
+      }
 
       if (isSuccess || isClientError) break;
     } catch (error: unknown) {
