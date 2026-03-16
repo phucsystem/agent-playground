@@ -74,8 +74,6 @@ async function dispatchToAgent(
     return;
   }
 
-  const payloadString = JSON.stringify(webhookPayload);
-
   const { data: logEntry } = await supabase
     .from("webhook_delivery_logs")
     .insert({
