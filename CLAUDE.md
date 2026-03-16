@@ -168,6 +168,13 @@ plans/{date}-{slug}/
 
 ---
 
+## RULES
+
+- **NO auto-commit**: Never commit code automatically. Always let the user commit manually.
+- **NO supabase migrations**: Never run `supabase migration` or `supabase db push` commands. The user handles all database migrations.
+
+---
+
 ## PRINCIPLES
 
 YAGNI | KISS | DRY

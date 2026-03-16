@@ -267,7 +267,7 @@ export default function AdminPage() {
     const { error } = await supabase.from("users").insert({
       email: `invite-${shortId}@placeholder.local`,
       display_name: displayName,
-      avatar_url: isAgent ? `https://api.dicebear.com/9.x/bottts/svg?seed=${shortId}` : null,
+      avatar_url: isAgent ? `https://api.dicebear.com/9.x/${["bottts", "bottts-neutral", "shapes", "rings", "glass", "identicon"][Math.floor(Math.random() * 6)]}/svg?seed=${shortId}` : null,
       token,
       role: isAgent ? "agent" : "user",
       is_agent: isAgent,

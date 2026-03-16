@@ -9,7 +9,10 @@ const AVATAR_STYLES = [
   "adventurer",
   "avataaars",
   "bottts",
+  "bottts-neutral",
   "fun-emoji",
+  "glass",
+  "identicon",
   "lorelei",
   "micah",
   "miniavs",
@@ -17,6 +20,8 @@ const AVATAR_STYLES = [
   "open-peeps",
   "personas",
   "pixel-art",
+  "rings",
+  "shapes",
   "thumbs",
 ];
 
