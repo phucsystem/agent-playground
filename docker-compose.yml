@@ -9,7 +9,7 @@ services:
     volumes:
       - .:/app
       - /app/node_modules
-    env_file: .env.local
+    env_file: .env
     profiles: ["dev"]
 
   # --- Production ---
@@ -19,6 +19,6 @@ services:
       target: production
     ports:
       - "3000:3000"
-    env_file: .env.local
+    env_file: .env
     restart: unless-stopped
     profiles: ["prod"]
