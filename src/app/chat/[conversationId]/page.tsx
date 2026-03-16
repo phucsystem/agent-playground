@@ -53,9 +53,12 @@ export default function ConversationPage() {
     return onlineUserIds.includes(conversation.other_user.id);
   }, [conversation, onlineUserIds]);
 
-  const hasAgent = conversation?.other_user?.is_agent ?? false;
-  const { agentThinking } = useAgentThinking(messages, hasAgent);
   const { members } = useConversationMembers(conversationId);
+  const hasAgent = useMemo(() => {
+    if (conversation?.other_user?.is_agent) return true;
+    return members.some((member) => member.user.is_agent);
+  }, [conversation, members]);
+  const { agentThinking } = useAgentThinking(messages, hasAgent);
   const memberNames = useMemo(
     () => members.map((member) => member.user.display_name),
     [members]
