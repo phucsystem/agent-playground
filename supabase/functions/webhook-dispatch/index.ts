@@ -32,6 +32,15 @@ interface WebhookPayload {
     id: string;
     webhook_config_id: string;
   };
+  history: {
+    id: string;
+    sender_id: string;
+    sender_name: string;
+    is_agent: boolean;
+    content: string;
+    content_type: string;
+    created_at: string;
+  }[];
 }
 
 interface AgentConfigRow {
@@ -102,6 +111,7 @@ async function dispatchToAgent(
     sender: webhookPayload.message.sender_name,
     conversation_id: webhookPayload.message.conversation_id,
     message_id: webhookPayload.message.id,
+    history: webhookPayload.history,
   };
   const agentRequestString = JSON.stringify(agentRequestPayload);
   console.log(`[webhook] >>> Request to ${config.webhook_url}:`, agentRequestString);
@@ -313,6 +323,30 @@ Deno.serve(async (request) => {
     targetConfigs = agentConfigs;
   }
 
+  // Fetch conversation history for agent context
+  const MAX_HISTORY = 50;
+  const { data: recentMessages } = await supabase
+    .from("messages")
+    .select("id, sender_id, content, content_type, created_at, users!messages_sender_id_fkey(display_name, is_agent)")
+    .eq("conversation_id", conversationId)
+    .neq("id", messageId)
+    .order("created_at", { ascending: false })
+    .limit(MAX_HISTORY);
+
+  const conversationHistory = (recentMessages || [])
+    .reverse()
+    .map((msg: { id: string; sender_id: string; content: string; content_type: string; created_at: string; users: { display_name: string; is_agent: boolean } }) => ({
+      id: msg.id,
+      sender_id: msg.sender_id,
+      sender_name: msg.users.display_name,
+      is_agent: msg.users.is_agent,
+      content: msg.content,
+      content_type: msg.content_type,
+      created_at: msg.created_at,
+    }));
+
+  console.log(`[webhook] Including ${conversationHistory.length} history messages for context`);
+
   const dispatchPromises = targetConfigs.map((config: AgentConfigRow) => {
     const webhookPayload: WebhookPayload = {
       event: "message.created",
@@ -338,6 +372,7 @@ Deno.serve(async (request) => {
         id: config.user_id,
         webhook_config_id: config.id,
       },
+      history: conversationHistory,
     };
 
     return dispatchToAgent(supabase, webhookPayload, config);
