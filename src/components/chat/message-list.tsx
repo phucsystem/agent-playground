@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { MessageItem } from "./message-item";
 import { TypingIndicator } from "./typing-indicator";
 import { Loader2, ArrowDown } from "lucide-react";
@@ -31,6 +32,14 @@ function shouldGroup(
   return diffMs < 300000;
 }
 
+function estimateMessageHeight(message: MessageWithSender): number {
+  if (message.content_type === "image") return 260;
+  if (message.content_type === "file") return 80;
+  if (message.content_type === "url") return 120;
+  const lineCount = Math.ceil(message.content.length / 60);
+  return Math.max(60, lineCount * 24 + 48);
+}
+
 export function MessageList({
   messages,
   loading,
@@ -42,42 +51,63 @@ export function MessageList({
   getGroupedReactions,
   onToggleReaction,
 }: MessageListProps) {
-  const bottomRef = useRef<HTMLDivElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const parentRef = useRef<HTMLDivElement>(null);
   const [showScrollDown, setShowScrollDown] = useState(false);
   const [visible, setVisible] = useState(true);
-  const prevMessageCount = useRef(0);
   const isAtBottomRef = useRef(true);
+  const prevMessageCount = useRef(0);
+  const prevConversationId = useRef(conversationId);
 
-  function scrollToBottom() {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }
+  const virtualizer = useVirtualizer({
+    count: messages.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: (index) => estimateMessageHeight(messages[index]),
+    overscan: 15,
+    getItemKey: (index) => messages[index].id,
+  });
+
+  const scrollToBottom = useCallback((smooth = true) => {
+    if (messages.length === 0) return;
+    virtualizer.scrollToIndex(messages.length - 1, {
+      align: "end",
+      behavior: smooth ? "smooth" : "auto",
+    });
+  }, [virtualizer, messages.length]);
 
   useEffect(() => {
-    prevMessageCount.current = 0;
-    setVisible(false);
+    if (prevConversationId.current !== conversationId) {
+      prevConversationId.current = conversationId;
+      prevMessageCount.current = 0;
+      setVisible(false);
+    }
   }, [conversationId]);
 
   useEffect(() => {
-    if (messages.length > 0 && prevMessageCount.current === 0) {
-      prevMessageCount.current = messages.length;
+    if (messages.length === 0) return;
+
+    if (prevMessageCount.current === 0) {
       requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          const container = containerRef.current;
-          if (container) container.scrollTop = container.scrollHeight;
-          setVisible(true);
+        virtualizer.scrollToIndex(messages.length - 1, {
+          align: "end",
+          behavior: "auto",
         });
+        requestAnimationFrame(() => setVisible(true));
       });
+      prevMessageCount.current = messages.length;
       return;
     }
+
     if (messages.length > prevMessageCount.current && isAtBottomRef.current) {
-      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+      virtualizer.scrollToIndex(messages.length - 1, {
+        align: "end",
+        behavior: "smooth",
+      });
     }
     prevMessageCount.current = messages.length;
-  }, [messages.length]);
+  }, [messages.length, virtualizer]);
 
   function handleScroll() {
-    const container = containerRef.current;
+    const container = parentRef.current;
     if (!container) return;
 
     const distanceFromBottom =
@@ -85,7 +115,7 @@ export function MessageList({
     isAtBottomRef.current = distanceFromBottom < 100;
     setShowScrollDown(distanceFromBottom > 300);
 
-    if (container.scrollTop < 100 && hasMore && !loading) {
+    if (container.scrollTop < 200 && hasMore && !loading) {
       loadMore();
     }
   }
@@ -98,45 +128,66 @@ export function MessageList({
     );
   }
 
+  const virtualItems = virtualizer.getVirtualItems();
+
   return (
     <div
-      ref={containerRef}
+      ref={parentRef}
       onScroll={handleScroll}
-      className={`flex-1 overflow-y-auto px-6 py-4 transition-opacity duration-200 ${visible ? "opacity-100" : "opacity-0"}`}
+      className={`flex-1 overflow-y-auto transition-opacity duration-200 ${visible ? "opacity-100" : "opacity-0"}`}
     >
-      {hasMore && (
-        <div className="flex justify-center py-2">
-          <button
-            onClick={loadMore}
-            className="text-xs text-primary-500 hover:underline"
-          >
-            Load older messages
-          </button>
-        </div>
-      )}
+      <div
+        className="relative w-full"
+        style={{ height: `${virtualizer.getTotalSize()}px` }}
+      >
+        {hasMore && (
+          <div className="flex justify-center py-2">
+            <button
+              onClick={loadMore}
+              className="text-xs text-primary-500 hover:underline"
+            >
+              Load older messages
+            </button>
+          </div>
+        )}
 
-      <div className="flex flex-col gap-1.5">
-        {messages.map((message, messageIndex) => (
-          <MessageItem
-            key={message.id}
-            message={message}
-            isGrouped={shouldGroup(message, messages[messageIndex - 1])}
-            isCurrentUser={message.sender_id === currentUserId}
-            reactions={getGroupedReactions(message.id)}
-            currentUserId={currentUserId}
-            onToggleReaction={onToggleReaction}
-          />
-        ))}
+        <div
+          className="absolute top-0 left-0 w-full px-6"
+          style={{
+            transform: `translateY(${virtualItems[0]?.start ?? 0}px)`,
+          }}
+        >
+          {virtualItems.map((virtualRow) => {
+            const message = messages[virtualRow.index];
+            return (
+              <div
+                key={virtualRow.key}
+                data-index={virtualRow.index}
+                ref={virtualizer.measureElement}
+                className="py-0.5"
+              >
+                <MessageItem
+                  message={message}
+                  isGrouped={shouldGroup(message, messages[virtualRow.index - 1])}
+                  isCurrentUser={message.sender_id === currentUserId}
+                  reactions={getGroupedReactions(message.id)}
+                  currentUserId={currentUserId}
+                  onToggleReaction={onToggleReaction}
+                />
+              </div>
+            );
+          })}
+        </div>
       </div>
 
-      <TypingIndicator typingUsers={typingUsers} />
-
-      <div ref={bottomRef} />
+      <div className="px-6">
+        <TypingIndicator typingUsers={typingUsers} />
+      </div>
 
       {showScrollDown && (
         <button
-          onClick={scrollToBottom}
-          className="fixed bottom-24 right-8 w-10 h-10 bg-white border border-neutral-200 rounded-full shadow-md flex items-center justify-center hover:bg-neutral-50 transition"
+          onClick={() => scrollToBottom()}
+          className="fixed bottom-24 right-8 w-10 h-10 bg-white border border-neutral-200 rounded-full shadow-md flex items-center justify-center hover:bg-neutral-50 transition cursor-pointer"
         >
           <ArrowDown className="w-4 h-4 text-neutral-600" />
         </button>
