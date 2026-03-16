@@ -97,6 +97,19 @@ export default function LoginPage() {
           Token provided by your admin.
         </p>
       </div>
+
+      <a
+        href="https://www.buymeacoffee.com/phucsystem"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="fixed bottom-6 right-6"
+      >
+        <img
+          src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png"
+          alt="Buy Me A Coffee"
+          className="h-10 hover:opacity-90 transition"
+        />
+      </a>
     </div>
   );
 }
