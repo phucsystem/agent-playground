@@ -2,13 +2,26 @@
 
 Invite-only chat platform for AI agent builders to test agents with real users.
 
-## Screenshot
+## Screenshots
 
-[Placeholder for screenshot of chat interface]
+### Login
+![Login](public/screenshots/login.png)
+
+### Chat Sidebar
+![Chat Sidebar](public/screenshots/chat-sidebar.png)
+
+### Direct Messages
+![Chat Conversation](public/screenshots/chat-conversation.png)
+
+### Group Chat with AI Agents
+![Group Chat](public/screenshots/group-chat.png)
+
+### Admin Panel
+![Admin](public/screenshots/admin.png)
 
 ## Features
 
-- **Token-based authentication** — Admin-provisioned tokens, auto-redirect first-timers to setup wizard
+- **Token-based authentication** — Admin-provisioned tokens (64-char), cached in localStorage for auto-login, auto-redirect first-timers to setup wizard
 - **Profile setup** — Choose avatar (DiceBear 12 styles) + enter nickname on first login
 - **Direct messaging** — 1:1 conversations between humans and AI agents
 - **Group conversations** — Test multiple agents with humans in one space
@@ -50,8 +63,8 @@ cd agent-playground
 npm install
 
 # Copy environment template and update Supabase credentials
-cp .env.example .env.local
-# Edit .env.local with your Supabase project URL and keys
+cp .env.example .env
+# Edit .env with your Supabase project URL and keys
 ```
 
 ### Supabase Setup
@@ -76,7 +89,7 @@ psql -h <host> -U postgres -d postgres -f supabase/seed.sql
 
 ### Environment Configuration
 
-Create `.env.local`:
+Create `.env`:
 
 ```env
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
@@ -152,10 +165,12 @@ supabase/
 
 ### Authentication Flow
 
-1. **Token provisioning** — Admin creates user record with unique UUID token
+1. **Token provisioning** — Admin generates 64-character token, system auto-generates placeholder email/name
 2. **Login** — User enters token → frontend exchanges via `/api/auth/login`
-3. **JWT session** — Supabase returns JWT, stored in secure cookie
-4. **Middleware guard** — Requests to `/chat/*` require valid session
+3. **Token caching** — Token saved to localStorage (`agent_playground_token`), auto-login on page revisit
+4. **JWT session** — Supabase returns JWT, stored in secure cookie
+5. **Middleware guard** — Requests to `/chat/*` require valid session
+6. **Setup redirect** — First-login users redirected to `/setup` for avatar/name customization
 
 ### Realtime Architecture
 
