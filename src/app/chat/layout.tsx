@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { toast, Toaster } from "sonner";
+import { PresenceToast } from "@/components/ui/presence-toast";
 import { usePathname } from "next/navigation";
 import { Sidebar } from "@/components/sidebar/sidebar";
 import { useCurrentUser } from "@/hooks/use-current-user";
@@ -13,12 +15,30 @@ import { Loader2 } from "lucide-react";
 function ChatLayoutInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { currentUser, loading: userLoading } = useCurrentUser();
-  const { onlineUsers } = useSupabasePresence(currentUser);
+  const { onlineUsers, newlyOnlineUsers, clearNewlyOnline } = useSupabasePresence(currentUser);
   const { conversations } = useConversations();
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const { isOpen, close } = useMobileSidebar();
 
   const activeConversationId = pathname.split("/chat/")[1];
+
+  useEffect(() => {
+    if (newlyOnlineUsers.length === 0) return;
+
+    for (const user of newlyOnlineUsers) {
+      toast.custom(
+        () => (
+          <PresenceToast
+            displayName={user.display_name}
+            avatarUrl={user.avatar_url}
+          />
+        ),
+        { id: `presence-${user.user_id}` }
+      );
+    }
+
+    clearNewlyOnline();
+  }, [newlyOnlineUsers, clearNewlyOnline]);
   const onlineUserIds = onlineUsers.map((onlineUser) => onlineUser.user_id);
 
   if (userLoading) {
@@ -78,6 +98,12 @@ function ChatLayoutInner({ children }: { children: React.ReactNode }) {
           onClose={() => setShowCreateGroup(false)}
         />
       )}
+
+      <Toaster
+        position="top-right"
+        visibleToasts={3}
+        toastOptions={{ duration: 3000, unstyled: true }}
+      />
     </div>
   );
 }

@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import type { User } from "@/types/database";
 
-interface OnlineUser {
+export interface OnlineUser {
   user_id: string;
   display_name: string;
   is_agent: boolean;
@@ -13,11 +13,22 @@ interface OnlineUser {
 
 export function useSupabasePresence(currentUser: User | null) {
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
+  const [newlyOnlineUsers, setNewlyOnlineUsers] = useState<OnlineUser[]>([]);
   const channelRef = useRef<ReturnType<ReturnType<typeof createBrowserSupabaseClient>["channel"]> | null>(null);
+  const previousIdsRef = useRef<Set<string>>(new Set());
+  const isInitialSyncRef = useRef(true);
+  const currentUserRef = useRef(currentUser);
+  currentUserRef.current = currentUser;
+
+  const userId = currentUser?.id;
 
   useEffect(() => {
-    if (!currentUser) return;
+    if (!userId || !currentUserRef.current) return;
 
+    isInitialSyncRef.current = true;
+    previousIdsRef.current = new Set();
+
+    const userSnapshot = currentUserRef.current;
     const supabase = createBrowserSupabaseClient();
     const channel = supabase.channel("online-users");
     channelRef.current = channel;
@@ -43,14 +54,35 @@ export function useSupabasePresence(currentUser: User | null) {
         });
 
         setOnlineUsers(users);
+
+        const currentIds = new Set(users.map((user) => user.user_id));
+
+        if (isInitialSyncRef.current) {
+          isInitialSyncRef.current = false;
+          previousIdsRef.current = currentIds;
+          return;
+        }
+
+        const newArrivals = users.filter(
+          (user) =>
+            !previousIdsRef.current.has(user.user_id) &&
+            !user.is_agent &&
+            user.user_id !== userId
+        );
+
+        if (newArrivals.length > 0) {
+          setNewlyOnlineUsers((prev) => [...prev, ...newArrivals]);
+        }
+
+        previousIdsRef.current = currentIds;
       })
       .subscribe(async (status) => {
         if (status === "SUBSCRIBED") {
           await channel.track({
-            user_id: currentUser.id,
-            display_name: currentUser.display_name,
-            is_agent: currentUser.is_agent,
-            avatar_url: currentUser.avatar_url,
+            user_id: userSnapshot.id,
+            display_name: userSnapshot.display_name,
+            is_agent: userSnapshot.is_agent,
+            avatar_url: userSnapshot.avatar_url,
           });
         }
       });
@@ -58,7 +90,11 @@ export function useSupabasePresence(currentUser: User | null) {
     return () => {
       channel.unsubscribe();
     };
-  }, [currentUser]);
+  }, [userId]);
 
-  return { onlineUsers };
+  const clearNewlyOnline = useCallback(() => {
+    setNewlyOnlineUsers([]);
+  }, []);
+
+  return { onlineUsers, newlyOnlineUsers, clearNewlyOnline };
 }
