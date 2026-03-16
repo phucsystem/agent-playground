@@ -51,12 +51,10 @@ export async function POST(request: NextRequest) {
     .update(`${user.id}:${serverSecret}`)
     .digest("hex");
 
-  const { data: existingUsers } = await getSupabaseAdmin().auth.admin.listUsers();
-  const authUser = existingUsers?.users?.find(
-    (authUserItem) => authUserItem.email === email
-  );
+  const { data: existingAuthUser } =
+    await getSupabaseAdmin().auth.admin.getUserById(user.id);
 
-  if (!authUser) {
+  if (!existingAuthUser?.user) {
     const { error: createError } =
       await getSupabaseAdmin().auth.admin.createUser({
         id: user.id,
@@ -72,13 +70,14 @@ export async function POST(request: NextRequest) {
       });
 
     if (createError) {
+      console.error("Auth user creation failed:", createError.message);
       return NextResponse.json(
         { error: "auth_error", message: "Failed to provision auth account" },
         { status: 500 }
       );
     }
   } else {
-    await getSupabaseAdmin().auth.admin.updateUserById(authUser.id, {
+    await getSupabaseAdmin().auth.admin.updateUserById(existingAuthUser.user.id, {
       password,
     });
   }
