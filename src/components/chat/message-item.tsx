@@ -71,7 +71,6 @@ function AgentTextContent({ message, memberNames }: { message: MessageWithSender
   return (
     <span className="whitespace-pre-wrap cursor-pointer" onClick={skip} title="Click to reveal full message">
       {displayText}
-      {isAnimating && <span className="inline-block w-0.5 h-4 bg-neutral-400 animate-pulse ml-0.5 align-text-bottom" />}
     </span>
   );
 }
