@@ -5,14 +5,21 @@ import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { X, RefreshCw, Loader2 } from "lucide-react";
 import type { User } from "@/types/database";
 
-const AVATAR_STYLES = [
-  "adventurer",
-  "avataaars",
+const AGENT_AVATAR_STYLES = [
   "bottts",
   "bottts-neutral",
-  "fun-emoji",
   "glass",
   "identicon",
+  "pixel-art",
+  "rings",
+  "shapes",
+  "thumbs",
+];
+
+const USER_AVATAR_STYLES = [
+  "adventurer",
+  "avataaars",
+  "fun-emoji",
   "lorelei",
   "micah",
   "miniavs",
@@ -20,8 +27,6 @@ const AVATAR_STYLES = [
   "open-peeps",
   "personas",
   "pixel-art",
-  "rings",
-  "shapes",
   "thumbs",
 ];
 
@@ -29,11 +34,12 @@ function generateAvatarUrl(style: string, seed: string) {
   return `https://api.dicebear.com/9.x/${style}/svg?seed=${encodeURIComponent(seed)}`;
 }
 
-function parseAvatarUrl(url: string | null): { style: string; seed: string } {
-  if (!url) return { style: "bottts", seed: crypto.randomUUID().slice(0, 8) };
+function parseAvatarUrl(url: string | null, isAgent: boolean): { style: string; seed: string } {
+  const fallbackStyle = isAgent ? "bottts" : "adventurer";
+  if (!url) return { style: fallbackStyle, seed: crypto.randomUUID().slice(0, 8) };
   const match = url.match(/dicebear\.com\/[\d.]+x\/([^/]+)\/svg\?seed=([^&]+)/);
   if (match) return { style: match[1], seed: decodeURIComponent(match[2]) };
-  return { style: "bottts", seed: crypto.randomUUID().slice(0, 8) };
+  return { style: fallbackStyle, seed: crypto.randomUUID().slice(0, 8) };
 }
 
 interface EditUserDialogProps {
@@ -43,7 +49,8 @@ interface EditUserDialogProps {
 }
 
 export function EditUserDialog({ user, onClose, onSaved }: EditUserDialogProps) {
-  const parsed = useMemo(() => parseAvatarUrl(user.avatar_url), [user.avatar_url]);
+  const avatarStyles = user.is_agent ? AGENT_AVATAR_STYLES : USER_AVATAR_STYLES;
+  const parsed = useMemo(() => parseAvatarUrl(user.avatar_url, user.is_agent), [user.avatar_url, user.is_agent]);
   const [displayName, setDisplayName] = useState(user.display_name);
   const [selectedStyle, setSelectedStyle] = useState(parsed.style);
   const [seed, setSeed] = useState(parsed.seed);
@@ -56,11 +63,11 @@ export function EditUserDialog({ user, onClose, onSaved }: EditUserDialogProps) 
   );
 
   const previewAvatars = useMemo(
-    () => AVATAR_STYLES.map((style) => ({
+    () => avatarStyles.map((style) => ({
       style,
       url: generateAvatarUrl(style, seed),
     })),
-    [seed]
+    [seed, avatarStyles]
   );
 
   function randomizeSeed() {
