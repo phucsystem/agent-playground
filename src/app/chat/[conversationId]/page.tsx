@@ -13,6 +13,7 @@ import { useSupabasePresence } from "@/hooks/use-supabase-presence";
 import { useTypingIndicator } from "@/hooks/use-typing-indicator";
 import { useReactions } from "@/hooks/use-reactions";
 import { useAgentThinking } from "@/hooks/use-agent-thinking";
+import { useConversationMembers } from "@/hooks/use-conversation-members";
 import { Loader2 } from "lucide-react";
 
 export default function ConversationPage() {
@@ -54,6 +55,11 @@ export default function ConversationPage() {
 
   const hasAgent = conversation?.other_user?.is_agent ?? false;
   const { agentThinking } = useAgentThinking(messages, hasAgent);
+  const { members } = useConversationMembers(conversationId);
+  const memberNames = useMemo(
+    () => members.map((member) => member.user.display_name),
+    [members]
+  );
 
   useEffect(() => {
     markAsRead();
@@ -105,6 +111,7 @@ export default function ConversationPage() {
           agentThinking={agentThinking}
           getGroupedReactions={getGroupedReactions}
           onToggleReaction={toggleReaction}
+          memberNames={memberNames}
         />
 
         {conversation.is_archived ? (

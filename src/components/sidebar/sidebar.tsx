@@ -54,6 +54,7 @@ export function Sidebar({
           conversations={conversations}
           activeConversationId={activeConversationId}
           onlineUserIds={onlineUserIds}
+          currentUserId={currentUser.id}
         />
 
         <AllUsers

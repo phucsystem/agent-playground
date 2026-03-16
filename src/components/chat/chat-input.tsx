@@ -1,10 +1,13 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { useFileUpload } from "@/hooks/use-file-upload";
+import { useConversationMembers } from "@/hooks/use-conversation-members";
 import { EmojiPicker } from "./emoji-picker";
 import { GifPicker } from "./gif-picker";
+import { MentionPicker } from "./mention-picker";
+import type { MentionCandidate } from "./mention-picker";
 import { Send, Paperclip, Loader2, X, Smile, ImageIcon } from "lucide-react";
 import type { ContentType } from "@/types/database";
 
@@ -26,10 +29,56 @@ export function ChatInput({
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showGifPicker, setShowGifPicker] = useState(false);
+  const [mentionQuery, setMentionQuery] = useState<string | null>(null);
+  const [mentionIndex, setMentionIndex] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pickerContainerRef = useRef<HTMLDivElement>(null);
   const { uploadFile, uploading } = useFileUpload();
+  const { members } = useConversationMembers(conversationId);
+
+  const mentionCandidates = useMemo<MentionCandidate[]>(() => {
+    if (mentionQuery === null) return [];
+    const query = mentionQuery.toLowerCase();
+    return members
+      .filter((member) => member.user_id !== senderId)
+      .filter((member) => member.user.display_name.toLowerCase().includes(query))
+      .map((member) => ({
+        id: member.user_id,
+        display_name: member.user.display_name,
+        avatar_url: member.user.avatar_url,
+        is_agent: member.user.is_agent,
+      }));
+  }, [mentionQuery, members, senderId]);
+
+  function getMentionQueryFromCursor(text: string, cursorPos: number): string | null {
+    const beforeCursor = text.slice(0, cursorPos);
+    const lastAtIndex = beforeCursor.lastIndexOf("@");
+    if (lastAtIndex === -1) return null;
+    if (lastAtIndex > 0 && beforeCursor[lastAtIndex - 1] !== " " && beforeCursor[lastAtIndex - 1] !== "\n") return null;
+    const query = beforeCursor.slice(lastAtIndex + 1);
+    if (query.includes("\n")) return null;
+    return query;
+  }
+
+  function insertMention(candidate: MentionCandidate) {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    const cursorPos = textarea.selectionStart;
+    const beforeCursor = content.slice(0, cursorPos);
+    const afterCursor = content.slice(cursorPos);
+    const atIndex = beforeCursor.lastIndexOf("@");
+    const newContent = beforeCursor.slice(0, atIndex) + `@${candidate.display_name} ` + afterCursor;
+    setContent(newContent);
+    setMentionQuery(null);
+    setMentionIndex(0);
+    requestAnimationFrame(() => {
+      const newCursorPos = atIndex + candidate.display_name.length + 2;
+      textarea.selectionStart = newCursorPos;
+      textarea.selectionEnd = newCursorPos;
+      textarea.focus();
+    });
+  }
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -106,6 +155,28 @@ export function ChatInput({
   }
 
   function handleKeyDown(event: React.KeyboardEvent) {
+    if (mentionCandidates.length > 0) {
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        setMentionIndex((prev) => (prev + 1) % mentionCandidates.length);
+        return;
+      }
+      if (event.key === "ArrowUp") {
+        event.preventDefault();
+        setMentionIndex((prev) => (prev - 1 + mentionCandidates.length) % mentionCandidates.length);
+        return;
+      }
+      if (event.key === "Enter" || event.key === "Tab") {
+        event.preventDefault();
+        insertMention(mentionCandidates[mentionIndex]);
+        return;
+      }
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setMentionQuery(null);
+        return;
+      }
+    }
     if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
       handleSend();
@@ -157,7 +228,14 @@ export function ChatInput({
         </div>
       )}
 
-      <div className="flex items-end gap-1.5 bg-neutral-100 rounded-2xl px-3 py-2.5">
+      <div className="relative flex items-end gap-1.5 bg-neutral-100 rounded-2xl px-3 py-2.5">
+        {mentionCandidates.length > 0 && (
+          <MentionPicker
+            candidates={mentionCandidates}
+            selectedIndex={mentionIndex}
+            onSelect={insertMention}
+          />
+        )}
         <input
           ref={fileInputRef}
           type="file"
@@ -216,9 +294,14 @@ export function ChatInput({
           ref={textareaRef}
           value={content}
           onChange={(event) => {
-            setContent(event.target.value);
+            const newContent = event.target.value;
+            setContent(newContent);
             adjustHeight();
             onTyping?.();
+            const cursorPos = event.target.selectionStart;
+            const query = getMentionQueryFromCursor(newContent, cursorPos);
+            setMentionQuery(query);
+            setMentionIndex(0);
           }}
           onKeyDown={handleKeyDown}
           placeholder={pendingFile ? "Press Send to upload file..." : placeholder}

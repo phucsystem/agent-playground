@@ -19,6 +19,7 @@ interface MessageListProps {
   agentThinking?: boolean;
   getGroupedReactions: (messageId: string) => ReactionGroup[];
   onToggleReaction: (messageId: string, emoji: string) => void;
+  memberNames?: string[];
 }
 
 function shouldGroup(
@@ -52,6 +53,7 @@ export function MessageList({
   agentThinking,
   getGroupedReactions,
   onToggleReaction,
+  memberNames,
 }: MessageListProps) {
   const parentRef = useRef<HTMLDivElement>(null);
   const [showScrollDown, setShowScrollDown] = useState(false);
@@ -175,6 +177,7 @@ export function MessageList({
                   reactions={getGroupedReactions(message.id)}
                   currentUserId={currentUserId}
                   onToggleReaction={onToggleReaction}
+                  memberNames={memberNames}
                 />
               </div>
             );
