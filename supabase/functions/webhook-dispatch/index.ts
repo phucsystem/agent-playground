@@ -1,4 +1,5 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -35,9 +36,24 @@ interface WebhookPayload {
 
 interface AgentConfigRow {
   id: string;
+  user_id: string;
   webhook_url: string;
   webhook_secret: string | null;
   is_webhook_active: boolean;
+}
+
+function isValidWebhookUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== "https:") return false;
+    const hostname = parsed.hostname;
+    if (hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1") return false;
+    if (hostname.endsWith(".local") || hostname.endsWith(".internal")) return false;
+    if (/^(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.)/.test(hostname)) return false;
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 async function computeHmacSignature(
@@ -65,20 +81,7 @@ async function computeHmacSignature(
   return `sha256=${hexSignature}`;
 }
 
-function isValidWebhookUrl(url: string): boolean {
-  try {
-    const parsed = new URL(url);
-    if (parsed.protocol !== "https:") return false;
-    const hostname = parsed.hostname;
-    if (hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1") return false;
-    if (hostname.endsWith(".local") || hostname.endsWith(".internal")) return false;
-    if (/^(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.)/.test(hostname)) return false;
-    return true;
-  } catch {
-    return false;
-  }
-}
-
+// deno-lint-ignore no-explicit-any
 async function dispatchToAgent(
   supabase: ReturnType<typeof createClient>,
   webhookPayload: WebhookPayload,
@@ -96,6 +99,7 @@ async function dispatchToAgent(
       });
     return;
   }
+
   const { data: logEntry } = await supabase
     .from("webhook_delivery_logs")
     .insert({
@@ -248,7 +252,7 @@ Deno.serve(async (request) => {
     return new Response("No other members", { status: 200 });
   }
 
-  const agentUserIds = agentMembers.map((member) => member.user_id);
+  const agentUserIds = agentMembers.map((member: { user_id: string }) => member.user_id);
 
   const { data: agentConfigs } = await supabase
     .from("agent_configs")
@@ -260,7 +264,7 @@ Deno.serve(async (request) => {
     return new Response("No active agent webhooks", { status: 200 });
   }
 
-  const dispatchPromises = agentConfigs.map((config) => {
+  const dispatchPromises = agentConfigs.map((config: AgentConfigRow) => {
     const webhookPayload: WebhookPayload = {
       event: "message.created",
       timestamp: new Date().toISOString(),
