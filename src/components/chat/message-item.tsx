@@ -8,8 +8,12 @@ import { UrlPreview } from "./url-preview";
 import { MessageReactions } from "./message-reactions";
 import type { MessageWithSender } from "@/types/database";
 import { Heart } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { ReactionGroup } from "@/hooks/use-reactions";
+import { useTypewriter } from "@/hooks/use-typewriter";
+
+const animatedMessageIds = new Set<string>();
+const RECENCY_THRESHOLD_MS = 30_000;
 
 interface MessageItemProps {
   message: MessageWithSender;
@@ -30,6 +34,37 @@ function formatTimestamp(dateString: string) {
   if (diffMin < 1) return "just now";
   if (diffMin < 60) return `${diffMin}m ago`;
   return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+function isRecentMessage(createdAt: string): boolean {
+  return Date.now() - new Date(createdAt).getTime() < RECENCY_THRESHOLD_MS;
+}
+
+function AgentTextContent({ message, memberNames }: { message: MessageWithSender; memberNames?: string[] }) {
+  const shouldAnimate = !animatedMessageIds.has(message.id) && isRecentMessage(message.created_at);
+  const markedRef = useRef(false);
+
+  const { displayText, isAnimating, isComplete } = useTypewriter(message.content, {
+    enabled: shouldAnimate,
+  });
+
+  useEffect(() => {
+    if (!markedRef.current) {
+      animatedMessageIds.add(message.id);
+      markedRef.current = true;
+    }
+  }, [message.id]);
+
+  if (isComplete || !shouldAnimate) {
+    return <MarkdownContent content={message.content} memberNames={memberNames} />;
+  }
+
+  return (
+    <span className="whitespace-pre-wrap">
+      {displayText}
+      {isAnimating && <span className="inline-block w-0.5 h-4 bg-neutral-400 animate-pulse ml-0.5 align-text-bottom" />}
+    </span>
+  );
 }
 
 function MessageContent({ message, memberNames }: { message: MessageWithSender; memberNames?: string[] }) {
@@ -60,6 +95,9 @@ function MessageContent({ message, memberNames }: { message: MessageWithSender; 
         />
       );
     default:
+      if (message.sender?.is_agent) {
+        return <AgentTextContent message={message} memberNames={memberNames} />;
+      }
       return <MarkdownContent content={message.content} memberNames={memberNames} />;
   }
 }
