@@ -1,7 +1,10 @@
--- Add platform-level role to users
-CREATE TYPE user_role AS ENUM ('admin', 'user', 'agent');
+-- Add platform-level role to users (idempotent - type and column may exist from 001)
+DO $$ BEGIN
+  CREATE TYPE user_role AS ENUM ('admin', 'user', 'agent');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
-ALTER TABLE users ADD COLUMN role user_role NOT NULL DEFAULT 'user';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS role user_role NOT NULL DEFAULT 'user';
 
 -- Set agents to 'agent' role
 UPDATE users SET role = 'agent' WHERE is_agent = true;

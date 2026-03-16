@@ -1,5 +1,5 @@
--- Add mock flag to users — mock users only visible to admin
-ALTER TABLE users ADD COLUMN is_mock boolean NOT NULL DEFAULT false;
+-- Add mock flag to users — mock users only visible to admin (idempotent)
+ALTER TABLE users ADD COLUMN IF NOT EXISTS is_mock boolean NOT NULL DEFAULT false;
 
 -- Update existing users_select policy to hide mock users from non-admins
 DROP POLICY IF EXISTS "users_select" ON users;
