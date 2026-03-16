@@ -138,7 +138,7 @@ export function MessageList({
     <div
       ref={parentRef}
       onScroll={handleScroll}
-      className={`flex-1 overflow-y-auto transition-opacity duration-200 ${visible ? "opacity-100" : "opacity-0"}`}
+      className={`flex-1 overflow-y-auto pb-4 transition-opacity duration-200 ${visible ? "opacity-100" : "opacity-0"}`}
     >
       <div
         className="relative w-full"
