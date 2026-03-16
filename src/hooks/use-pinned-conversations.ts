@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 
 const STORAGE_KEY_PREFIX = "pinned-conversations-";
 
@@ -27,6 +27,9 @@ export function usePinnedConversations(userId: string) {
     readPinnedIds(userId)
   );
 
+  const pinnedIdsRef = useRef(pinnedIds);
+  pinnedIdsRef.current = pinnedIds;
+
   const togglePin = useCallback(
     (conversationId: string) => {
       setPinnedIds((prev) => {
@@ -40,22 +43,18 @@ export function usePinnedConversations(userId: string) {
     [userId]
   );
 
-  const isPinned = useCallback(
-    (conversationId: string) => pinnedIds.includes(conversationId),
-    [pinnedIds]
-  );
-
   const cleanStalePins = useCallback(
     (validIds: string[]) => {
       const validSet = new Set(validIds);
-      const cleaned = pinnedIds.filter((id) => validSet.has(id));
-      if (cleaned.length !== pinnedIds.length) {
+      const current = pinnedIdsRef.current;
+      const cleaned = current.filter((id) => validSet.has(id));
+      if (cleaned.length !== current.length) {
         writePinnedIds(userId, cleaned);
         setPinnedIds(cleaned);
       }
     },
-    [userId, pinnedIds]
+    [userId]
   );
 
-  return { pinnedIds, togglePin, isPinned, cleanStalePins };
+  return { pinnedIds, togglePin, cleanStalePins };
 }

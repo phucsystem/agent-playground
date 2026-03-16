@@ -58,7 +58,7 @@ export function ConversationList({
   onlineUserIds,
   currentUserId,
 }: ConversationListProps) {
-  const { pinnedIds, togglePin, isPinned, cleanStalePins } =
+  const { pinnedIds, togglePin, cleanStalePins } =
     usePinnedConversations(currentUserId);
 
   const dmConversations = conversations.filter((conv) => conv.type === "dm");
@@ -73,11 +73,11 @@ export function ConversationList({
   const sortedGroups = sortWithPins(activeGroups, pinnedIds);
 
   useEffect(() => {
-    const nonArchivedIds = [...dmConversations, ...activeGroups].map(
-      (conv) => conv.id
-    );
+    const nonArchivedIds = conversations
+      .filter((conv) => conv.type === "dm" || (conv.type === "group" && !conv.is_archived))
+      .map((conv) => conv.id);
     cleanStalePins(nonArchivedIds);
-  }, [conversations, cleanStalePins, dmConversations, activeGroups]);
+  }, [conversations, cleanStalePins]);
 
   const pinnedSet = new Set(pinnedIds);
 
@@ -93,7 +93,7 @@ export function ConversationList({
             return (
               <div key={conv.id}>
                 {isFirstUnpinned && (
-                  <div className="mx-2 my-1 border-t border-neutral-200" />
+                  <div className="mx-2 my-1 border-t border-neutral-200" role="separator" />
                 )}
                 <ConversationItem
                   conversation={conv}
@@ -122,7 +122,7 @@ export function ConversationList({
             return (
               <div key={conv.id}>
                 {isFirstUnpinned && (
-                  <div className="mx-2 my-1 border-t border-neutral-200" />
+                  <div className="mx-2 my-1 border-t border-neutral-200" role="separator" />
                 )}
                 <ConversationItem
                   conversation={conv}
@@ -235,6 +235,7 @@ function ConversationItem({
               : "text-neutral-400 opacity-0 group-hover:opacity-100 hover:bg-neutral-200/60"
           } hover:text-primary-500`}
           aria-label={isPinned ? "Unpin conversation" : "Pin conversation"}
+          aria-pressed={isPinned}
         >
           <Pin
             className={`w-3.5 h-3.5 transition-transform duration-200 ease-out ${
