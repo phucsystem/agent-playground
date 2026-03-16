@@ -5,6 +5,7 @@ import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { useWorkspaceContext } from "@/contexts/workspace-context";
 import { toast } from "sonner";
 import { Plus, X } from "lucide-react";
+import { WorkspaceAvatar } from "@/components/ui/workspace-avatar";
 import type { Workspace } from "@/types/database";
 
 interface WorkspaceRailProps {
@@ -25,22 +26,14 @@ export function WorkspaceRail({ workspaces, activeWorkspaceId, onSwitch, isAdmin
           <div key={workspace.id} className="relative group">
             <button
               onClick={() => onSwitch(workspace.id)}
-              className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-200 ${
+              className={`rounded-full transition-all duration-200 ${
                 isActive
-                  ? "bg-primary-500 text-white ring-2 ring-primary-300 ring-offset-2 ring-offset-neutral-800"
-                  : "bg-neutral-600 text-neutral-300 hover:bg-neutral-500 hover:rounded-2xl"
+                  ? "ring-2 ring-primary-300 ring-offset-2 ring-offset-neutral-800"
+                  : "hover:rounded-2xl"
               }`}
               title={workspace.name}
             >
-              {workspace.avatar_url ? (
-                <img
-                  src={workspace.avatar_url}
-                  alt={workspace.name}
-                  className="w-10 h-10 rounded-full object-cover"
-                />
-              ) : (
-                workspace.name.charAt(0).toUpperCase()
-              )}
+              <WorkspaceAvatar workspace={workspace} size="md" />
             </button>
 
             {/* Tooltip */}
@@ -87,9 +80,6 @@ function CreateWorkspaceDialog({ onClose }: { onClose: () => void }) {
     setCreating(true);
 
     const supabase = createBrowserSupabaseClient();
-    const shortId = crypto.randomUUID().slice(0, 8);
-    const avatarUrl = `https://api.dicebear.com/9.x/shapes/svg?seed=${shortId}`;
-
     const currentUserId = (await supabase.auth.getUser()).data.user?.id;
 
     const { data: newWorkspace, error } = await supabase
@@ -97,7 +87,7 @@ function CreateWorkspaceDialog({ onClose }: { onClose: () => void }) {
       .insert({
         name: name.trim(),
         description: description.trim() || null,
-        avatar_url: avatarUrl,
+        avatar_url: null,
         is_default: false,
         created_by: currentUserId,
       })

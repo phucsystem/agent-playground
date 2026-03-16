@@ -26,6 +26,7 @@ import {
 import type { User, Workspace } from "@/types/database";
 import { WorkspaceSettings } from "@/components/admin/workspace-settings";
 import { WorkspaceMembers } from "@/components/admin/workspace-members";
+import { WorkspaceAvatar } from "@/components/ui/workspace-avatar";
 import { useAgentConfigs } from "@/hooks/use-agent-configs";
 import { WebhookConfigForm } from "@/components/admin/webhook-config-form";
 import {
@@ -490,15 +491,7 @@ export default function AdminPage() {
               <div className="divide-y divide-neutral-100">
                 {workspacesList.map((workspace) => (
                   <div key={workspace.id} className="flex items-center gap-3 px-5 py-3 hover:bg-neutral-50 transition">
-                    <div className="w-9 h-9 rounded-full bg-primary-100 flex items-center justify-center shrink-0">
-                      {workspace.avatar_url ? (
-                        <img src={workspace.avatar_url} alt={workspace.name} className="w-9 h-9 rounded-full object-cover" />
-                      ) : (
-                        <span className="text-sm font-bold text-primary-600">
-                          {workspace.name.charAt(0).toUpperCase()}
-                        </span>
-                      )}
-                    </div>
+                    <WorkspaceAvatar workspace={workspace} size="md" />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-medium text-neutral-800 truncate">

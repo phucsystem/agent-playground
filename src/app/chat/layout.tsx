@@ -20,6 +20,7 @@ import { NotificationContext } from "@/hooks/use-notification-context";
 import { WorkspaceProvider, useWorkspaceContext } from "@/contexts/workspace-context";
 import { PresenceProvider } from "@/contexts/presence-context";
 import { WorkspaceRail } from "@/components/sidebar/workspace-rail";
+import { WorkspaceAvatar } from "@/components/ui/workspace-avatar";
 import { Loader2 } from "lucide-react";
 
 function ChatLayoutContent({ children }: { children: React.ReactNode }) {
@@ -155,18 +156,14 @@ function ChatLayoutContent({ children }: { children: React.ReactNode }) {
             <button
               key={workspace.id}
               onClick={() => switchWorkspace(workspace.id)}
-              className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition ${
+              className={`shrink-0 rounded-full transition ${
                 workspace.id === activeWorkspace?.id
-                  ? "bg-primary-500 text-white ring-2 ring-primary-300"
-                  : "bg-neutral-600 text-neutral-300 hover:bg-neutral-500"
+                  ? "ring-2 ring-primary-300"
+                  : ""
               }`}
               title={workspace.name}
             >
-              {workspace.avatar_url ? (
-                <img src={workspace.avatar_url} alt={workspace.name} className="w-8 h-8 rounded-full object-cover" />
-              ) : (
-                workspace.name.charAt(0).toUpperCase()
-              )}
+              <WorkspaceAvatar workspace={workspace} size="sm" />
             </button>
           ))}
         </div>

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { X } from "lucide-react";
+import { WorkspaceAvatar, getWorkspaceColor } from "@/components/ui/workspace-avatar";
 import type { Workspace } from "@/types/database";
 
 interface WorkspaceSettingsProps {
@@ -16,6 +17,8 @@ export function WorkspaceSettings({ workspace, onClose, onSaved }: WorkspaceSett
   const [description, setDescription] = useState(workspace.description ?? "");
   const [avatarUrl, setAvatarUrl] = useState(workspace.avatar_url ?? "");
   const [saving, setSaving] = useState(false);
+
+  const defaultColor = getWorkspaceColor(workspace.id);
 
   async function handleSave() {
     if (!name.trim()) return;
@@ -38,6 +41,12 @@ export function WorkspaceSettings({ workspace, onClose, onSaved }: WorkspaceSett
     }
   }
 
+  const previewWorkspace = {
+    id: workspace.id,
+    name: name || workspace.name,
+    avatar_url: avatarUrl.trim() || null,
+  };
+
   return (
     <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={onClose}>
       <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-5" onClick={(event) => event.stopPropagation()}>
@@ -49,6 +58,17 @@ export function WorkspaceSettings({ workspace, onClose, onSaved }: WorkspaceSett
         </div>
 
         <div className="space-y-3 mb-4">
+          {/* Avatar preview */}
+          <div className="flex items-center gap-3">
+            <WorkspaceAvatar workspace={previewWorkspace} size="lg" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-neutral-700 truncate">{name || "Workspace"}</p>
+              <p className="text-xs text-neutral-400">
+                {avatarUrl.trim() ? "Custom image" : `Default: letter + color`}
+              </p>
+            </div>
+          </div>
+
           <div>
             <label className="block text-xs font-medium text-neutral-500 mb-1">Name</label>
             <input
@@ -67,7 +87,9 @@ export function WorkspaceSettings({ workspace, onClose, onSaved }: WorkspaceSett
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-neutral-500 mb-1">Avatar URL</label>
+            <label className="block text-xs font-medium text-neutral-500 mb-1">
+              Avatar image URL <span className="text-neutral-300 font-normal">(leave empty for letter avatar)</span>
+            </label>
             <input
               value={avatarUrl}
               onChange={(event) => setAvatarUrl(event.target.value)}
