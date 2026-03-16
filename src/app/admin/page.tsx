@@ -56,8 +56,6 @@ export default function AdminPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [showInvite, setShowInvite] = useState(false);
-  const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteName, setInviteName] = useState("");
   const [inviteIsAgent, setInviteIsAgent] = useState(false);
   const [creating, setCreating] = useState(false);
   const [generatedToken, setGeneratedToken] = useState<string | null>(null);
@@ -93,15 +91,15 @@ export default function AdminPage() {
   }
 
   async function handleCreateInvite() {
-    if (!inviteEmail.trim() || !inviteName.trim()) return;
     setCreating(true);
 
     const token = generateToken();
+    const shortId = token.slice(0, 8);
     const supabase = createBrowserSupabaseClient();
 
     const { error } = await supabase.from("users").insert({
-      email: inviteEmail.trim(),
-      display_name: inviteName.trim(),
+      email: `invite-${shortId}@placeholder.local`,
+      display_name: "New User",
       token,
       role: inviteIsAgent ? "agent" : "user",
       is_agent: inviteIsAgent,
@@ -121,8 +119,6 @@ export default function AdminPage() {
 
   function resetInviteForm() {
     setShowInvite(false);
-    setInviteEmail("");
-    setInviteName("");
     setInviteIsAgent(false);
     setGeneratedToken(null);
   }
@@ -178,7 +174,7 @@ export default function AdminPage() {
                   <CopyButton text={generatedToken} />
                 </div>
                 <p className="text-xs text-neutral-400 mt-2">
-                  Send this token to {inviteName}. They paste it on the login page.
+                  Share this token with your friend. They paste it on the login page.
                 </p>
                 <button
                   onClick={resetInviteForm}
@@ -189,31 +185,6 @@ export default function AdminPage() {
               </div>
             ) : (
               <div>
-                <div className="grid grid-cols-2 gap-3 mb-3">
-                  <div>
-                    <label className="block text-xs font-semibold text-neutral-500 mb-1 uppercase tracking-wide">
-                      Name
-                    </label>
-                    <input
-                      value={inviteName}
-                      onChange={(event) => setInviteName(event.target.value)}
-                      placeholder="Alice"
-                      className="w-full px-3 py-2 border border-neutral-200 rounded-lg text-sm focus:outline-none focus:border-primary-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-neutral-500 mb-1 uppercase tracking-wide">
-                      Email
-                    </label>
-                    <input
-                      value={inviteEmail}
-                      onChange={(event) => setInviteEmail(event.target.value)}
-                      placeholder="alice@example.com"
-                      className="w-full px-3 py-2 border border-neutral-200 rounded-lg text-sm focus:outline-none focus:border-primary-500"
-                    />
-                  </div>
-                </div>
-
                 <label className="flex items-center gap-2 mb-4 cursor-pointer">
                   <input
                     type="checkbox"
@@ -228,7 +199,7 @@ export default function AdminPage() {
                 <div className="flex gap-2">
                   <button
                     onClick={handleCreateInvite}
-                    disabled={!inviteEmail.trim() || !inviteName.trim() || creating}
+                    disabled={creating}
                     className="flex-1 py-2 bg-primary-600 hover:bg-primary-700 disabled:bg-neutral-300 text-white text-sm font-semibold rounded-lg transition"
                   >
                     {creating ? "Creating..." : "Generate Token"}
