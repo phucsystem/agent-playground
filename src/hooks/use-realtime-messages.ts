@@ -126,5 +126,17 @@ export function useRealtimeMessages(conversationId: string) {
     await supabase.rpc("mark_conversation_read", { conv_id: conversationId });
   }, [conversationId]);
 
-  return { messages, loading, hasMore, loadMore, markAsRead };
+  const addOptimisticMessage = useCallback((message: MessageWithSender) => {
+    setMessages((prev) => {
+      if (prev.some((msg) => msg.id === message.id)) return prev;
+      const updated = [...prev, message];
+      const cachedData = messageCache.get(conversationId);
+      if (cachedData) {
+        messageCache.set(conversationId, { ...cachedData, messages: updated });
+      }
+      return updated;
+    });
+  }, [conversationId]);
+
+  return { messages, loading, hasMore, loadMore, markAsRead, addOptimisticMessage };
 }

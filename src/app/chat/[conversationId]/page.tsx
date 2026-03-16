@@ -21,7 +21,7 @@ export default function ConversationPage() {
   const conversationId = params.conversationId as string;
 
   const { currentUser } = useCurrentUser();
-  const { messages, loading, hasMore, loadMore, markAsRead } =
+  const { messages, loading, hasMore, loadMore, markAsRead, addOptimisticMessage } =
     useRealtimeMessages(conversationId);
   const { conversations, refetch: refetchConversations } = useConversations();
   const { onlineUsers } = useSupabasePresence(currentUser);
@@ -125,8 +125,15 @@ export default function ConversationPage() {
           <ChatInput
             conversationId={conversationId}
             senderId={currentUser.id}
+            senderInfo={{
+              id: currentUser.id,
+              display_name: currentUser.display_name,
+              avatar_url: currentUser.avatar_url,
+              is_agent: currentUser.is_agent,
+            }}
             placeholder={inputPlaceholder}
             onTyping={sendTyping}
+            onOptimisticMessage={addOptimisticMessage}
           />
         )}
       </div>

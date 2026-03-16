@@ -9,20 +9,31 @@ import { GifPicker } from "./gif-picker";
 import { MentionPicker } from "./mention-picker";
 import type { MentionCandidate } from "./mention-picker";
 import { Send, Paperclip, Loader2, X, Smile, ImageIcon } from "lucide-react";
-import type { ContentType } from "@/types/database";
+import type { ContentType, MessageWithSender } from "@/types/database";
+
+interface SenderInfo {
+  id: string;
+  display_name: string;
+  avatar_url: string | null;
+  is_agent: boolean;
+}
 
 interface ChatInputProps {
   conversationId: string;
   senderId: string;
+  senderInfo?: SenderInfo;
   placeholder?: string;
   onTyping?: () => void;
+  onOptimisticMessage?: (message: MessageWithSender) => void;
 }
 
 export function ChatInput({
   conversationId,
   senderId,
+  senderInfo,
   placeholder = "Type a message...",
   onTyping,
+  onOptimisticMessage,
 }: ChatInputProps) {
   const [content, setContent] = useState("");
   const [sending, setSending] = useState(false);
@@ -102,16 +113,19 @@ export function ChatInput({
   async function sendMessage(
     messageContent: string,
     contentType: ContentType,
-    metadata: Record<string, unknown> | null = null
+    metadata: Record<string, unknown> | null = null,
+    messageId?: string
   ) {
     const supabase = createBrowserSupabaseClient();
-    await supabase.from("messages").insert({
+    const row: Record<string, unknown> = {
       conversation_id: conversationId,
       sender_id: senderId,
       content: messageContent,
       content_type: contentType,
       metadata,
-    });
+    };
+    if (messageId) row.id = messageId;
+    await supabase.from("messages").insert(row);
   }
 
   async function handleSend() {
@@ -143,15 +157,31 @@ export function ChatInput({
     const trimmed = content.trim();
     if (!trimmed) return;
 
-    setSending(true);
-    await sendMessage(trimmed, "text");
     setContent("");
-    setSending(false);
-
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
       textareaRef.current.focus();
     }
+
+    if (senderInfo && onOptimisticMessage) {
+      const optimisticId = crypto.randomUUID();
+      onOptimisticMessage({
+        id: optimisticId,
+        conversation_id: conversationId,
+        sender_id: senderId,
+        content: trimmed,
+        content_type: "text",
+        metadata: null,
+        created_at: new Date().toISOString(),
+        sender: senderInfo,
+      });
+      sendMessage(trimmed, "text", null, optimisticId);
+      return;
+    }
+
+    setSending(true);
+    await sendMessage(trimmed, "text");
+    setSending(false);
   }
 
   function handleKeyDown(event: React.KeyboardEvent) {
