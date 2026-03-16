@@ -21,8 +21,11 @@ import {
   FileText,
   ChevronDown,
   MoreHorizontal,
+  Building2,
 } from "lucide-react";
-import type { User } from "@/types/database";
+import type { User, Workspace } from "@/types/database";
+import { WorkspaceSettings } from "@/components/admin/workspace-settings";
+import { WorkspaceMembers } from "@/components/admin/workspace-members";
 import { useAgentConfigs } from "@/hooks/use-agent-configs";
 import { WebhookConfigForm } from "@/components/admin/webhook-config-form";
 import {
@@ -191,6 +194,11 @@ export default function AdminPage() {
   const { configs, createConfig, updateConfig, toggleWebhook } = useAgentConfigs();
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [editingWebhookUserId, setEditingWebhookUserId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"users" | "workspaces">("users");
+  const [workspacesList, setWorkspacesList] = useState<Workspace[]>([]);
+  const [editingWorkspace, setEditingWorkspace] = useState<Workspace | null>(null);
+  const [managingMembers, setManagingMembers] = useState<Workspace | null>(null);
+  const [workspaceMemberCounts, setWorkspaceMemberCounts] = useState<Map<string, number>>(new Map());
 
   const agents = useMemo(() => users.filter((appUser) => appUser.is_agent), [users]);
   const people = useMemo(() => users.filter((appUser) => !appUser.is_agent), [users]);
@@ -205,9 +213,30 @@ export default function AdminPage() {
     setLoading(false);
   }, []);
 
+  const fetchWorkspaces = useCallback(async () => {
+    const supabase = createBrowserSupabaseClient();
+    const { data } = await supabase
+      .from("workspaces")
+      .select("*")
+      .order("created_at", { ascending: true });
+    if (data) setWorkspacesList(data as Workspace[]);
+
+    const { data: memberData } = await supabase
+      .from("workspace_members")
+      .select("workspace_id");
+    if (memberData) {
+      const counts = new Map<string, number>();
+      for (const row of memberData) {
+        counts.set(row.workspace_id, (counts.get(row.workspace_id) ?? 0) + 1);
+      }
+      setWorkspaceMemberCounts(counts);
+    }
+  }, []);
+
   useEffect(() => {
     fetchUsers();
-  }, [fetchUsers]);
+    fetchWorkspaces();
+  }, [fetchUsers, fetchWorkspaces]);
 
   if (userLoading || loading) {
     return (
@@ -250,6 +279,28 @@ export default function AdminPage() {
       return;
     }
 
+    // Auto-add new user to default workspace
+    const { data: newUserData } = await supabase
+      .from("users")
+      .select("id")
+      .eq("token", token)
+      .single();
+
+    if (newUserData) {
+      const { data: defaultWs } = await supabase
+        .from("workspaces")
+        .select("id")
+        .eq("is_default", true)
+        .single();
+
+      if (defaultWs) {
+        await supabase.from("workspace_members").insert({
+          workspace_id: defaultWs.id,
+          user_id: newUserData.id,
+        });
+      }
+    }
+
     if (isAgent && webhookUrl) {
       if (healthCheckUrl && !healthCheckUrl.startsWith("https://")) {
         alert("Health check URL must start with https://");
@@ -257,14 +308,8 @@ export default function AdminPage() {
         return;
       }
 
-      const { data: newUsers } = await supabase
-        .from("users")
-        .select("id")
-        .eq("token", token)
-        .single();
-
-      if (newUsers) {
-        const configResult = await createConfig(newUsers.id, webhookUrl, webhookSecret || undefined, healthCheckUrl || undefined);
+      if (newUserData) {
+        const configResult = await createConfig(newUserData.id, webhookUrl, webhookSecret || undefined, healthCheckUrl || undefined);
         if (configResult.error) {
           alert(`User created but webhook config failed: ${configResult.error}`);
         }
@@ -300,6 +345,28 @@ export default function AdminPage() {
     const supabase = createBrowserSupabaseClient();
     await supabase.from("users").delete().eq("id", userId);
     fetchUsers();
+  }
+
+  async function deleteWorkspace(workspace: Workspace) {
+    if (workspace.is_default) return;
+    if (!confirm(`Delete workspace "${workspace.name}"? Conversations will be moved to Default.`)) return;
+
+    const supabase = createBrowserSupabaseClient();
+    const { data: defaultWs } = await supabase
+      .from("workspaces")
+      .select("id")
+      .eq("is_default", true)
+      .single();
+
+    if (defaultWs) {
+      await supabase
+        .from("conversations")
+        .update({ workspace_id: defaultWs.id })
+        .eq("workspace_id", workspace.id);
+    }
+
+    await supabase.from("workspaces").delete().eq("id", workspace.id);
+    fetchWorkspaces();
   }
 
   function renderUserRow(appUser: User) {
@@ -363,7 +430,7 @@ export default function AdminPage() {
   return (
     <div className="min-h-screen bg-neutral-50">
       <div className="max-w-2xl mx-auto px-3 sm:px-4 py-4 sm:py-8">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <button
               onClick={() => router.push("/chat")}
@@ -372,18 +439,112 @@ export default function AdminPage() {
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
-            <h1 className="text-xl font-bold text-neutral-900">Manage Users</h1>
+            <h1 className="text-xl font-bold text-neutral-900">Admin</h1>
           </div>
+          {activeTab === "users" && (
+            <button
+              onClick={() => setShowInvite(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold rounded-lg transition cursor-pointer"
+            >
+              <UserPlus className="w-4 h-4" />
+              Add
+            </button>
+          )}
+        </div>
+
+        {/* Tabs */}
+        <div className="flex gap-1 mb-4 bg-neutral-100 rounded-lg p-1">
           <button
-            onClick={() => setShowInvite(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold rounded-lg transition cursor-pointer"
+            onClick={() => setActiveTab("users")}
+            className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium rounded-md transition cursor-pointer ${
+              activeTab === "users"
+                ? "bg-white text-neutral-800 shadow-sm"
+                : "text-neutral-500 hover:text-neutral-700"
+            }`}
           >
-            <UserPlus className="w-4 h-4" />
-            Add
+            <Users className="w-4 h-4" />
+            Users
+          </button>
+          <button
+            onClick={() => setActiveTab("workspaces")}
+            className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium rounded-md transition cursor-pointer ${
+              activeTab === "workspaces"
+                ? "bg-white text-neutral-800 shadow-sm"
+                : "text-neutral-500 hover:text-neutral-700"
+            }`}
+          >
+            <Building2 className="w-4 h-4" />
+            Workspaces
           </button>
         </div>
 
-        {showInvite && (
+        {activeTab === "workspaces" && (
+          <div className="space-y-4">
+            <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden shadow-sm">
+              <div className="px-5 py-3 border-b border-neutral-100 flex items-center gap-2">
+                <Building2 className="w-4 h-4 text-neutral-400" />
+                <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">
+                  Workspaces ({workspacesList.length})
+                </p>
+              </div>
+              <div className="divide-y divide-neutral-100">
+                {workspacesList.map((workspace) => (
+                  <div key={workspace.id} className="flex items-center gap-3 px-5 py-3 hover:bg-neutral-50 transition">
+                    <div className="w-9 h-9 rounded-full bg-primary-100 flex items-center justify-center shrink-0">
+                      {workspace.avatar_url ? (
+                        <img src={workspace.avatar_url} alt={workspace.name} className="w-9 h-9 rounded-full object-cover" />
+                      ) : (
+                        <span className="text-sm font-bold text-primary-600">
+                          {workspace.name.charAt(0).toUpperCase()}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-neutral-800 truncate">
+                          {workspace.name}
+                        </span>
+                        {workspace.is_default && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-primary-100 text-primary-600">
+                            default
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-neutral-400">
+                        {workspaceMemberCounts.get(workspace.id) ?? 0} members
+                        {workspace.description ? ` — ${workspace.description}` : ""}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => setManagingMembers(workspace)}
+                        className="px-2 py-1 text-xs text-neutral-500 hover:text-neutral-700 hover:bg-neutral-100 rounded-md transition cursor-pointer"
+                      >
+                        Members
+                      </button>
+                      <button
+                        onClick={() => setEditingWorkspace(workspace)}
+                        className="px-2 py-1 text-xs text-neutral-500 hover:text-neutral-700 hover:bg-neutral-100 rounded-md transition cursor-pointer"
+                      >
+                        Edit
+                      </button>
+                      {!workspace.is_default && (
+                        <button
+                          onClick={() => deleteWorkspace(workspace)}
+                          className="p-1 text-neutral-300 hover:text-red-500 hover:bg-red-50 rounded-md transition cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === "users" && showInvite && (
           <div className="bg-white rounded-xl border border-neutral-200 p-5 mb-6 shadow-sm">
             {generatedToken ? (
               <div>
@@ -493,7 +654,7 @@ export default function AdminPage() {
           </div>
         )}
 
-        {agents.length > 0 && (
+        {activeTab === "users" && agents.length > 0 && (
           <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden mb-4 shadow-sm">
             <div className="px-5 py-3 border-b border-neutral-100 flex items-center gap-2">
               <Bot className="w-4 h-4 text-neutral-400" />
@@ -507,7 +668,7 @@ export default function AdminPage() {
           </div>
         )}
 
-        <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden shadow-sm">
+        {activeTab === "users" && <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden shadow-sm">
           <div className="px-5 py-3 border-b border-neutral-100 flex items-center gap-2">
             <Users className="w-4 h-4 text-neutral-400" />
             <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">
@@ -523,8 +684,23 @@ export default function AdminPage() {
               people.map(renderUserRow)
             )}
           </div>
-        </div>
+        </div>}
       </div>
+
+      {editingWorkspace && (
+        <WorkspaceSettings
+          workspace={editingWorkspace}
+          onClose={() => setEditingWorkspace(null)}
+          onSaved={fetchWorkspaces}
+        />
+      )}
+
+      {managingMembers && (
+        <WorkspaceMembers
+          workspace={managingMembers}
+          onClose={() => setManagingMembers(null)}
+        />
+      )}
 
       {editingUser && (
         <EditUserDialog

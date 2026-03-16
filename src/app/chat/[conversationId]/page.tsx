@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ChatHeader } from "@/components/chat/chat-header";
 import { MessageList } from "@/components/chat/message-list";
 import { ChatInput } from "@/components/chat/chat-input";
@@ -9,12 +9,13 @@ import { ChatInfoPanel } from "@/components/chat/chat-info-panel";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { useRealtimeMessages } from "@/hooks/use-realtime-messages";
 import { useConversations } from "@/hooks/use-conversations";
-import { useSupabasePresence } from "@/hooks/use-supabase-presence";
 import { useTypingIndicator } from "@/hooks/use-typing-indicator";
 import { useReactions } from "@/hooks/use-reactions";
 import { useAgentThinking } from "@/hooks/use-agent-thinking";
 import { useConversationMembers } from "@/hooks/use-conversation-members";
 import { useAgentHealthContext } from "@/hooks/use-agent-health-context";
+import { useWorkspaceContext } from "@/contexts/workspace-context";
+import { usePresenceContext } from "@/contexts/presence-context";
 import { Loader2 } from "lucide-react";
 
 export default function ConversationPage() {
@@ -22,10 +23,11 @@ export default function ConversationPage() {
   const conversationId = params.conversationId as string;
 
   const { currentUser } = useCurrentUser();
+  const { activeWorkspace } = useWorkspaceContext();
+  const { onlineUsers, onlineUserIds } = usePresenceContext();
   const { messages, loading, hasMore, loadMore, markAsRead, addOptimisticMessage } =
     useRealtimeMessages(conversationId);
-  const { conversations, refetch: refetchConversations } = useConversations();
-  const { onlineUsers } = useSupabasePresence(currentUser);
+  const { conversations, refetch: refetchConversations } = useConversations(activeWorkspace?.id ?? null);
   const [showInfo, setShowInfo] = useState(false);
 
   const { typingUsers, sendTyping } = useTypingIndicator(
@@ -43,16 +45,6 @@ export default function ConversationPage() {
     () => conversations.find((conv) => conv.id === conversationId),
     [conversations, conversationId]
   );
-
-  const onlineUserIds = useMemo(
-    () => onlineUsers.map((onlineUser) => onlineUser.user_id),
-    [onlineUsers]
-  );
-
-  const isOtherOnline = useMemo(() => {
-    if (!conversation?.other_user) return false;
-    return onlineUserIds.includes(conversation.other_user.id);
-  }, [conversation, onlineUserIds]);
 
   const { getStatus: getAgentHealthStatus } = useAgentHealthContext();
   const { members } = useConversationMembers(conversationId);
@@ -90,6 +82,11 @@ export default function ConversationPage() {
       </div>
     );
   }
+
+  const isOtherOnline = useMemo(() => {
+    if (!conversation?.other_user) return false;
+    return onlineUserIds.includes(conversation.other_user.id);
+  }, [conversation, onlineUserIds]);
 
   const inputPlaceholder =
     conversation.type === "group"

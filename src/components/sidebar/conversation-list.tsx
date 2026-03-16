@@ -6,6 +6,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { Hash, Archive, Pin } from "lucide-react";
 import { CollapsibleSection } from "./collapsible-section";
 import { usePinnedConversations } from "@/hooks/use-pinned-conversations";
+import { useWorkspaceContext } from "@/contexts/workspace-context";
 import type { ConversationWithDetails } from "@/types/database";
 import type { AgentHealthStatus } from "@/hooks/use-agent-health";
 
@@ -61,8 +62,9 @@ export function ConversationList({
   currentUserId,
   getAgentHealthStatus,
 }: ConversationListProps) {
+  const { activeWorkspace } = useWorkspaceContext();
   const { pinnedIds, togglePin, cleanStalePins } =
-    usePinnedConversations(currentUserId);
+    usePinnedConversations(currentUserId, activeWorkspace?.id);
 
   const dmConversations = conversations.filter((conv) => conv.type === "dm");
   const activeGroups = conversations.filter(

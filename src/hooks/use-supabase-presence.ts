@@ -11,7 +11,7 @@ export interface OnlineUser {
   avatar_url: string | null;
 }
 
-export function useSupabasePresence(currentUser: User | null) {
+export function useSupabasePresence(currentUser: User | null, workspaceId: string | null) {
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
   const [newlyOnlineUsers, setNewlyOnlineUsers] = useState<OnlineUser[]>([]);
   const channelRef = useRef<ReturnType<ReturnType<typeof createBrowserSupabaseClient>["channel"]> | null>(null);
@@ -23,14 +23,14 @@ export function useSupabasePresence(currentUser: User | null) {
   const userId = currentUser?.id;
 
   useEffect(() => {
-    if (!userId || !currentUserRef.current) return;
+    if (!userId || !currentUserRef.current || !workspaceId) return;
 
     isInitialSyncRef.current = true;
     previousIdsRef.current = new Set();
 
     const userSnapshot = currentUserRef.current;
     const supabase = createBrowserSupabaseClient();
-    const channel = supabase.channel("online-users");
+    const channel = supabase.channel(`online-users-${workspaceId}`);
     channelRef.current = channel;
 
     channel
@@ -90,7 +90,7 @@ export function useSupabasePresence(currentUser: User | null) {
     return () => {
       channel.unsubscribe();
     };
-  }, [userId]);
+  }, [userId, workspaceId]);
 
   const clearNewlyOnline = useCallback(() => {
     setNewlyOnlineUsers([]);

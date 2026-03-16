@@ -19,12 +19,30 @@ export interface User {
   created_at: string;
 }
 
+export interface Workspace {
+  id: string;
+  name: string;
+  avatar_url: string | null;
+  description: string | null;
+  is_default: boolean;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WorkspaceMember {
+  workspace_id: string;
+  user_id: string;
+  joined_at: string;
+}
+
 export interface Conversation {
   id: string;
   type: ConversationType;
   name: string | null;
   created_by: string;
   is_archived: boolean;
+  workspace_id: string;
   created_at: string;
   updated_at: string;
 }
@@ -139,14 +157,16 @@ export interface Database {
       agent_configs: { Row: AgentConfig; Insert: Omit<AgentConfig, "id" | "created_at" | "updated_at">; Update: Partial<AgentConfig>; Relationships: [] };
       webhook_delivery_logs: { Row: WebhookDeliveryLog; Insert: Omit<WebhookDeliveryLog, "id" | "created_at">; Update: Partial<WebhookDeliveryLog>; Relationships: [] };
       user_sessions: { Row: UserSession; Insert: Omit<UserSession, "id" | "created_at">; Update: Partial<UserSession>; Relationships: [] };
+      workspaces: { Row: Workspace; Insert: Omit<Workspace, "id" | "created_at" | "updated_at">; Update: Partial<Workspace>; Relationships: [] };
+      workspace_members: { Row: WorkspaceMember; Insert: Omit<WorkspaceMember, "joined_at">; Update: Partial<WorkspaceMember>; Relationships: [] };
     };
     Views: Record<string, never>;
     Functions: {
-      find_or_create_dm: { Args: { other_user_id: string }; Returns: string };
+      find_or_create_dm: { Args: { other_user_id: string; ws_id: string }; Returns: string };
       get_unread_counts: { Args: Record<string, never>; Returns: { conversation_id: string; unread_count: number }[] };
       mark_conversation_read: { Args: { conv_id: string }; Returns: void };
-      get_my_conversations: { Args: Record<string, never>; Returns: ConversationWithDetails[] };
-      create_group: { Args: { group_name: string; member_ids: string[] }; Returns: string };
+      get_my_conversations: { Args: { ws_id?: string }; Returns: ConversationWithDetails[] };
+      create_group: { Args: { group_name: string; member_ids: string[]; ws_id: string }; Returns: string };
     };
   };
 }

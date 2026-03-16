@@ -9,11 +9,13 @@ import type { User } from "@/types/database";
 
 interface CreateGroupDialogProps {
   currentUserId: string;
+  workspaceId: string;
   onClose: () => void;
 }
 
 export function CreateGroupDialog({
   currentUserId,
+  workspaceId,
   onClose,
 }: CreateGroupDialogProps) {
   const router = useRouter();
@@ -26,14 +28,20 @@ export function CreateGroupDialog({
     async function fetchUsers() {
       const supabase = createBrowserSupabaseClient();
       const { data } = await supabase
-        .from("users_public")
-        .select("*")
-        .eq("is_active", true)
-        .neq("id", currentUserId);
-      if (data) setAllUsers(data as User[]);
+        .from("workspace_members")
+        .select("user:users!inner(id, display_name, avatar_url, is_agent, is_active, role)")
+        .eq("workspace_id", workspaceId)
+        .neq("user_id", currentUserId);
+
+      if (data) {
+        const workspaceUsers = (data as unknown as { user: User }[])
+          .map((row) => row.user)
+          .filter((appUser) => appUser.is_active);
+        setAllUsers(workspaceUsers);
+      }
     }
     fetchUsers();
-  }, [currentUserId]);
+  }, [currentUserId, workspaceId]);
 
   function toggleUser(userId: string) {
     setSelectedUsers((prev) =>
@@ -52,6 +60,7 @@ export function CreateGroupDialog({
     const { data: conversationId, error } = await supabase.rpc("create_group", {
       group_name: groupName.trim(),
       member_ids: selectedUsers,
+      ws_id: workspaceId,
     });
 
     if (error || !conversationId) {

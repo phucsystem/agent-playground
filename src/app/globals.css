@@ -37,6 +37,7 @@
   --font-mono: "SF Mono", "Roboto Mono", "JetBrains Mono", monospace;
 
   /* Layout */
+  --workspace-rail-width: 60px;
   --sidebar-width: 260px;
   --header-height: 56px;
   --info-panel-width: 320px;

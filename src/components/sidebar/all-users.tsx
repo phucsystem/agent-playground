@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { Avatar } from "@/components/ui/avatar";
 import { CollapsibleSection } from "./collapsible-section";
+import { useWorkspaceContext } from "@/contexts/workspace-context";
 import type { User } from "@/types/database";
 
 interface AllUsersProps {
@@ -14,20 +15,38 @@ interface AllUsersProps {
 
 export function AllUsers({ currentUserId, onlineUserIds, onClickUser }: AllUsersProps) {
   const [users, setUsers] = useState<User[]>([]);
+  const { activeWorkspace } = useWorkspaceContext();
 
   useEffect(() => {
     async function fetchUsers() {
       const supabase = createBrowserSupabaseClient();
-      const { data } = await supabase
-        .from("users_public")
-        .select("*")
-        .eq("is_active", true)
-        .neq("id", currentUserId)
-        .order("display_name");
-      if (data) setUsers(data as User[]);
+
+      if (activeWorkspace) {
+        const { data } = await supabase
+          .from("workspace_members")
+          .select("user:users!inner(id, display_name, avatar_url, is_agent, last_seen_at, role, is_active)")
+          .eq("workspace_id", activeWorkspace.id)
+          .neq("user_id", currentUserId);
+
+        if (data) {
+          const workspaceUsers = (data as unknown as { user: User }[])
+            .map((row) => row.user)
+            .filter((appUser) => appUser.is_active)
+            .sort((a, b) => a.display_name.localeCompare(b.display_name));
+          setUsers(workspaceUsers);
+        }
+      } else {
+        const { data } = await supabase
+          .from("users_public")
+          .select("*")
+          .eq("is_active", true)
+          .neq("id", currentUserId)
+          .order("display_name");
+        if (data) setUsers(data as User[]);
+      }
     }
     fetchUsers();
-  }, [currentUserId]);
+  }, [currentUserId, activeWorkspace]);
 
   if (users.length === 0) return null;
 

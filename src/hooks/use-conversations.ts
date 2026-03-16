@@ -4,13 +4,17 @@ import { useEffect, useState, useCallback } from "react";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import type { ConversationWithDetails } from "@/types/database";
 
-export function useConversations() {
+export function useConversations(workspaceId: string | null) {
   const [conversations, setConversations] = useState<ConversationWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchConversations = useCallback(async () => {
+    if (!workspaceId) return;
+
     const supabase = createBrowserSupabaseClient();
-    const { data, error } = await supabase.rpc("get_my_conversations");
+    const { data, error } = await supabase.rpc("get_my_conversations", {
+      ws_id: workspaceId,
+    });
 
     if (!error && data) {
       setConversations(
@@ -18,14 +22,16 @@ export function useConversations() {
       );
     }
     setLoading(false);
-  }, []);
+  }, [workspaceId]);
 
   useEffect(() => {
     fetchConversations();
 
+    if (!workspaceId) return;
+
     const supabase = createBrowserSupabaseClient();
     const channel = supabase
-      .channel("conversation-updates")
+      .channel(`conversation-updates-${workspaceId}`)
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "messages" },
@@ -45,7 +51,7 @@ export function useConversations() {
     return () => {
       channel.unsubscribe();
     };
-  }, [fetchConversations]);
+  }, [fetchConversations, workspaceId]);
 
   return { conversations, loading, refetch: fetchConversations };
 }

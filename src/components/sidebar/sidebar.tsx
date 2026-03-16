@@ -8,6 +8,7 @@ import { ConversationList } from "./conversation-list";
 import { Settings, X } from "lucide-react";
 import Link from "next/link";
 import { useMobileSidebar } from "@/hooks/use-mobile-sidebar";
+import { useWorkspaceContext } from "@/contexts/workspace-context";
 import type { User, ConversationWithDetails } from "@/types/database";
 import type { AgentHealthStatus } from "@/hooks/use-agent-health";
 
@@ -32,11 +33,14 @@ export function Sidebar({
 }: SidebarProps) {
   const router = useRouter();
   const { close } = useMobileSidebar();
+  const { activeWorkspace } = useWorkspaceContext();
 
   async function handleStartDM(otherUserId: string) {
+    if (!activeWorkspace) return;
     const supabase = createBrowserSupabaseClient();
     const { data } = await supabase.rpc("find_or_create_dm", {
       other_user_id: otherUserId,
+      ws_id: activeWorkspace.id,
     });
     if (data) {
       router.push(`/chat/${data}`);
