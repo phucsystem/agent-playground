@@ -122,7 +122,7 @@ export default function SetupPage() {
         <label className="block text-xs font-semibold text-neutral-500 mb-2 uppercase tracking-wide">
           Avatar style
         </label>
-        <div className="grid grid-cols-6 gap-2 mb-6">
+        <div className="grid grid-cols-4 sm:grid-cols-6 gap-2 mb-6">
           {previewAvatars.map(({ style, url }) => (
             <button
               key={style}

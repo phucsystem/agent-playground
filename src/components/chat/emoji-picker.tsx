@@ -67,7 +67,7 @@ export function EmojiPicker({ onSelect, onClose }: EmojiPickerProps) {
     : EMOJI_CATEGORIES[activeCategory].emojis;
 
   return (
-    <div className="absolute bottom-full left-0 mb-2 bg-white border border-neutral-200 rounded-xl shadow-lg w-[320px] z-50">
+    <div className="absolute bottom-full left-0 mb-2 bg-white border border-neutral-200 rounded-xl shadow-lg w-[calc(100vw-1rem)] sm:w-[320px] max-w-[320px] z-50">
       <div className="p-2 border-b border-neutral-100">
         <input
           value={search}

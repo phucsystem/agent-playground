@@ -123,7 +123,7 @@ export function MessageItem({
             onToggle={onToggleReaction}
           />
         </div>
-        <div className="max-w-[70%]">
+        <div className="max-w-[85%] md:max-w-[70%]">
           {!isGrouped && (
             <p className="text-[11px] text-neutral-400 text-right mb-0.5 mr-1">
               {formatTimestamp(message.created_at)}
@@ -159,7 +159,7 @@ export function MessageItem({
         <div className="w-8 shrink-0" />
       )}
 
-      <div className="max-w-[70%] min-w-0">
+      <div className="max-w-[85%] md:max-w-[70%] min-w-0">
         {!isGrouped && (
           <div className="flex items-baseline gap-2 mb-0.5">
             <span

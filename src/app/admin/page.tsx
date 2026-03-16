@@ -302,7 +302,7 @@ export default function AdminPage() {
       <div
         key={appUser.id}
         onClick={() => setEditingUser(appUser)}
-        className={`flex items-center gap-3 px-5 py-3 hover:bg-neutral-50 transition cursor-pointer ${
+        className={`flex items-center gap-2 sm:gap-3 px-3 sm:px-5 py-3 hover:bg-neutral-50 transition cursor-pointer ${
           !appUser.is_active ? "opacity-50" : ""
         }`}
       >
@@ -354,7 +354,7 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen bg-neutral-50">
-      <div className="max-w-2xl mx-auto px-4 py-8">
+      <div className="max-w-2xl mx-auto px-3 sm:px-4 py-4 sm:py-8">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
             <button

@@ -115,7 +115,7 @@ export default function ConversationPage() {
         />
 
         {conversation.is_archived ? (
-          <div className="mx-6 mb-4 px-4 py-3 bg-neutral-100 rounded-2xl text-center">
+          <div className="mx-2 sm:mx-4 md:mx-6 mb-2 md:mb-4 px-4 py-3 bg-neutral-100 rounded-2xl text-center">
             <p className="text-sm text-neutral-500">This group is archived. You can read messages but cannot send new ones.</p>
           </div>
         ) : (

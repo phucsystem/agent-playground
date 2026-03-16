@@ -156,7 +156,7 @@ export function MessageList({
         )}
 
         <div
-          className="absolute top-0 left-0 w-full px-6"
+          className="absolute top-0 left-0 w-full px-2 sm:px-4 md:px-6"
           style={{
             transform: `translateY(${virtualItems[0]?.start ?? 0}px)`,
           }}
@@ -185,14 +185,14 @@ export function MessageList({
         </div>
       </div>
 
-      <div className="px-6">
+      <div className="px-2 sm:px-4 md:px-6">
         <TypingIndicator typingUsers={typingUsers} agentThinking={agentThinking} />
       </div>
 
       {showScrollDown && (
         <button
           onClick={() => scrollToBottom()}
-          className="fixed bottom-24 right-8 w-10 h-10 bg-white border border-neutral-200 rounded-full shadow-md flex items-center justify-center hover:bg-neutral-50 transition cursor-pointer"
+          className="fixed bottom-20 right-4 md:bottom-24 md:right-8 w-10 h-10 bg-white border border-neutral-200 rounded-full shadow-md flex items-center justify-center hover:bg-neutral-50 transition cursor-pointer z-30"
         >
           <ArrowDown className="w-4 h-4 text-neutral-600" />
         </button>

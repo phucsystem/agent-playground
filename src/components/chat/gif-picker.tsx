@@ -63,7 +63,7 @@ export function GifPicker({ onSelect, onClose }: GifPickerProps) {
 
   if (!GIPHY_API_KEY) {
     return (
-      <div className="absolute bottom-full left-0 mb-2 bg-white border border-neutral-200 rounded-xl shadow-lg w-[320px] z-50 p-4">
+      <div className="absolute bottom-full left-0 mb-2 bg-white border border-neutral-200 rounded-xl shadow-lg w-[calc(100vw-1rem)] sm:w-[320px] max-w-[320px] z-50 p-4">
         <p className="text-sm text-neutral-500 text-center">
           GIF search requires NEXT_PUBLIC_GIPHY_API_KEY in .env
         </p>
@@ -72,7 +72,7 @@ export function GifPicker({ onSelect, onClose }: GifPickerProps) {
   }
 
   return (
-    <div className="absolute bottom-full left-0 mb-2 bg-white border border-neutral-200 rounded-xl shadow-lg w-[320px] z-50">
+    <div className="absolute bottom-full left-0 mb-2 bg-white border border-neutral-200 rounded-xl shadow-lg w-[calc(100vw-1rem)] sm:w-[320px] max-w-[320px] z-50">
       <div className="p-2 border-b border-neutral-100">
         <input
           value={query}

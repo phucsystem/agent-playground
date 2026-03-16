@@ -102,7 +102,13 @@ export function ChatInfoPanel({
   }
 
   return (
-    <div className="w-[var(--info-panel-width)] border-l border-neutral-200 bg-white h-full overflow-y-auto shrink-0">
+    <>
+      {/* Mobile backdrop */}
+      <div
+        className="fixed inset-0 bg-black/40 z-40 md:hidden"
+        onClick={onClose}
+      />
+    <div className="fixed inset-0 z-50 md:relative md:inset-auto md:z-auto w-full md:w-[var(--info-panel-width)] border-l border-neutral-200 bg-white h-full overflow-y-auto shrink-0">
       <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-200 sticky top-0 bg-white z-10">
         <h3 className="text-sm font-semibold text-neutral-800">Chat Info</h3>
         <button
@@ -245,5 +251,6 @@ export function ChatInfoPanel({
         </div>
       )}
     </div>
+    </>
   );
 }

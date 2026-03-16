@@ -209,7 +209,7 @@ export function ChatInput({
   }
 
   return (
-    <div className="mx-6 mb-4">
+    <div className="mx-2 sm:mx-4 md:mx-6 mb-2 md:mb-4">
       {pendingFile && (
         <div className="flex items-center gap-2 mb-2 px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-xl">
           <Paperclip className="w-4 h-4 text-neutral-400" />

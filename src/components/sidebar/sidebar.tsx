@@ -5,8 +5,9 @@ import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { UserProfile } from "./user-profile";
 import { AllUsers } from "./all-users";
 import { ConversationList } from "./conversation-list";
-import { Settings } from "lucide-react";
+import { Settings, X } from "lucide-react";
 import Link from "next/link";
+import { useMobileSidebar } from "@/hooks/use-mobile-sidebar";
 import type { User, ConversationWithDetails } from "@/types/database";
 
 interface SidebarProps {
@@ -27,6 +28,7 @@ export function Sidebar({
   onCreateGroup,
 }: SidebarProps) {
   const router = useRouter();
+  const { close } = useMobileSidebar();
 
   async function handleStartDM(otherUserId: string) {
     const supabase = createBrowserSupabaseClient();
@@ -46,8 +48,19 @@ export function Sidebar({
   }
 
   return (
-    <aside className="w-[var(--sidebar-width)] bg-neutral-100 border-r border-neutral-200 fixed top-0 left-0 bottom-0 flex flex-col z-50 overflow-hidden">
-      <UserProfile currentUser={currentUser} onLogout={handleLogout} />
+    <aside className="w-full h-full bg-neutral-100 border-r border-neutral-200 flex flex-col z-50 overflow-hidden">
+      <div className="flex items-center">
+        <div className="flex-1">
+          <UserProfile currentUser={currentUser} onLogout={handleLogout} />
+        </div>
+        <button
+          onClick={close}
+          className="md:hidden p-2 mr-2 text-neutral-400 hover:text-neutral-700 transition cursor-pointer"
+          aria-label="Close sidebar"
+        >
+          <X className="w-5 h-5" />
+        </button>
+      </div>
 
       <div className="flex-1 overflow-y-auto">
         <ConversationList
@@ -67,7 +80,7 @@ export function Sidebar({
       <div className="p-3 border-t border-neutral-200 space-y-2" style={{ marginTop: "auto" }}>
         <button
           onClick={onCreateGroup}
-          className="w-full flex items-center justify-center gap-2 py-2 px-4 bg-primary-100 text-primary-500 text-sm font-medium rounded-lg hover:bg-primary-200 transition"
+          className="w-full flex items-center justify-center gap-2 py-2 px-4 bg-primary-100 text-primary-500 text-sm font-medium rounded-lg hover:bg-primary-200 transition cursor-pointer min-h-[44px]"
         >
           <span className="text-lg">+</span>
           New Conversation
@@ -76,7 +89,7 @@ export function Sidebar({
         {currentUser.role === "admin" && (
           <Link
             href="/admin"
-            className="w-full flex items-center justify-center gap-2 py-2 px-4 text-neutral-500 text-sm font-medium rounded-lg hover:bg-neutral-200 transition"
+            className="w-full flex items-center justify-center gap-2 py-2 px-4 text-neutral-500 text-sm font-medium rounded-lg hover:bg-neutral-200 transition min-h-[44px]"
           >
             <Settings className="w-4 h-4" />
             Manage Users
