@@ -98,7 +98,7 @@ async function dispatchToAgent(
 
   // Send in simple format the agent expects
   const agentRequestPayload = {
-    message: webhookPayload.message.content,
+    message: { content: webhookPayload.message.content },
     sender: webhookPayload.message.sender_name,
     conversation_id: webhookPayload.message.conversation_id,
     message_id: webhookPayload.message.id,
