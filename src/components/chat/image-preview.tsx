@@ -10,14 +10,19 @@ interface ImagePreviewProps {
 
 export function ImagePreview({ src, alt }: ImagePreviewProps) {
   const [showLightbox, setShowLightbox] = useState(false);
+  const [loaded, setLoaded] = useState(false);
 
   return (
     <>
       <button onClick={() => setShowLightbox(true)} className="mt-1 block">
+        {!loaded && (
+          <div className="w-[300px] h-[200px] bg-neutral-200 animate-pulse rounded-xl" />
+        )}
         <img
           src={src}
           alt={alt}
-          className="max-w-[300px] max-h-[200px] rounded-xl object-cover border border-neutral-200 hover:border-primary-300 transition cursor-pointer"
+          onLoad={() => setLoaded(true)}
+          className={`max-w-[300px] max-h-[200px] rounded-xl object-cover border border-neutral-200 hover:border-primary-300 transition cursor-pointer ${loaded ? "" : "h-0 overflow-hidden"}`}
         />
       </button>
 

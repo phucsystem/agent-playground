@@ -45,6 +45,7 @@ export function MessageList({
   const bottomRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [showScrollDown, setShowScrollDown] = useState(false);
+  const [visible, setVisible] = useState(true);
   const prevMessageCount = useRef(0);
   const isAtBottomRef = useRef(true);
 
@@ -54,15 +55,20 @@ export function MessageList({
 
   useEffect(() => {
     prevMessageCount.current = 0;
+    setVisible(false);
   }, [conversationId]);
 
   useEffect(() => {
     if (messages.length > 0 && prevMessageCount.current === 0) {
-      const scrollToEnd = () => bottomRef.current?.scrollIntoView();
-      requestAnimationFrame(scrollToEnd);
-      const delayedScroll = setTimeout(scrollToEnd, 500);
       prevMessageCount.current = messages.length;
-      return () => clearTimeout(delayedScroll);
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          const container = containerRef.current;
+          if (container) container.scrollTop = container.scrollHeight;
+          setVisible(true);
+        });
+      });
+      return;
     }
     if (messages.length > prevMessageCount.current && isAtBottomRef.current) {
       bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -96,7 +102,7 @@ export function MessageList({
     <div
       ref={containerRef}
       onScroll={handleScroll}
-      className="flex-1 overflow-y-auto px-6 py-4"
+      className={`flex-1 overflow-y-auto px-6 py-4 transition-opacity duration-200 ${visible ? "opacity-100" : "opacity-0"}`}
     >
       {hasMore && (
         <div className="flex justify-center py-2">

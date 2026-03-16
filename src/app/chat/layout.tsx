@@ -40,7 +40,7 @@ export default function ChatLayout({
   }
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex h-screen">
       <Sidebar
         currentUser={currentUser}
         onlineUserIds={onlineUserIds}
