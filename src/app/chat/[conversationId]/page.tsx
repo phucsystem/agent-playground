@@ -58,6 +58,15 @@ export default function ConversationPage() {
     [members]
   );
 
+  const isOtherOnline = useMemo(() => {
+    if (!conversation?.other_user) return false;
+    return onlineUserIds.includes(conversation.other_user.id);
+  }, [conversation, onlineUserIds]);
+
+  const inputPlaceholder = conversation?.type === "group"
+    ? `Message #${conversation?.name}...`
+    : "Type a message...";
+
   useEffect(() => {
     markAsRead();
   }, [markAsRead, messages.length]);
@@ -82,16 +91,6 @@ export default function ConversationPage() {
       </div>
     );
   }
-
-  const isOtherOnline = useMemo(() => {
-    if (!conversation?.other_user) return false;
-    return onlineUserIds.includes(conversation.other_user.id);
-  }, [conversation, onlineUserIds]);
-
-  const inputPlaceholder =
-    conversation.type === "group"
-      ? `Message #${conversation.name}...`
-      : "Type a message...";
 
   return (
     <div className="flex flex-1 min-h-0">
