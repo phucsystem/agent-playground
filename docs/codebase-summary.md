@@ -6,7 +6,7 @@
 
 ## Overview
 
-Agent Playground is a ~6,080 LOC Next.js chat application with Supabase backend + webhook agent integration + client-side agent thinking indicator. Organized into 52+ source files across app pages, components, hooks, utilities, 8 database migrations, and 1 Supabase Edge Function.
+Agent Playground is a ~6,080 LOC Next.js chat application with Supabase backend + webhook agent integration + client-side agent thinking indicator + mobile responsiveness. Organized into 55+ source files across app pages, components, hooks, utilities, 11 database migrations, and 1 Supabase Edge Function.
 
 ## File Counts & Distribution
 
@@ -14,15 +14,15 @@ Agent Playground is a ~6,080 LOC Next.js chat application with Supabase backend 
 |----------|-------|-------|
 | **App Pages** | 8 | login/page.tsx, chat/layout.tsx, chat/page.tsx, [conversationId]/page.tsx, setup/page.tsx, admin/page.tsx, admin/webhooks/page.tsx, api/auth/login/route.ts, middleware.ts |
 | **Components** | 24 | chat (10: messages, message-list, input, header, markdown, file, image, url, info, typing-indicator, reactions), sidebar (5: nav, users, conversations, create-group, user-profile), admin (3: webhook-config-form, agent-webhook-actions, webhook-log-row), ui (1: avatar) |
-| **Hooks** | 11 | use-current-user, use-conversations, use-realtime-messages, use-supabase-presence, use-file-upload, use-conversation-members, use-typing-indicator, use-agent-thinking (NEW), use-reactions, use-agent-configs, use-webhook-logs |
+| **Hooks** | 12 | use-current-user, use-conversations, use-realtime-messages, use-supabase-presence, use-file-upload, use-conversation-members, use-typing-indicator, use-agent-thinking, use-reactions, use-agent-configs, use-webhook-logs, use-pinned-conversations, use-mobile-sidebar |
 | **Library/Utils** | 4 | auth.ts, supabase/client.ts, supabase/server.ts, middleware.ts |
 | **Types** | 1 | database.ts (generated from schema) |
-| **Migrations** | 8 | 001_initial, 002_user_role, 003_admin_management, 004_mock_flag, 005_security_fixes, 006_fix_rls_recursion, 007_agent_webhooks, 008_webhook_debug_columns |
+| **Migrations** | 11 | 001_initial, 002_add_user_role, 003_admin_user_management, 004_add_mock_flag, 005_security_fixes, 006_fix_rls_recursion, 007_agent_webhooks, 008_webhook_debug_columns, 009_create_group_function, 010_archive_group, 011_get_conversation_members_fn |
 | **Edge Functions** | 1 | webhook-dispatch/index.ts |
 | **Seed Data** | 1 | seed.sql (6 users, 2 conversations, 10 messages, 2 webhook configs) |
 | **Config** | 4 | tsconfig.json, package.json, next.config.ts, postcss.config.mjs |
-| **Docs** | 5 | SRD.md, UI_SPEC.md, DB_DESIGN.md, API_SPEC.md, system-architecture.md |
-| **Total** | 52+ | Source files + config |
+| **Docs** | 6 | SRD.md, UI_SPEC.md, DB_DESIGN.md, API_SPEC.md, system-architecture.md, codebase-summary.md |
+| **Total** | 55+ | Source files + config |
 
 ## Directory Structure
 
@@ -66,7 +66,8 @@ agent-playground/
 │   │   │   ├── conversation-list.tsx    # Sorted by updated_at
 │   │   │   └── create-group-dialog.tsx  # Modal to create group
 │   │   └── ui/
-│   │       └── avatar.tsx               # Reusable avatar component
+│   │       ├── avatar.tsx               # Reusable avatar component
+│   │       └── presence-toast.tsx       # Online/offline presence notifications
 │   ├── hooks/
 │   │   ├── use-current-user.ts          # Fetch & cache user profile
 │   │   ├── use-conversations.ts         # Fetch all conversations
@@ -134,6 +135,8 @@ All data fetching and realtime subscriptions in custom hooks:
 - **use-conversation-members** — List group members
 - **use-typing-indicator** — Broadcast & listen to typing
 - **use-reactions** — Add/remove emoji reactions
+- **use-pinned-conversations** — Manage localStorage-based conversation pinning
+- **use-mobile-sidebar** — Control mobile sidebar visibility via context provider
 
 Components receive clean data/callbacks. No fetch logic in components.
 
@@ -198,6 +201,34 @@ const { addReaction } = useReactions();
 4. Realtime fires postgres_changes
 5. Component renders based on `content_type`
 
+### Mobile Responsive Architecture
+
+**MobileSidebarProvider** context (use-mobile-sidebar.tsx):
+- Provides `isSidebarOpen` state and `toggleSidebar` callback
+- Wraps chat/layout.tsx at root
+- On mobile (sm: breakpoint), sidebar slides as overlay
+- Hamburger menu toggles visibility
+
+**Responsive Breakpoints:**
+- `sm:` — mobile devices (640px+)
+- `md:` — tablets (768px+)
+- `lg:` — desktops (1024px+)
+
+### Conversation Pinning Pattern
+
+**Storage:** Browser localStorage key `pinned_conversations_{userId}`
+**State:** Array of conversation IDs pinned by user
+**Hook:** `usePinnedConversations` reads/writes to localStorage
+**UI:** Sidebar conversation list sorts pinned conversations to top
+**No Database:** Pinning is client-side preference, not synced across devices
+
+### Presence Toast Flow
+
+**Trigger:** use-supabase-presence detects online/offline status change
+**Components:** presence-toast.tsx displays dismissible toast via Sonner
+**Payload:** { user_id, display_name, avatar_url, status: 'online'|'offline' }
+**Latency:** <2s (Supabase presence sync)
+
 ## Dependencies (Core)
 
 | Package | Version | Purpose |
@@ -212,6 +243,7 @@ const { addReaction } = useReactions();
 | remark-gfm | 4.0.1 | Tables, strikethrough |
 | rehype-highlight | 7.0.2 | Code highlighting |
 | lucide-react | 0.577.0 | Icons |
+| sonner | — | Toast notifications |
 
 ## Database Schema (8 Tables)
 

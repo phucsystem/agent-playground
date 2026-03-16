@@ -3,7 +3,7 @@
 ## 1. System Overview
 
 **Project:** Agent Playground
-**Purpose:** Invite-only chat platform for AI agent builders to share agents with specific testers for real-world capability verification. Supports human-to-human DM, human-to-agent DM, and group conversations with mixed participants (humans + agents).
+**Purpose:** Playground for easy API integration via chat interface. Humans and AI agents collaborate on conversations and projects with real-time communication. External agents connect via webhooks. Future direction: expand to more tools and public agents.
 
 **Tech Stack:**
 - Frontend: Next.js + React + shadcn/ui + Tailwind CSS
@@ -80,6 +80,14 @@
 | FR-27 | Group @mention routing | P5 | In group conversations with multiple agents, only agents that are @mentioned (case-insensitive match against agent display_name) receive webhooks. No @mentions → "No agents mentioned" (200). DMs dispatch to all agents. | S-04 |
 | FR-28 | Agent thinking indicator | P5 | Display "Agent is thinking..." with animated dots when user sends message in agent DM. Clear when agent message arrives or after 30s timeout. Client-side heuristic, no backend involvement. | S-03 |
 | FR-29 | @Mention syntax support | P5 | Users can @mention agents in group messages using `@AgentName` syntax (case-insensitive). Only matched agents receive webhooks. | S-04 |
+
+### Phase 6 — Mobile & Presence (Post-Phase 5)
+
+| ID | Feature | Priority | Description | Screens |
+|----|---------|----------|-------------|---------|
+| FR-30 | Mobile responsive layout | P6 | Support mobile devices (sm:, md:, lg: breakpoints). Sidebar collapses on mobile, expandable via hamburger menu. Chat input adjusts for touch. | S-02, S-03, S-04 |
+| FR-31 | Conversation pinning | P6 | Users can pin conversations to top of list. Pinned state stored in browser localStorage per user. | S-02 |
+| FR-32 | Presence toasts | P6 | Toast notifications when users come online/offline. Dismissible via Sonner toast component. Includes user avatar and status. | — (UI) |
 
 ## 4. Screen List (S-xx)
 

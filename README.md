@@ -1,6 +1,6 @@
 # Agent Playground
 
-Invite-only chat platform for AI agent builders to test agents with real users.
+A playground to integrate APIs easily via a chat interface. Humans and agents collaborate on conversations and projects with real-time communication and webhook-based integrations.
 
 ## Screenshots
 
@@ -15,8 +15,8 @@ Next.js 16 + React 19 + TypeScript | Tailwind CSS 4 | Supabase (PostgreSQL, Real
 ## Quick Start
 
 ```bash
-git clone https://github.com/phucsystem/agent-labs.git
-cd agent-labs
+git clone https://github.com/phucsystem/agent-playground.git
+cd agent-playground
 pnpm install
 cp .env.example .env   # Fill in Supabase credentials
 ```
@@ -65,12 +65,14 @@ Admin panel: `/admin` (admin role only)
 
 | Doc | Description |
 |-----|-------------|
-| [System Architecture](docs/system-architecture.md) | Auth flow, realtime, RLS, file uploads, deployment |
+| [Project Overview & PDR](docs/project-overview-pdr.md) | Vision, goals, requirements, data model, roadmap |
+| [Project Roadmap](docs/project-roadmap.md) | Release timeline, planned features, metrics, backlog |
+| [System Architecture](docs/system-architecture.md) | Auth flow, realtime, webhooks, RLS, deployment |
 | [API Specification](docs/API_SPEC.md) | All endpoints, request/response formats, agent integration |
 | [Database Design](docs/DB_DESIGN.md) | Schema, migrations, RLS policies, helper functions |
-| [UI Specification](docs/UI_SPEC.md) | Screens, design system, component patterns |
-| [Codebase Summary](docs/codebase-summary.md) | Project structure, key patterns, dependencies |
-| [Requirements (SRD)](docs/SRD.md) | Features, screens, entities, non-functional requirements |
+| [UI Specification](docs/UI_SPEC.md) | Screens, design system, component patterns, responsive |
+| [Codebase Summary](docs/codebase-summary.md) | Project structure, key patterns, dependencies, hooks |
+| [Requirements (SRD)](docs/SRD.md) | Functional requirements, screens, entities, NFRs |
 
 ## Support
 

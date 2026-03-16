@@ -4,7 +4,7 @@
 
 ## Overview
 
-Agent Playground uses a three-tier architecture: Next.js frontend (React 19), Supabase backend (PostgreSQL + Realtime), and browser WebSocket for realtime sync.
+Agent Playground is a chat-based collaboration platform with easy API integration. Uses three-tier architecture: Next.js frontend (React 19), Supabase backend (PostgreSQL + Realtime), and browser WebSocket for realtime sync. Supports human-agent collaboration via webhook-based integrations.
 
 ## System Diagram
 
@@ -770,7 +770,15 @@ Stored in `agent_configs` table (one per agent). Created when admin checks "Is a
     "id": "conv-uuid",
     "type": "dm",
     "name": null,
-    "member_count": 2
+    "member_count": 2,
+    "history": [
+      {
+        "id": "msg-uuid-1",
+        "sender_name": "Phuc",
+        "content": "Earlier message",
+        "created_at": "2026-03-16T10:30:00Z"
+      }
+    ]
   },
   "agent": {
     "id": "agent-uuid",
@@ -890,7 +898,34 @@ Admin views logs via `/admin/webhooks` (S-08) with filters by agent, status, and
 - [ ] Test webhook delivery (via admin page)
 - [ ] Monitor Supabase dashboard for errors
 
+## Recent Enhancements (Post-Phase 5)
+
+### Mobile Responsive Layout
+- **Provider:** MobileSidebarProvider context wraps chat/layout.tsx
+- **Behavior:** Sidebar collapses on mobile (sm: breakpoint), toggles via hamburger menu
+- **State:** useMobileSidebar hook manages visibility
+- **Responsive:** Breakpoints at sm (640px), md (768px), lg (1024px)
+
+### Conversation Pinning
+- **Storage:** Browser localStorage (`pinned_conversations_{userId}`)
+- **Hook:** usePinnedConversations manages read/write operations
+- **UI:** Sidebar sorts pinned conversations to top of list
+- **Note:** Client-side preference, not synced across devices/browsers
+
+### Presence Toasts
+- **Component:** presence-toast.tsx displays online/offline status changes
+- **Library:** Sonner for dismissible notifications
+- **Trigger:** use-supabase-presence detects status changes via Presence API
+- **Payload:** User ID, display name, avatar, status (online/offline)
+- **Latency:** <2s from status change to toast display
+
+### Conversation History in Webhooks
+- **Payload:** conversation.history array includes recent message thread
+- **Use Case:** Agents receive context for better responses
+- **Format:** Includes message ID, sender name, content, timestamp
+- **Benefit:** Reduces need for agent to query conversation history
+
 ## Next Steps
 
-- Webhook integration complete. Phases 1-5 done.
-- Future: message search, conversation pinning, user blocking, message editing, call-to-action buttons, media gallery
+- Phases 1-5 complete + mobile/pinning/presence enhancements.
+- Future direction: more tools integration, public agents, project collaboration features
