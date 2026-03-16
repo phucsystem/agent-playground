@@ -251,6 +251,12 @@ export default function AdminPage() {
     }
 
     if (isAgent && webhookUrl) {
+      if (healthCheckUrl && !healthCheckUrl.startsWith("https://")) {
+        alert("Health check URL must start with https://");
+        setCreating(false);
+        return;
+      }
+
       const { data: newUsers } = await supabase
         .from("users")
         .select("id")
