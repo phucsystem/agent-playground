@@ -15,6 +15,8 @@ import { useAgentHealth } from "@/hooks/use-agent-health";
 import { AgentHealthContext } from "@/hooks/use-agent-health-context";
 import { AgentHealthToast } from "@/components/ui/agent-health-toast";
 import { CreateGroupDialog } from "@/components/sidebar/create-group-dialog";
+import { useNotificationSound } from "@/hooks/use-notification-sound";
+import { NotificationContext } from "@/hooks/use-notification-context";
 import { Loader2 } from "lucide-react";
 
 function ChatLayoutInner({ children }: { children: React.ReactNode }) {
@@ -25,6 +27,8 @@ function ChatLayoutInner({ children }: { children: React.ReactNode }) {
   const { getStatus: getAgentHealthStatus, transitions: healthTransitions, clearTransitions: clearHealthTransitions, markActive } = useAgentHealth();
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const { isOpen, close } = useMobileSidebar();
+
+  const { triggerTestNotification } = useNotificationSound(currentUser, conversations);
 
   const activeConversationId = pathname.split("/chat/")[1];
 
@@ -153,7 +157,9 @@ function ChatLayoutInner({ children }: { children: React.ReactNode }) {
       {/* Main content area */}
       <main className="flex-1 flex flex-col min-h-dvh ml-0 md:ml-[var(--sidebar-width)]">
         <AgentHealthContext.Provider value={{ getStatus: getAgentHealthStatus, markActive }}>
-          {children}
+          <NotificationContext.Provider value={{ triggerTestNotification }}>
+            {children}
+          </NotificationContext.Provider>
         </AgentHealthContext.Provider>
       </main>
 

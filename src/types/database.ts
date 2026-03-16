@@ -13,6 +13,7 @@ export interface User {
   is_agent: boolean;
   is_active: boolean;
   is_mock: boolean;
+  notification_enabled: boolean;
   token: string;
   last_seen_at: string | null;
   created_at: string;

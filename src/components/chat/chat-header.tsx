@@ -1,8 +1,9 @@
 "use client";
 
 import { Avatar } from "@/components/ui/avatar";
-import { Info, Users, ArrowLeft } from "lucide-react";
+import { Info, Users, ArrowLeft, BellRing } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useNotificationContext } from "@/hooks/use-notification-context";
 import type { ConversationWithDetails } from "@/types/database";
 import type { AgentHealthStatus } from "@/hooks/use-agent-health";
 
@@ -21,6 +22,8 @@ export function ChatHeader({
 }: ChatHeaderProps) {
   const isDM = conversation.type === "dm";
   const router = useRouter();
+  const { triggerTestNotification } = useNotificationContext();
+  const isAgentDm = isDM && conversation.other_user?.is_agent;
 
   return (
     <div className="h-[var(--header-height)] border-b border-neutral-200 flex items-center px-3 md:px-6 gap-2 md:gap-3 shrink-0 bg-white">
@@ -83,7 +86,17 @@ export function ChatHeader({
         </>
       )}
 
-      <div className="ml-auto shrink-0">
+      <div className="ml-auto shrink-0 flex items-center gap-1">
+        {isAgentDm && (
+          <button
+            onClick={() => triggerTestNotification(conversation.other_user!.display_name)}
+            className="w-8 h-8 flex items-center justify-center rounded-lg text-warning hover:text-warning hover:bg-warning/10 transition cursor-pointer"
+            aria-label="Test notification sound"
+            title="Test notification"
+          >
+            <BellRing className="w-4 h-4" />
+          </button>
+        )}
         <button
           onClick={onToggleInfo}
           className="w-8 h-8 flex items-center justify-center rounded-lg text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition cursor-pointer"
