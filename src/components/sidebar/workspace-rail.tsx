@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { useWorkspaceContext } from "@/contexts/workspace-context";
 import { toast } from "sonner";
@@ -23,29 +23,12 @@ export function WorkspaceRail({ workspaces, activeWorkspaceId, onSwitch, isAdmin
       {workspaces.map((workspace) => {
         const isActive = workspace.id === activeWorkspaceId;
         return (
-          <div key={workspace.id} className="relative group">
-            <button
-              onClick={() => onSwitch(workspace.id)}
-              className={`rounded-full transition-all duration-200 ${
-                isActive
-                  ? "ring-2 ring-primary-300 ring-offset-2 ring-offset-neutral-800"
-                  : "hover:rounded-2xl"
-              }`}
-              title={workspace.name}
-            >
-              <WorkspaceAvatar workspace={workspace} size="md" />
-            </button>
-
-            {/* Tooltip */}
-            <div className="absolute left-full ml-2 top-1/2 -translate-y-1/2 px-2 py-1 bg-neutral-900 text-white text-xs rounded-md whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
-              {workspace.name}
-            </div>
-
-            {/* Active indicator bar */}
-            {isActive && (
-              <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-[2px] w-1 h-5 bg-white rounded-r-full" />
-            )}
-          </div>
+          <WorkspaceRailItem
+            key={workspace.id}
+            workspace={workspace}
+            isActive={isActive}
+            onSwitch={onSwitch}
+          />
         );
       })}
 
@@ -64,6 +47,61 @@ export function WorkspaceRail({ workspaces, activeWorkspaceId, onSwitch, isAdmin
 
       {showCreate && (
         <CreateWorkspaceDialog onClose={() => setShowCreate(false)} />
+      )}
+    </div>
+  );
+}
+
+function WorkspaceRailItem({
+  workspace,
+  isActive,
+  onSwitch,
+}: {
+  workspace: Workspace;
+  isActive: boolean;
+  onSwitch: (workspaceId: string) => void;
+}) {
+  const [showTooltip, setShowTooltip] = useState(false);
+  const [tooltipPos, setTooltipPos] = useState({ top: 0, left: 0 });
+  const buttonRef = useRef<HTMLButtonElement>(null);
+
+  const handleMouseEnter = useCallback(() => {
+    if (buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setTooltipPos({ top: rect.top + rect.height / 2, left: rect.right + 8 });
+    }
+    setShowTooltip(true);
+  }, []);
+
+  return (
+    <div className="relative">
+      <button
+        ref={buttonRef}
+        onClick={() => onSwitch(workspace.id)}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={() => setShowTooltip(false)}
+        className={`rounded-full transition-all duration-200 ${
+          isActive
+            ? "ring-2 ring-primary-300 ring-offset-2 ring-offset-neutral-800"
+            : "hover:rounded-2xl"
+        }`}
+      >
+        <WorkspaceAvatar workspace={workspace} size="md" />
+      </button>
+
+      {/* Active indicator bar */}
+      {isActive && (
+        <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-[2px] w-1 h-5 bg-white rounded-r-full" />
+      )}
+
+      {/* Fixed-position tooltip (not clipped by parent overflow) */}
+      {showTooltip && (
+        <div
+          className="fixed px-2.5 py-1 bg-neutral-900 text-white text-xs font-medium rounded-md whitespace-nowrap pointer-events-none z-[999] shadow-lg"
+          style={{ top: tooltipPos.top, left: tooltipPos.left, transform: "translateY(-50%)" }}
+        >
+          {workspace.name}
+        </div>
       )}
     </div>
   );

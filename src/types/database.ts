@@ -23,6 +23,7 @@ export interface Workspace {
   id: string;
   name: string;
   avatar_url: string | null;
+  color: string | null;
   description: string | null;
   is_default: boolean;
   created_by: string;

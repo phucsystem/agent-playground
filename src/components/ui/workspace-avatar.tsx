@@ -1,10 +1,10 @@
 "use client";
 
-const AVATAR_COLORS = [
+export const AVATAR_COLORS = [
   "#e74c3c", "#e67e22", "#f1c40f", "#2ecc71", "#1abc9c",
   "#3498db", "#9b59b6", "#e84393", "#00b894", "#6c5ce7",
   "#fd79a8", "#0984e3", "#00cec9", "#d63031", "#a29bfe",
-  "#fab1a0", "#55efc4", "#74b9ff", "#dfe6e9", "#636e72",
+  "#fab1a0", "#55efc4", "#74b9ff", "#636e72", "#2d3436",
 ];
 
 export function getWorkspaceColor(workspaceId: string): string {
@@ -16,7 +16,7 @@ export function getWorkspaceColor(workspaceId: string): string {
 }
 
 interface WorkspaceAvatarProps {
-  workspace: { id: string; name: string; avatar_url: string | null };
+  workspace: { id: string; name: string; avatar_url: string | null; color?: string | null };
   size?: "sm" | "md" | "lg";
   className?: string;
 }
@@ -40,7 +40,7 @@ export function WorkspaceAvatar({ workspace, size = "md", className = "" }: Work
     );
   }
 
-  const bgColor = getWorkspaceColor(workspace.id);
+  const bgColor = workspace.color || getWorkspaceColor(workspace.id);
   const letter = workspace.name.charAt(0).toUpperCase();
 
   return (

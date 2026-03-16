@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { X } from "lucide-react";
-import { WorkspaceAvatar, getWorkspaceColor } from "@/components/ui/workspace-avatar";
+import { WorkspaceAvatar, AVATAR_COLORS, getWorkspaceColor } from "@/components/ui/workspace-avatar";
 import type { Workspace } from "@/types/database";
 
 interface WorkspaceSettingsProps {
@@ -16,6 +16,7 @@ export function WorkspaceSettings({ workspace, onClose, onSaved }: WorkspaceSett
   const [name, setName] = useState(workspace.name);
   const [description, setDescription] = useState(workspace.description ?? "");
   const [avatarUrl, setAvatarUrl] = useState(workspace.avatar_url ?? "");
+  const [selectedColor, setSelectedColor] = useState(workspace.color ?? "");
   const [saving, setSaving] = useState(false);
 
   const defaultColor = getWorkspaceColor(workspace.id);
@@ -31,6 +32,7 @@ export function WorkspaceSettings({ workspace, onClose, onSaved }: WorkspaceSett
         name: name.trim(),
         description: description.trim() || null,
         avatar_url: avatarUrl.trim() || null,
+        color: selectedColor || null,
       })
       .eq("id", workspace.id);
 
@@ -45,6 +47,7 @@ export function WorkspaceSettings({ workspace, onClose, onSaved }: WorkspaceSett
     id: workspace.id,
     name: name || workspace.name,
     avatar_url: avatarUrl.trim() || null,
+    color: selectedColor || null,
   };
 
   return (
@@ -64,7 +67,7 @@ export function WorkspaceSettings({ workspace, onClose, onSaved }: WorkspaceSett
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-neutral-700 truncate">{name || "Workspace"}</p>
               <p className="text-xs text-neutral-400">
-                {avatarUrl.trim() ? "Custom image" : `Default: letter + color`}
+                {avatarUrl.trim() ? "Custom image" : "Letter avatar"}
               </p>
             </div>
           </div>
@@ -77,6 +80,7 @@ export function WorkspaceSettings({ workspace, onClose, onSaved }: WorkspaceSett
               className="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:border-primary-500"
             />
           </div>
+
           <div>
             <label className="block text-xs font-medium text-neutral-500 mb-1">Description</label>
             <textarea
@@ -86,9 +90,36 @@ export function WorkspaceSettings({ workspace, onClose, onSaved }: WorkspaceSett
               className="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:border-primary-500 resize-none"
             />
           </div>
+
+          {/* Color picker */}
+          {!avatarUrl.trim() && (
+            <div>
+              <label className="block text-xs font-medium text-neutral-500 mb-1.5">Avatar Color</label>
+              <div className="flex flex-wrap gap-1.5">
+                {AVATAR_COLORS.map((color) => {
+                  const isSelected = selectedColor === color;
+                  const isDefault = !selectedColor && color === defaultColor;
+                  return (
+                    <button
+                      key={color}
+                      onClick={() => setSelectedColor(color === defaultColor && !selectedColor ? "" : color)}
+                      className={`w-7 h-7 rounded-full transition-all cursor-pointer ${
+                        isSelected || isDefault
+                          ? "ring-2 ring-offset-1 ring-neutral-800 scale-110"
+                          : "hover:scale-110"
+                      }`}
+                      style={{ backgroundColor: color }}
+                      title={isDefault ? `${color} (default)` : color}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           <div>
             <label className="block text-xs font-medium text-neutral-500 mb-1">
-              Avatar image URL <span className="text-neutral-300 font-normal">(leave empty for letter avatar)</span>
+              Image URL <span className="text-neutral-300 font-normal">(optional, overrides color)</span>
             </label>
             <input
               value={avatarUrl}
