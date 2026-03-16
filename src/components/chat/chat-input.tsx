@@ -9,6 +9,7 @@ import { GifPicker } from "./gif-picker";
 import { MentionPicker } from "./mention-picker";
 import type { MentionCandidate } from "./mention-picker";
 import { Send, Paperclip, Loader2, X, Smile, ImageIcon } from "lucide-react";
+import { toast } from "sonner";
 import type { ContentType, MessageWithSender } from "@/types/database";
 
 interface SenderInfo {
@@ -213,10 +214,16 @@ export function ChatInput({
     }
   }
 
+  const MAX_FILE_SIZE = 5 * 1024 * 1024;
+
   function handleFileSelect(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (file) {
-      setPendingFile(file);
+      if (file.size > MAX_FILE_SIZE) {
+        toast.error("File size exceeds 5MB limit");
+      } else {
+        setPendingFile(file);
+      }
     }
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
