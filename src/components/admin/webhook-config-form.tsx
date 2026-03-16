@@ -57,7 +57,7 @@ export function WebhookConfigForm({
         </div>
         <p className="flex items-center gap-1 mt-1 text-xs text-neutral-400">
           <Info className="w-3 h-3" />
-          Used for HMAC-SHA256 signature verification
+          Sent as Bearer token in Authorization header
         </p>
       </div>
     </div>

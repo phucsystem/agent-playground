@@ -56,32 +56,6 @@ function isValidWebhookUrl(url: string): boolean {
   }
 }
 
-async function computeHmacSignature(
-  secret: string,
-  webhookId: string,
-  timestamp: number,
-  payload: string,
-): Promise<string> {
-  const signatureInput = `${webhookId}.${timestamp}.${payload}`;
-  const key = await crypto.subtle.importKey(
-    "raw",
-    new TextEncoder().encode(secret),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
-  const signature = await crypto.subtle.sign(
-    "HMAC",
-    key,
-    new TextEncoder().encode(signatureInput),
-  );
-  const hexSignature = Array.from(new Uint8Array(signature))
-    .map((byte) => byte.toString(16).padStart(2, "0"))
-    .join("");
-  return `sha256=${hexSignature}`;
-}
-
-// deno-lint-ignore no-explicit-any
 async function dispatchToAgent(
   supabase: ReturnType<typeof createClient>,
   webhookPayload: WebhookPayload,
@@ -115,22 +89,15 @@ async function dispatchToAgent(
 
   const logId = logEntry.id;
   const payloadString = JSON.stringify(webhookPayload);
-  const timestamp = Math.floor(Date.now() / 1000);
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     "X-Webhook-ID": logId,
-    "X-Webhook-Timestamp": String(timestamp),
     "User-Agent": "AgentPlayground-Webhook/1.0",
   };
 
   if (config.webhook_secret) {
-    headers["X-Webhook-Signature"] = await computeHmacSignature(
-      config.webhook_secret,
-      logId,
-      timestamp,
-      payloadString,
-    );
+    headers["Authorization"] = `Bearer ${config.webhook_secret}`;
   }
 
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
