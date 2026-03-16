@@ -2,26 +2,27 @@
 
 **Generated:** 2026-03-16
 **Repomix output:** `./repomix-output.xml`
-**Status:** Phases 1-4 complete. All core features implemented + admin/onboarding.
+**Status:** Phases 1-5 complete. All core features + webhook agent integration implemented.
 
 ## Overview
 
-Agent Playground is a ~3,300 LOC Next.js chat application with Supabase backend. Organized into 44 source files across app pages, components, hooks, utilities, and 6 database migrations.
+Agent Playground is a ~3,800 LOC Next.js chat application with Supabase backend + webhook agent integration. Organized into 50 source files across app pages, components, hooks, utilities, 7 database migrations, and 1 Supabase Edge Function.
 
 ## File Counts & Distribution
 
 | Category | Count | Files |
 |----------|-------|-------|
-| **App Pages** | 7 | login/page.tsx, chat/layout.tsx, chat/page.tsx, [conversationId]/page.tsx, setup/page.tsx, admin/page.tsx, api/auth/login/route.ts, middleware.ts |
-| **Components** | 15 | chat (9: messages, input, header, markdown, file, image, url, info, reactions), sidebar (5: nav, users, conversations, create-group, user-profile), ui (1: avatar) |
-| **Hooks** | 8 | use-current-user, use-conversations, use-realtime-messages, use-supabase-presence, use-file-upload, use-conversation-members, use-typing-indicator, use-reactions |
+| **App Pages** | 8 | login/page.tsx, chat/layout.tsx, chat/page.tsx, [conversationId]/page.tsx, setup/page.tsx, admin/page.tsx, admin/webhooks/page.tsx, api/auth/login/route.ts, middleware.ts |
+| **Components** | 17 | chat (9: messages, input, header, markdown, file, image, url, info, reactions), sidebar (5: nav, users, conversations, create-group, user-profile), admin (3: webhook-config-form, agent-webhook-actions, webhook-log-row), ui (1: avatar) |
+| **Hooks** | 10 | use-current-user, use-conversations, use-realtime-messages, use-supabase-presence, use-file-upload, use-conversation-members, use-typing-indicator, use-reactions, use-agent-configs, use-webhook-logs |
 | **Library/Utils** | 4 | auth.ts, supabase/client.ts, supabase/server.ts, middleware.ts |
 | **Types** | 1 | database.ts (generated from schema) |
-| **Migrations** | 6 | 001_initial, 002_user_role, 003_admin_management, 004_mock_flag, 005_security_fixes, 006_fix_rls_recursion |
-| **Seed Data** | 1 | seed.sql (6 users, 2 conversations, 10 messages) |
+| **Migrations** | 7 | 001_initial, 002_user_role, 003_admin_management, 004_mock_flag, 005_security_fixes, 006_fix_rls_recursion, 007_agent_webhooks |
+| **Edge Functions** | 1 | webhook-dispatch/index.ts |
+| **Seed Data** | 1 | seed.sql (6 users, 2 conversations, 10 messages, 2 webhook configs) |
 | **Config** | 4 | tsconfig.json, package.json, next.config.ts, postcss.config.mjs |
 | **Docs** | 5 | SRD.md, UI_SPEC.md, DB_DESIGN.md, API_SPEC.md, system-architecture.md |
-| **Total** | 44+ | Source files + config |
+| **Total** | 50+ | Source files + config |
 
 ## Directory Structure
 
@@ -31,7 +32,9 @@ agent-playground/
 │   ├── app/
 │   │   ├── login/page.tsx               # Token entry form
 │   │   ├── setup/page.tsx               # Avatar picker + nickname (first login)
-│   │   ├── admin/page.tsx               # User management (admin only)
+│   │   ├── admin/
+│   │   │   ├── page.tsx                # User management (admin only)
+│   │   │   └── webhooks/page.tsx       # Webhook delivery logs (admin only)
 │   │   ├── chat/
 │   │   │   ├── layout.tsx               # Sidebar + main layout
 │   │   │   ├── page.tsx                 # Empty chat state
@@ -52,7 +55,10 @@ agent-playground/
 │   │   │   ├── image-preview.tsx        # Thumbnail + lightbox
 │   │   │   ├── url-preview.tsx          # Open Graph metadata card
 │   │   │   ├── chat-info-panel.tsx      # Members + files slide-over
-│   │   │   └── reactions-display.tsx    # Heart button + reaction counts
+│   │   │   ├── reactions-display.tsx    # Heart button + reaction counts
+│   │   │   ├── webhook-config-form.tsx  # Webhook URL + secret inline form
+│   │   │   ├── agent-webhook-actions.tsx # Toggle, edit, view logs for agent rows
+│   │   │   └── webhook-log-row.tsx      # Expandable log entry with details
 │   │   ├── sidebar/
 │   │   │   ├── sidebar.tsx              # Main container
 │   │   │   ├── user-profile.tsx         # Current user + logout
@@ -69,7 +75,9 @@ agent-playground/
 │   │   ├── use-file-upload.ts           # Upload to Storage + create record
 │   │   ├── use-conversation-members.ts  # Fetch conversation participants
 │   │   ├── use-typing-indicator.ts      # Broadcast & listen to typing
-│   │   └── use-reactions.ts             # Add/remove emoji reactions
+│   │   ├── use-reactions.ts             # Add/remove emoji reactions
+│   │   ├── use-agent-configs.ts         # CRUD agent webhook configs
+│   │   └── use-webhook-logs.ts          # Fetch + filter webhook delivery logs
 │   ├── lib/
 │   │   ├── auth.ts                      # getCurrentUser() helper
 │   │   ├── supabase/
@@ -87,8 +95,11 @@ agent-playground/
 │   │   ├── 003_admin_management.sql     # Admin functions
 │   │   ├── 004_mock_flag.sql            # Add is_mock, update RLS
 │   │   ├── 005_security_fixes.sql       # DEFINER helpers, users_public view, signed URLs
-│   │   └── 006_fix_rls_recursion.sql    # Replace recursive policies with helpers
-│   └── seed.sql                         # Test data (6 users, 2 conversations)
+│   │   ├── 006_fix_rls_recursion.sql    # Replace recursive policies with helpers
+│   │   └── 007_agent_webhooks.sql       # agent_configs, webhook_delivery_logs, trigger
+│   ├── functions/
+│   │   └── webhook-dispatch/index.ts    # Webhook dispatch Edge Function (Deno)
+│   └── seed.sql                         # Test data (6 users, 2 conversations, webhook configs)
 ├── src/app/
 │   ├── icon.svg                         # Blue bot favicon (SVG)
 │   ├── ...
@@ -201,7 +212,7 @@ const { addReaction } = useReactions();
 | rehype-highlight | 7.0.2 | Code highlighting |
 | lucide-react | 0.577.0 | Icons |
 
-## Database Schema (6 Tables)
+## Database Schema (8 Tables)
 
 | Table | Role | Key Columns | Rows (seed) |
 |-------|------|------------|-----------|
@@ -211,12 +222,15 @@ const { addReaction } = useReactions();
 | `messages` | Chat messages | `content_type` (text/file/image/url), `metadata` (jsonb) | 10 |
 | `attachments` | File metadata | `file_url`, `storage_path`, `file_size` | 0 |
 | `reactions` | Emoji reactions | `emoji` (heart, etc.), UNIQUE(message_id, user_id, emoji) | 0 |
+| `agent_configs` | Webhook config per agent | `webhook_url`, `webhook_secret`, `is_webhook_active` | 2 |
+| `webhook_delivery_logs` | Delivery history per message | `status` (pending/delivered/failed), `http_status`, `attempt_count` | 0 |
 
 **Custom Types:**
 - `user_role` — `admin`, `user`, `agent`
 - `conversation_type` — `dm`, `group`
 - `member_role` — `admin`, `member`
 - `content_type` — `text`, `file`, `image`, `url`
+- `delivery_status` — `pending`, `delivered`, `failed`
 
 **RLS Enabled:** All tables. Uses SECURITY DEFINER helpers to prevent recursion.
 
@@ -230,6 +244,7 @@ const { addReaction } = useReactions();
 | 004_mock_flag | Add `is_mock` boolean, update presence RLS |
 | 005_security_fixes | Add SECURITY DEFINER helpers, users_public view, signed URLs |
 | 006_fix_rls_recursion | Replace recursive policies with DEFINER helpers |
+| 007_agent_webhooks | Create agent_configs, webhook_delivery_logs tables, notify trigger |
 
 ## Code Standards
 
@@ -288,6 +303,7 @@ See `docs/API_SPEC.md` for complete reference.
 | **P2: Content** | ✅ Complete | Files, images, URLs, markdown | src/components/chat/* |
 | **P3: Polish** | ✅ Complete | Typing, read receipts, reactions | use-typing-indicator, use-reactions |
 | **P4: Admin** | ✅ Complete | User management, setup wizard, mock flag | /admin, /setup pages |
+| **P5: Webhooks** | ✅ Complete | Agent webhook config, dispatch, delivery logs | /admin/webhooks, use-agent-configs, webhook-dispatch Edge Function |
 
 ## Important Notes
 

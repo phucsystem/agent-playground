@@ -130,6 +130,29 @@ async function seed() {
   }
   console.log(`✓ ${messages.length} messages seeded`);
 
+  // ── Agent Webhook Configs (Phase 5) ───────────────────
+  const agentConfigs = [
+    {
+      user_id: "b0000000-0000-0000-0000-000000000001",
+      webhook_url: "https://example.com/claude-webhook",
+      webhook_secret: "whsec_test_claude_001",
+      is_webhook_active: true,
+    },
+    {
+      user_id: "b0000000-0000-0000-0000-000000000002",
+      webhook_url: "https://example.com/gpt4-webhook",
+      webhook_secret: null,
+      is_webhook_active: true,
+    },
+  ];
+
+  const { error: configsError } = await supabase.from("agent_configs").upsert(agentConfigs, { onConflict: "user_id" });
+  if (configsError) {
+    console.error("Failed to seed agent configs:", configsError.message);
+  } else {
+    console.log(`✓ ${agentConfigs.length} agent webhook configs seeded`);
+  }
+
   // ── Summary ────────────────────────────────────────────
   console.log("\n✅ Seed complete!\n");
   console.log("Login tokens:");

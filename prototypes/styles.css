@@ -47,7 +47,7 @@
   --color-overlay: rgba(0,0,0,0.5);
 
   /* Sidebar (Light — Nuxt Chat style) */
-  --color-sidebar: var(--neutral-100);
+  --color-sidebar: #ffffff;
   --color-sidebar-hover: var(--neutral-100);
   --color-sidebar-active: var(--neutral-100);
   --color-sidebar-text: var(--neutral-700);

@@ -148,6 +148,7 @@
 | **Usage** | S-02 Sidebar, S-03 DM, S-04 Group | Core value — chat with agents and testers |
 | **Retention** | S-03, S-04 (message history) | Persistent history brings users back |
 | **Discovery** | S-02 (presence list), S-05 (info panel) | Find new agents/testers to interact with |
+| **Operations** | S-06 (admin), S-08 (webhook logs) | Monitor agent health, debug webhook delivery |
 
 ### Component Patterns
 
@@ -199,6 +200,8 @@
     │
     └── [S-06: Admin Page] ← (admin only, from sidebar menu)
         User list, token generation, manage users
+        ├── Agent webhook config (inline when creating agent token)
+        └── [S-08: Webhook Logs] ← click "View Logs" on agent row
 ```
 
 **Navigation Rules:**
@@ -504,6 +507,43 @@
 - User customizes email/name on first login via /setup page
 - Modal shows generated token with copy button
 
+**Agent Webhook Config (Phase 5 — shown when "Is agent?" is checked):**
+
+```
+┌───────────────────────────────────────────┐
+│ Generate Token                            │
+│                                           │
+│ ☑ Is agent?                               │
+│                                           │
+│ Webhook URL *                             │
+│ ┌───────────────────────────────────────┐ │
+│ │ https://my-agent.example.com/webhook  │ │
+│ └───────────────────────────────────────┘ │
+│                                           │
+│ Webhook Secret (optional)                 │
+│ ┌───────────────────────────────────────┐ │
+│ │ whsec_••••••••••••••••               │ │
+│ └───────────────────────────────────────┘ │
+│ ℹ Used for HMAC-SHA256 signature          │
+│                                           │
+│ [Cancel]              [Generate Token →]  │
+└───────────────────────────────────────────┘
+```
+
+| Element | Type | Details |
+|---------|------|---------|
+| Webhook URL | Input (url) | Required when "Is agent?" checked. Placeholder: "https://your-agent.com/webhook". Validated as URL. |
+| Webhook Secret | Input (password) | Optional. If set, all webhook payloads include `X-Webhook-Signature` HMAC-SHA256 header. Show/hide toggle. |
+| Info text | Caption | "Used for HMAC-SHA256 signature verification" |
+
+**Agent Row Actions (Phase 5 — additional for agent users):**
+
+| Action | Details |
+|--------|---------|
+| Edit Webhook | Opens inline editor for webhook URL + secret. Save updates `agent_configs`. |
+| Toggle Webhook | Enable/disable webhook delivery without removing config. Visual indicator: green dot = active, grey = paused. |
+| View Logs | Opens S-08 Webhook Logs filtered to this agent. |
+
 **Interactions:**
 - Toggle Enable/Disable: immediate state update, reflected in sidebar presence
 - Delete: confirm dialog, remove user from all conversations
@@ -562,6 +602,55 @@
 
 ---
 
+### S-08: Webhook Logs
+
+**Phase:** P5
+**Layout:** Slide-over panel from S-06 Admin Page, or standalone page at `/admin/webhooks`
+**Access:** Admin only
+**CJX Stage:** Retention (admin debugging tools)
+
+```
+┌─────────────────────────────────────────────────────────┐
+│ Webhook Delivery Logs                        [× Close]  │
+├─────────────────────────────────────────────────────────┤
+│                                                         │
+│ Filter: [All agents ▼] [All statuses ▼] [Last 24h ▼]  │
+│                                                         │
+│ ┌─────────────────────────────────────────────────────┐ │
+│ │ Time        │ Agent    │ Message     │ Status  │ ⏱  │ │
+│ ├─────────────────────────────────────────────────────┤ │
+│ │ 10:33:12 AM │ Claude   │ "Help me.." │ ✓ 200  │ 1s │ │
+│ │ 10:32:45 AM │ GPT-4    │ "Summarize" │ ✓ 200  │ 2s │ │
+│ │ 10:31:00 AM │ Claude   │ "Hey there" │ ✗ 500  │ 5s │ │
+│ │             │          │ Retry 2/3   │ ✓ 200  │ 1s │ │
+│ │ 10:30:15 AM │ GPT-4    │ "Test msg"  │ ✗ timeout│   │ │
+│ │             │          │ Retry 3/3   │ ✗ timeout│   │ │
+│ └─────────────────────────────────────────────────────┘ │
+│                                                         │
+│ Showing 50 of 234 entries        [Load more]           │
+└─────────────────────────────────────────────────────────┘
+```
+
+**Elements:**
+
+| Element | Type | Details |
+|---------|------|---------|
+| Filter: Agent | Dropdown | Filter by specific agent or "All agents" |
+| Filter: Status | Dropdown | "All", "Delivered", "Failed" |
+| Filter: Time range | Dropdown | "Last 1h", "Last 24h", "Last 7d" |
+| Log table | Table | Columns: timestamp, agent name, message preview (truncated 30 chars), HTTP status, latency |
+| Status badge | Badge | Green `✓ 200` for success, Red `✗ 500` / `✗ timeout` for failure |
+| Retry rows | Sub-row | Indented under parent, shows retry attempt number and result |
+| Expand row | Click | Shows full message content, webhook URL called, request/response headers, error details |
+| Load more | Button | Pagination (50 per page) |
+
+**Interactions:**
+- Click row → expands to show full webhook payload + response
+- Retry badge shows `Retry N/3` with color: yellow for pending, green for success, red for exhausted
+- Auto-refresh toggle (poll every 10s when enabled)
+
+---
+
 ## 4. Design Rationale
 
 | Decision | Rationale |
@@ -574,6 +663,8 @@
 | Dark send button (neutral-900) | High contrast, clear call-to-action. Matches Nuxt Chat template. Distinct from the light input area. |
 | Agent bot badge (blue) | Subtle identification. Badge on avatar corner, not color-coded messages. Keeps UI clean. |
 | Relative timestamps within 1h | Reduces cognitive load. "2m ago" is more useful than "10:31 AM" for recent messages. |
+| Webhook config in AgentInvite flow | Decoupled design. Webhook URL defined at agent creation time, stored in separate `agent_configs` table. Core chat code has zero knowledge of webhooks. Edge Function handles all delivery logic. |
+| Webhook logs as slide-over | Keeps admin in context of user table. No full-page navigation needed. Quick debugging without losing state. |
 
 ## 5. Responsive Breakpoints
 

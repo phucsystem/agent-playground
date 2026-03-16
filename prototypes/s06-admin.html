@@ -1,0 +1,196 @@
+<!--
+  Screen: S-06 Admin Page
+  CJX Stage: Retention
+  FR Mapping: FR-09 (Admin Management), FR-10 (Token Generation)
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agent Playground — Admin</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="components.css">
+</head>
+<body class="cjx-retention">
+
+  <div class="admin-page">
+
+    <!-- Admin Header -->
+    <header class="admin-header" data-cjx-entrance>
+      <div class="admin-header-left">
+        <span class="admin-logo">&#x1F916;</span>
+        <h1 class="admin-title">Agent Playground — Admin</h1>
+      </div>
+      <div class="admin-header-right">
+        <div class="avatar avatar-sm avatar-purple">P</div>
+        <span class="admin-user-name">Phuc</span>
+        <a href="s01-login.html" class="admin-logout">Logout</a>
+      </div>
+    </header>
+
+    <!-- Admin Content -->
+    <div class="admin-content" data-cjx-entrance>
+
+      <!-- User Table Section -->
+      <div class="admin-section">
+        <div class="admin-section-header">
+          <h2>Users (5)</h2>
+          <button class="admin-btn admin-btn-primary" id="generate-token-btn">Generate Token</button>
+        </div>
+
+        <div class="table-container">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>
+                  <div class="admin-user-cell">
+                    <div class="avatar avatar-sm avatar-purple">P</div>
+                    Phuc
+                  </div>
+                </td>
+                <td>admin@example.com</td>
+                <td><span class="role-badge role-admin">admin</span></td>
+                <td><span class="status-badge success">Active</span></td>
+                <td>
+                  <div class="admin-actions">
+                    <button class="admin-action-btn" title="Copy Token">Copy Token</button>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="admin-user-cell">
+                    <div class="avatar avatar-sm avatar-pink">A</div>
+                    Alice
+                  </div>
+                </td>
+                <td>alice@example.com</td>
+                <td><span class="role-badge role-user">user</span></td>
+                <td><span class="status-badge success">Active</span></td>
+                <td>
+                  <div class="admin-actions">
+                    <button class="admin-action-btn" title="Copy Token">Copy Token</button>
+                    <button class="admin-action-btn" title="Disable">Disable</button>
+                    <button class="admin-action-btn admin-action-danger" title="Delete">Delete</button>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="admin-user-cell">
+                    <div class="avatar avatar-sm avatar-orange">B</div>
+                    Bob
+                  </div>
+                </td>
+                <td>bob@example.com</td>
+                <td><span class="role-badge role-user">user</span></td>
+                <td><span class="status-badge disabled">Disabled</span></td>
+                <td>
+                  <div class="admin-actions">
+                    <button class="admin-action-btn" title="Copy Token">Copy Token</button>
+                    <button class="admin-action-btn" title="Enable">Enable</button>
+                    <button class="admin-action-btn admin-action-danger" title="Delete">Delete</button>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="admin-user-cell">
+                    <div class="avatar avatar-sm avatar-teal" style="position:relative;">
+                      C
+                      <span class="bot-badge">&#x1F916;</span>
+                    </div>
+                    Claude
+                  </div>
+                </td>
+                <td>claude@agents.local</td>
+                <td><span class="role-badge role-agent">agent</span></td>
+                <td>
+                  <span class="status-badge success">Active</span>
+                  <span class="webhook-dot active" title="Webhook active"></span>
+                </td>
+                <td>
+                  <div class="admin-actions">
+                    <button class="admin-action-btn" title="Copy Token">Copy Token</button>
+                    <button class="admin-action-btn" title="Edit Webhook">Edit Webhook</button>
+                    <button class="admin-action-btn" title="Toggle Webhook">Pause Webhook</button>
+                    <a href="s08-webhook-logs.html" class="admin-action-btn" title="View Logs">View Logs</a>
+                    <button class="admin-action-btn" title="Disable">Disable</button>
+                    <button class="admin-action-btn admin-action-danger" title="Delete">Delete</button>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="admin-user-cell">
+                    <div class="avatar avatar-sm avatar-blue" style="position:relative;">
+                      M
+                      <span class="bot-badge">&#x1F916;</span>
+                    </div>
+                    Mock Bot
+                  </div>
+                </td>
+                <td>mock@example.com</td>
+                <td><span class="role-badge role-agent">agent</span></td>
+                <td><span class="status-badge mock">Mock</span></td>
+                <td>
+                  <div class="admin-actions">
+                    <button class="admin-action-btn" title="Copy Token">Copy Token</button>
+                    <button class="admin-action-btn admin-action-danger" title="Delete">Delete</button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Generate Token Modal -->
+    <div class="modal-overlay" id="generate-modal">
+      <div class="modal-card" data-cjx-entrance>
+        <h3 class="modal-title">Generate Token</h3>
+
+        <div class="form-group">
+          <label class="form-checkbox">
+            <input type="checkbox" id="is-agent-check">
+            <span>Is agent?</span>
+          </label>
+        </div>
+
+        <!-- Agent-specific fields (hidden by default) -->
+        <div class="agent-fields" id="agent-fields" style="display:none;">
+          <div class="form-group">
+            <label class="form-label">Webhook URL *</label>
+            <input type="url" class="form-input" placeholder="https://your-agent.com/webhook">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Webhook Secret (optional)</label>
+            <input type="password" class="form-input" placeholder="whsec_...">
+            <span class="form-hint">Used for HMAC-SHA256 signature verification</span>
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button class="admin-btn admin-btn-secondary" id="cancel-modal-btn">Cancel</button>
+          <button class="admin-btn admin-btn-primary">Generate Token</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="interactions.js"></script>
+</body>
+</html>

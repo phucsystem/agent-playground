@@ -2,6 +2,7 @@ export type ConversationType = "dm" | "group";
 export type MemberRole = "admin" | "member";
 export type ContentType = "text" | "file" | "image" | "url";
 export type UserRole = "admin" | "user" | "agent";
+export type DeliveryStatus = "pending" | "delivered" | "failed";
 
 export interface User {
   id: string;
@@ -67,6 +68,33 @@ export interface Reaction {
   created_at: string;
 }
 
+export interface AgentConfig {
+  id: string;
+  user_id: string;
+  webhook_url: string;
+  webhook_secret: string | null;
+  is_webhook_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WebhookDeliveryLog {
+  id: string;
+  message_id: string;
+  agent_id: string;
+  status: DeliveryStatus;
+  http_status: number | null;
+  attempt_count: number;
+  last_error: string | null;
+  created_at: string;
+  delivered_at: string | null;
+}
+
+export interface WebhookLogWithDetails extends WebhookDeliveryLog {
+  agent: Pick<User, "id" | "display_name" | "avatar_url">;
+  message: Pick<Message, "id" | "content" | "sender_id">;
+}
+
 export interface ConversationWithDetails extends Conversation {
   other_user?: Pick<User, "id" | "display_name" | "avatar_url" | "is_agent">;
   member_count?: number;
@@ -87,6 +115,8 @@ export interface Database {
       messages: { Row: Message; Insert: Omit<Message, "id" | "created_at">; Update: Partial<Message>; Relationships: [] };
       attachments: { Row: Attachment; Insert: Omit<Attachment, "id" | "created_at">; Update: Partial<Attachment>; Relationships: [] };
       reactions: { Row: Reaction; Insert: Omit<Reaction, "id" | "created_at">; Update: Partial<Reaction>; Relationships: [] };
+      agent_configs: { Row: AgentConfig; Insert: Omit<AgentConfig, "id" | "created_at" | "updated_at">; Update: Partial<AgentConfig>; Relationships: [] };
+      webhook_delivery_logs: { Row: WebhookDeliveryLog; Insert: Omit<WebhookDeliveryLog, "id" | "created_at">; Update: Partial<WebhookDeliveryLog>; Relationships: [] };
     };
     Views: Record<string, never>;
     Functions: {

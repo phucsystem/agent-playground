@@ -1,0 +1,98 @@
+<!--
+  Screen: S-07 Setup Page
+  CJX Stage: Onboarding
+  FR Mapping: FR-11 (Profile Setup)
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agent Playground — Complete Your Profile</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="components.css">
+</head>
+<body class="cjx-onboarding">
+
+  <div class="login-page">
+    <div class="setup-card" data-cjx-entrance>
+      <h1 class="setup-title">Complete Your Profile</h1>
+
+      <!-- Step 1: Choose Avatar -->
+      <div class="setup-step">
+        <h3 class="setup-step-label">Step 1: Choose Avatar</h3>
+        <div class="avatar-grid">
+          <button class="avatar-style-btn selected" data-style="adventurer" title="Adventurer">
+            <img src="https://api.dicebear.com/9.x/adventurer/svg?seed=Phuc" alt="Adventurer" class="avatar-style-preview">
+            <span class="avatar-style-name">Adventurer</span>
+          </button>
+          <button class="avatar-style-btn" data-style="bottts" title="Bottts">
+            <img src="https://api.dicebear.com/9.x/bottts/svg?seed=Phuc" alt="Bottts" class="avatar-style-preview">
+            <span class="avatar-style-name">Bottts</span>
+          </button>
+          <button class="avatar-style-btn" data-style="lorelei" title="Lorelei">
+            <img src="https://api.dicebear.com/9.x/lorelei/svg?seed=Phuc" alt="Lorelei" class="avatar-style-preview">
+            <span class="avatar-style-name">Lorelei</span>
+          </button>
+          <button class="avatar-style-btn" data-style="avataaars" title="Avataaars">
+            <img src="https://api.dicebear.com/9.x/avataaars/svg?seed=Phuc" alt="Avataaars" class="avatar-style-preview">
+            <span class="avatar-style-name">Avataaars</span>
+          </button>
+          <button class="avatar-style-btn" data-style="miniavs" title="Miniavs">
+            <img src="https://api.dicebear.com/9.x/miniavs/svg?seed=Phuc" alt="Miniavs" class="avatar-style-preview">
+            <span class="avatar-style-name">Miniavs</span>
+          </button>
+          <button class="avatar-style-btn" data-style="personas" title="Personas">
+            <img src="https://api.dicebear.com/9.x/personas/svg?seed=Phuc" alt="Personas" class="avatar-style-preview">
+            <span class="avatar-style-name">Personas</span>
+          </button>
+          <button class="avatar-style-btn" data-style="pixel-art" title="Pixel Art">
+            <img src="https://api.dicebear.com/9.x/pixel-art/svg?seed=Phuc" alt="Pixel Art" class="avatar-style-preview">
+            <span class="avatar-style-name">Pixel Art</span>
+          </button>
+          <button class="avatar-style-btn" data-style="open-peeps" title="Open Peeps">
+            <img src="https://api.dicebear.com/9.x/open-peeps/svg?seed=Phuc" alt="Open Peeps" class="avatar-style-preview">
+            <span class="avatar-style-name">Open Peeps</span>
+          </button>
+          <button class="avatar-style-btn" data-style="rings" title="Rings">
+            <img src="https://api.dicebear.com/9.x/rings/svg?seed=Phuc" alt="Rings" class="avatar-style-preview">
+            <span class="avatar-style-name">Rings</span>
+          </button>
+          <button class="avatar-style-btn" data-style="shapes" title="Shapes">
+            <img src="https://api.dicebear.com/9.x/shapes/svg?seed=Phuc" alt="Shapes" class="avatar-style-preview">
+            <span class="avatar-style-name">Shapes</span>
+          </button>
+          <button class="avatar-style-btn" data-style="thumbs" title="Thumbs">
+            <img src="https://api.dicebear.com/9.x/thumbs/svg?seed=Phuc" alt="Thumbs" class="avatar-style-preview">
+            <span class="avatar-style-name">Thumbs</span>
+          </button>
+          <button class="avatar-style-btn" data-style="fun-emoji" title="Fun Emoji">
+            <img src="https://api.dicebear.com/9.x/fun-emoji/svg?seed=Phuc" alt="Fun Emoji" class="avatar-style-preview">
+            <span class="avatar-style-name">Fun Emoji</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Avatar Preview -->
+      <div class="setup-preview">
+        <span class="setup-preview-label">Selected: <strong id="selected-style-name">Adventurer</strong></span>
+        <img src="https://api.dicebear.com/9.x/adventurer/svg?seed=Phuc" alt="Avatar preview" class="setup-preview-image" id="avatar-preview">
+      </div>
+
+      <!-- Step 2: Enter Nickname -->
+      <div class="setup-step">
+        <h3 class="setup-step-label">Step 2: Enter Nickname</h3>
+        <input type="text" class="form-input" id="nickname-input" placeholder="Your nickname" maxlength="32" value="Phuc">
+      </div>
+
+      <!-- Actions -->
+      <div class="setup-actions">
+        <a href="s01-login.html" class="admin-btn admin-btn-secondary">Back</a>
+        <a href="s02-main-layout.html" class="admin-btn admin-btn-primary" id="complete-setup-btn">Complete Setup</a>
+      </div>
+    </div>
+  </div>
+
+  <script src="interactions.js"></script>
+</body>
+</html>

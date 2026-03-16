@@ -73,6 +73,32 @@ erDiagram
         text emoji
         timestamptz created_at
     }
+
+    agent_configs {
+        uuid id PK
+        uuid user_id FK,UK
+        text webhook_url
+        text webhook_secret
+        boolean is_webhook_active
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    webhook_delivery_logs {
+        uuid id PK
+        uuid message_id FK
+        uuid agent_id FK
+        delivery_status status
+        integer http_status
+        integer attempt_count
+        text last_error
+        timestamptz created_at
+        timestamptz delivered_at
+    }
+
+    users ||--o| agent_configs : "has webhook"
+    messages ||--o{ webhook_delivery_logs : "triggers"
+    users ||--o{ webhook_delivery_logs : "receives"
 ```
 
 ## 2. Custom Types
@@ -89,6 +115,9 @@ CREATE TYPE member_role AS ENUM ('admin', 'member');
 
 -- Content type enum
 CREATE TYPE content_type AS ENUM ('text', 'file', 'image', 'url');
+
+-- Webhook delivery status enum (Phase 5)
+CREATE TYPE delivery_status AS ENUM ('pending', 'delivered', 'failed');
 ```
 
 ## 3. Table Definitions
@@ -229,6 +258,54 @@ Emoji reactions on messages.
 
 **Indexes:**
 - `idx_reactions_message_id` — on `message_id` (load reactions for messages)
+
+### E-07: agent_configs (Phase 5)
+
+Webhook configuration per agent user. One-to-one with users (only agent users). Created during agent token generation in admin page.
+
+| Column | Type | Constraints | Default | Description |
+|--------|------|-------------|---------|-------------|
+| `id` | `uuid` | PK | `gen_random_uuid()` | Config ID |
+| `user_id` | `uuid` | FK → users(id) ON DELETE CASCADE, UNIQUE, NOT NULL | — | Agent user reference. One config per agent. |
+| `webhook_url` | `text` | NOT NULL | — | HTTPS URL where message payloads are POSTed. Validated as valid URL on insert. |
+| `webhook_secret` | `text` | NULLABLE | `NULL` | Shared secret for HMAC-SHA256 signature. If set, `X-Webhook-Signature` header included in requests. |
+| `is_webhook_active` | `boolean` | NOT NULL | `true` | Admin toggle. False = agent stays in conversations but receives no webhooks. |
+| `created_at` | `timestamptz` | NOT NULL | `now()` | Config creation time |
+| `updated_at` | `timestamptz` | NOT NULL | `now()` | Last modification time |
+
+**Indexes:**
+- `idx_agent_configs_user_id` — UNIQUE on `user_id` (one config per agent)
+
+**Constraints:**
+- `webhook_url` must start with `https://` (CHECK constraint)
+- `user_id` must reference a user with `is_agent = true` (enforced by application logic, not FK constraint — keeps schema simpler)
+
+---
+
+### E-08: webhook_delivery_logs (Phase 5)
+
+Tracks each webhook delivery attempt per message per agent. Used for admin debugging (S-08).
+
+| Column | Type | Constraints | Default | Description |
+|--------|------|-------------|---------|-------------|
+| `id` | `uuid` | PK | `gen_random_uuid()` | Log entry ID |
+| `message_id` | `uuid` | FK → messages(id) ON DELETE CASCADE, NOT NULL | — | The message that triggered the webhook |
+| `agent_id` | `uuid` | FK → users(id) ON DELETE CASCADE, NOT NULL | — | The agent whose webhook was called |
+| `status` | `delivery_status` | NOT NULL | `'pending'` | `pending` → `delivered` or `failed` |
+| `http_status` | `integer` | NULLABLE | `NULL` | HTTP response status code (200, 500, etc.). NULL if timeout or connection error. |
+| `attempt_count` | `integer` | NOT NULL | `0` | Number of delivery attempts (max 3) |
+| `last_error` | `text` | NULLABLE | `NULL` | Error message from last failed attempt. e.g., "Connection timed out after 30s", "500 Internal Server Error" |
+| `created_at` | `timestamptz` | NOT NULL | `now()` | When the webhook was first triggered |
+| `delivered_at` | `timestamptz` | NULLABLE | `NULL` | When delivery succeeded. NULL if still pending or failed. |
+
+**Indexes:**
+- `idx_webhook_logs_agent_created` — on `(agent_id, created_at DESC)` (filter by agent + time range in S-08)
+- `idx_webhook_logs_status` — on `status` (filter delivered/failed)
+- `idx_webhook_logs_message_id` — on `message_id` (lookup by message)
+
+**Retention:** Consider auto-deleting logs older than 30 days via scheduled cron job to prevent unbounded growth.
+
+---
 
 ## 4. Helper Views & Functions
 
@@ -398,6 +475,40 @@ CREATE POLICY "reactions_delete" ON reactions FOR DELETE
   USING (auth.uid() = user_id);
 ```
 
+### agent_configs (Phase 5)
+
+```sql
+-- Only admins can read webhook configs
+CREATE POLICY "agent_configs_select" ON agent_configs FOR SELECT
+  USING (is_admin());
+
+-- Only admins can create webhook configs
+CREATE POLICY "agent_configs_insert" ON agent_configs FOR INSERT
+  WITH CHECK (is_admin());
+
+-- Only admins can update webhook configs
+CREATE POLICY "agent_configs_update" ON agent_configs FOR UPDATE
+  USING (is_admin())
+  WITH CHECK (is_admin());
+
+-- Only admins can delete webhook configs
+CREATE POLICY "agent_configs_delete" ON agent_configs FOR DELETE
+  USING (is_admin());
+```
+
+### webhook_delivery_logs (Phase 5)
+
+```sql
+-- Only admins can read delivery logs
+CREATE POLICY "webhook_logs_select" ON webhook_delivery_logs FOR SELECT
+  USING (is_admin());
+
+-- Edge Function inserts logs via service role key (bypasses RLS)
+-- No INSERT policy needed for regular users
+```
+
+**Note:** The webhook dispatch Edge Function uses the `service_role` key to insert delivery logs, bypassing RLS. This is intentional — only the system should create log entries.
+
 ## 6. Supabase Storage Policies
 
 **Bucket:** `attachments`
@@ -439,6 +550,7 @@ const signedUrl = data?.signedUrl;
 | `004_mock_flag.sql` | ✅ Applied | Add `is_mock` boolean column, update presence RLS |
 | `005_security_fixes.sql` | ✅ Applied | Add SECURITY DEFINER helpers, users_public view, update storage to signed URLs |
 | `006_fix_rls_recursion.sql` | ✅ Applied | Replace recursive RLS policies with DEFINER helpers |
+| `007_agent_webhooks.sql` | ⏳ Pending | Create `delivery_status` enum, `agent_configs` table, `webhook_delivery_logs` table, RLS policies, `notify_webhook_dispatch` trigger |
 
 **Running Migrations:**
 ```bash
@@ -520,6 +632,55 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 ```
 
+### Webhook dispatch trigger (Phase 5)
+
+Database trigger that notifies the Edge Function when a new message is inserted:
+
+```sql
+-- Notify Edge Function on new message (for webhook dispatch)
+CREATE OR REPLACE FUNCTION notify_webhook_dispatch()
+RETURNS trigger AS $$
+DECLARE
+  sender_is_agent boolean;
+BEGIN
+  -- Check if sender is an agent (skip agent-sent messages to prevent loops)
+  SELECT is_agent INTO sender_is_agent FROM users WHERE id = NEW.sender_id;
+
+  IF sender_is_agent = true THEN
+    RETURN NEW; -- Skip: agents don't trigger webhooks (prevents loops)
+  END IF;
+
+  -- Check if conversation has any agent members with active webhooks
+  IF EXISTS (
+    SELECT 1
+    FROM conversation_members cm
+    JOIN agent_configs ac ON ac.user_id = cm.user_id
+    WHERE cm.conversation_id = NEW.conversation_id
+      AND ac.is_webhook_active = true
+      AND cm.user_id != NEW.sender_id
+  ) THEN
+    -- Notify via pg_notify for Edge Function to pick up
+    PERFORM pg_notify('webhook_dispatch', json_build_object(
+      'message_id', NEW.id,
+      'conversation_id', NEW.conversation_id,
+      'sender_id', NEW.sender_id
+    )::text);
+  END IF;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE TRIGGER trigger_webhook_dispatch
+  AFTER INSERT ON messages
+  FOR EACH ROW
+  EXECUTE FUNCTION notify_webhook_dispatch();
+```
+
+**Note:** The trigger only fires `pg_notify` — the actual HTTP webhook call is handled by the Supabase Edge Function (`supabase/functions/webhook-dispatch/index.ts`), which listens for the notification and performs the HTTP POST with retry logic.
+
+---
+
 ## 9. Realtime Configuration
 
 ### Postgres Changes (message delivery)
@@ -564,3 +725,5 @@ supabase.channel('typing:{conversation_id}')
 | messages | E-04 | FR-06, FR-07, FR-08, FR-10, FR-12, FR-14 |
 | attachments | E-05 | FR-10, FR-11 |
 | reactions | E-06 | FR-18 |
+| agent_configs | E-07 | FR-22, FR-26 |
+| webhook_delivery_logs | E-08 | FR-23, FR-25, FR-27 |

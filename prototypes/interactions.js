@@ -6,6 +6,9 @@ document.addEventListener('DOMContentLoaded', function () {
   initLoginForm();
   initChatInput();
   initMobileSidebar();
+  initAdminModal();
+  initAvatarPicker();
+  initWebhookRows();
 });
 
 /* CJX entrance animations based on body class */
@@ -121,5 +124,93 @@ function initMobileSidebar() {
 
   hamburger.addEventListener('click', function () {
     sidebar.classList.toggle('hide-mobile');
+  });
+}
+
+/* S-06: Admin modal (Generate Token) */
+function initAdminModal() {
+  const generateBtn = document.querySelector('#generate-token-btn');
+  const modal = document.querySelector('#generate-modal');
+  const cancelBtn = document.querySelector('#cancel-modal-btn');
+  const isAgentCheck = document.querySelector('#is-agent-check');
+  const agentFields = document.querySelector('#agent-fields');
+
+  if (!generateBtn || !modal) return;
+
+  generateBtn.addEventListener('click', function () {
+    modal.classList.add('open');
+  });
+
+  if (cancelBtn) {
+    cancelBtn.addEventListener('click', function () {
+      modal.classList.remove('open');
+    });
+  }
+
+  modal.addEventListener('click', function (event) {
+    if (event.target === modal) {
+      modal.classList.remove('open');
+    }
+  });
+
+  if (isAgentCheck && agentFields) {
+    isAgentCheck.addEventListener('change', function () {
+      agentFields.style.display = isAgentCheck.checked ? 'block' : 'none';
+    });
+  }
+}
+
+/* S-07: Avatar style picker */
+function initAvatarPicker() {
+  const avatarBtns = document.querySelectorAll('.avatar-style-btn');
+  const previewImage = document.querySelector('#avatar-preview');
+  const selectedName = document.querySelector('#selected-style-name');
+  const nicknameInput = document.querySelector('#nickname-input');
+
+  if (!avatarBtns.length || !previewImage) return;
+
+  function updatePreview(style, nickname) {
+    const seed = nickname || 'User';
+    previewImage.src = 'https://api.dicebear.com/9.x/' + style + '/svg?seed=' + encodeURIComponent(seed);
+  }
+
+  avatarBtns.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      avatarBtns.forEach(function (otherBtn) { otherBtn.classList.remove('selected'); });
+      btn.classList.add('selected');
+      const style = btn.getAttribute('data-style');
+      if (selectedName) selectedName.textContent = btn.querySelector('.avatar-style-name').textContent;
+      const nickname = nicknameInput ? nicknameInput.value : 'User';
+      updatePreview(style, nickname);
+    });
+  });
+
+  if (nicknameInput) {
+    nicknameInput.addEventListener('input', function () {
+      const selectedBtn = document.querySelector('.avatar-style-btn.selected');
+      const style = selectedBtn ? selectedBtn.getAttribute('data-style') : 'adventurer';
+      updatePreview(style, nicknameInput.value);
+    });
+  }
+}
+
+/* S-08: Webhook log row expand/collapse */
+function initWebhookRows() {
+  const expandableRows = document.querySelectorAll('.webhook-row.expandable');
+
+  expandableRows.forEach(function (row) {
+    row.addEventListener('click', function () {
+      const detailRow = row.nextElementSibling;
+      if (!detailRow || !detailRow.classList.contains('webhook-detail')) return;
+
+      const isExpanded = row.getAttribute('data-expanded') === 'true';
+      if (isExpanded) {
+        detailRow.style.display = 'none';
+        row.setAttribute('data-expanded', 'false');
+      } else {
+        detailRow.style.display = 'table-row';
+        row.setAttribute('data-expanded', 'true');
+      }
+    });
   });
 }

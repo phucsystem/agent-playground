@@ -68,6 +68,17 @@
 | FR-20 | Profile setup wizard | P4 | New users complete avatar selection (DiceBear 12 styles) and nickname entry on /setup. Admin generates invite tokens only (no name/email fields); system auto-generates placeholder email `invite-{shortId}@placeholder.local` and default name "New User". User sets real name/avatar on first login. | S-07 |
 | FR-21 | Mock user flag | P4 | Admins can mark users as mock. Non-admin users see only non-mock users in presence list. | S-02, S-06 |
 
+### Phase 5 — Agent Webhook Integration (P5)
+
+| ID | Feature | Priority | Description | Screens |
+|----|---------|----------|-------------|---------|
+| FR-22 | Agent webhook configuration | P5 | When admin generates an agent token ("Is agent?" checked), show webhook config fields: webhook URL + optional secret. Stored in `agent_configs` table. Decoupled from core chat — webhook config only applies to agent users. | S-06 |
+| FR-23 | Webhook message delivery | P5 | When a new message is inserted into a conversation containing agent members, a Supabase Edge Function fires a POST to each agent's `webhook_url` with the message payload + conversation context. Skips messages sent by agents (prevents loops). Includes HMAC-SHA256 signature header if secret is configured. | — (Edge Function) |
+| FR-24 | Agent response via REST | P5 | External agent services receive the webhook, process the message (call LLM, run tools, etc.), and respond by POSTing back to `POST /rest/v1/messages` using the agent's existing JWT. No new endpoint needed — reuses FR-14. | — (API) |
+| FR-25 | Webhook delivery status | P5 | Track webhook delivery attempts per message: status (pending/delivered/failed), HTTP status code, retry count (max 3, exponential backoff). Admin can view delivery logs for debugging. | S-08 |
+| FR-26 | Agent webhook toggle | P5 | Admin can enable/disable an agent's webhook without deleting the config. Disabled agents remain in conversations but don't receive webhook triggers. | S-06 |
+| FR-27 | Group message routing | P5 | In group conversations with multiple agents, all agents with active webhooks receive the message. Each agent decides independently whether to respond. Agents skip messages from other agents unless explicitly @mentioned. | S-04 |
+
 ## 4. Screen List (S-xx)
 
 | ID | Screen Name | Description | Phase |
@@ -79,6 +90,7 @@
 | S-05 | Chat Info Panel | Slide-over panel showing conversation participants, shared files, settings | P2 |
 | S-06 | Admin Page | User management dashboard: list all users, token generation, enable/disable/delete actions | P4 |
 | S-07 | Setup Page | Profile setup wizard: avatar picker (DiceBear 12 styles) + nickname entry | P4 |
+| S-08 | Webhook Logs | Delivery log viewer for agent webhook attempts (admin only) | P5 |
 
 ## 5. Entity List (E-xx)
 
@@ -90,6 +102,8 @@
 | E-04 | `messages` | Chat messages | `id` (uuid, PK), `conversation_id` (uuid, FK), `sender_id` (uuid, FK → users), `content` (text), `content_type` (enum: text/file/image/url), `metadata` (jsonb, nullable), `created_at` (timestamptz) |
 | E-05 | `attachments` | Files linked to messages | `id` (uuid, PK), `message_id` (uuid, FK), `file_name` (text), `file_url` (text), `file_type` (text), `file_size` (int), `storage_path` (text) |
 | E-06 | `reactions` | Message reactions (P3) | `id` (uuid, PK), `message_id` (uuid, FK), `user_id` (uuid, FK), `emoji` (text), `created_at` (timestamptz), UNIQUE: (message_id, user_id, emoji) |
+| E-07 | `agent_configs` | Webhook configuration per agent (P5) | `id` (uuid, PK), `user_id` (uuid, FK → users, UNIQUE), `webhook_url` (text, NOT NULL), `webhook_secret` (text, nullable), `is_webhook_active` (bool, default true), `created_at` (timestamptz), `updated_at` (timestamptz) |
+| E-08 | `webhook_delivery_logs` | Webhook delivery tracking (P5) | `id` (uuid, PK), `message_id` (uuid, FK → messages), `agent_id` (uuid, FK → users), `status` (enum: pending/delivered/failed), `http_status` (int, nullable), `attempt_count` (int, default 0), `last_error` (text, nullable), `created_at` (timestamptz), `delivered_at` (timestamptz, nullable) |
 
 ## 6. Non-Functional Requirements
 
@@ -130,6 +144,9 @@
 | D-06 | File storage | Supabase Storage | Integrated with RLS. Same auth system. |
 | D-07 | Markdown rendering | react-markdown + remark-gfm + rehype-highlight | Lightweight, proven. Handles code blocks, tables, links. |
 | D-08 | Design style | Nuxt Chat minimal | White bg, light sidebar, zinc neutrals, blue primary. Modern AI chat aesthetic. Reference: chat-template.nuxt.dev |
+| D-09 | Agent integration protocol | Webhook + REST (Phase 5) | Decoupled: external agents receive webhooks, respond via existing REST API. No tight coupling. A2A deferred to future phase. |
+| D-10 | Webhook config location | AgentInvite flow (admin page) | Webhook URL defined when creating agent token. Stored in separate `agent_configs` table, not in `users`. Clean separation of concerns. |
+| D-11 | Webhook trigger | Supabase Edge Function on messages INSERT | Database trigger calls Edge Function. Edge Function checks agent members, fires webhooks. Retry with exponential backoff (max 3 attempts). |
 
 ## 8. Out of Scope
 
@@ -137,7 +154,6 @@
 - Payment / billing
 - Mobile native app
 - End-to-end encryption
-- Agent creation/configuration UI
 - Admin dashboard UI (direct DB management for MVP)
 - Message editing/deletion
 - Video/voice calls

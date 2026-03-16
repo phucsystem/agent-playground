@@ -39,6 +39,12 @@
 | WS | Realtime: `postgres_changes` on messages | FR-08 | S-03, S-04 | P1 |
 | WS | Realtime: `presence` channel | FR-03 | S-02 | P1 |
 | WS | Realtime: `broadcast` typing | FR-16 | S-03, S-04 | P3 |
+| POST | `/rest/v1/agent_configs` | FR-22 | S-06 | P5 |
+| PATCH | `/rest/v1/agent_configs?user_id=eq.{id}` | FR-22, FR-26 | S-06 | P5 |
+| GET | `/rest/v1/agent_configs?user_id=eq.{id}` | FR-22 | S-06 | P5 |
+| DELETE | `/rest/v1/agent_configs?user_id=eq.{id}` | FR-22 | S-06 | P5 |
+| GET | `/rest/v1/webhook_delivery_logs` | FR-25 | S-08 | P5 |
+| POST | `/rpc/dispatch_webhook` | FR-23, FR-27 | — (Edge Function) | P5 |
 
 ## 2. Endpoint Details
 
@@ -654,6 +660,281 @@
 
 ---
 
+---
+
+### POST /rest/v1/agent_configs (Phase 5 — Agent Webhook Setup)
+
+**Description:** Create webhook configuration for an agent. Called during agent token generation when "Is agent?" is checked.
+**Feature:** FR-22
+**Screen:** S-06
+**Auth:** Bearer JWT (admin only)
+
+**Request:**
+```json
+{
+  "user_id": "agent-user-uuid",
+  "webhook_url": "https://my-agent.example.com/webhook",
+  "webhook_secret": "whsec_abc123def456",
+  "is_webhook_active": true
+}
+```
+
+**Response (201):**
+```json
+{
+  "id": "config-uuid",
+  "user_id": "agent-user-uuid",
+  "webhook_url": "https://my-agent.example.com/webhook",
+  "webhook_secret": "whsec_abc123def456",
+  "is_webhook_active": true,
+  "created_at": "2026-03-16T10:00:00Z",
+  "updated_at": "2026-03-16T10:00:00Z"
+}
+```
+
+**Errors:**
+| Code | Body | Condition |
+|------|------|-----------|
+| 409 | `{ "error": "duplicate", "message": "Agent already has webhook config" }` | UNIQUE constraint on user_id |
+| 400 | `{ "error": "invalid_url", "message": "webhook_url must be a valid HTTPS URL" }` | Non-HTTPS or malformed URL |
+| 403 | RLS violation | Non-admin user attempting creation |
+
+**RLS:** Only admins can create. `WITH CHECK (is_admin())`
+
+---
+
+### PATCH /rest/v1/agent_configs?user_id=eq.{id} (Phase 5 — Update Webhook)
+
+**Description:** Update webhook URL, secret, or active status. Used for editing webhook config and toggling webhook on/off.
+**Feature:** FR-22, FR-26
+**Screen:** S-06
+**Auth:** Bearer JWT (admin only)
+
+**Request (update URL):**
+```json
+{
+  "webhook_url": "https://new-agent-url.example.com/webhook",
+  "updated_at": "2026-03-16T11:00:00Z"
+}
+```
+
+**Request (toggle webhook — FR-26):**
+```json
+{
+  "is_webhook_active": false,
+  "updated_at": "2026-03-16T11:00:00Z"
+}
+```
+
+**Response (200):** Updated config record.
+
+**RLS:** Only admins can update. `USING (is_admin())`
+
+---
+
+### GET /rest/v1/agent_configs (Phase 5 — List/Get Webhook Config)
+
+**Description:** Get webhook configuration for agents. Admin sees all; used to populate admin table's webhook indicators.
+**Feature:** FR-22
+**Screen:** S-06
+**Auth:** Bearer JWT (admin only)
+
+**Query params:**
+| Param | Value | Purpose |
+|-------|-------|---------|
+| `user_id` | `eq.{uuid}` | Filter by specific agent (optional) |
+| `select` | `*,user:users(id,display_name,avatar_url)` | Join agent profile |
+
+**Response (200):**
+```json
+[
+  {
+    "id": "config-uuid",
+    "user_id": "agent-uuid",
+    "webhook_url": "https://claude-agent.example.com/webhook",
+    "webhook_secret": null,
+    "is_webhook_active": true,
+    "created_at": "2026-03-16T10:00:00Z",
+    "updated_at": "2026-03-16T10:00:00Z",
+    "user": {
+      "id": "agent-uuid",
+      "display_name": "Claude",
+      "avatar_url": null
+    }
+  }
+]
+```
+
+**Note:** `webhook_secret` is returned to admin for display. In production, consider returning masked value (`whsec_••••••`).
+
+**RLS:** Only admins can read. `USING (is_admin())`
+
+---
+
+### DELETE /rest/v1/agent_configs?user_id=eq.{id} (Phase 5)
+
+**Description:** Remove webhook configuration for an agent.
+**Feature:** FR-22
+**Screen:** S-06
+**Auth:** Bearer JWT (admin only)
+
+**RLS:** Only admins can delete. `USING (is_admin())`
+
+---
+
+### GET /rest/v1/webhook_delivery_logs (Phase 5 — Webhook Logs)
+
+**Description:** Query webhook delivery history. Supports filtering by agent, status, and time range.
+**Feature:** FR-25
+**Screen:** S-08
+**Auth:** Bearer JWT (admin only)
+
+**Query params:**
+| Param | Value | Purpose |
+|-------|-------|---------|
+| `agent_id` | `eq.{uuid}` | Filter by agent (optional) |
+| `status` | `eq.delivered` or `eq.failed` | Filter by delivery status (optional) |
+| `created_at` | `gte.{timestamp}` | Time range filter |
+| `select` | `*,agent:users(id,display_name,avatar_url),message:messages(id,content,sender_id)` | Join agent + message |
+| `order` | `created_at.desc` | Newest first |
+| `limit` | `50` | Page size |
+| `offset` | `0` | Pagination |
+
+**Response (200):**
+```json
+[
+  {
+    "id": "log-uuid",
+    "message_id": "msg-uuid",
+    "agent_id": "agent-uuid",
+    "status": "delivered",
+    "http_status": 200,
+    "attempt_count": 1,
+    "last_error": null,
+    "created_at": "2026-03-16T10:33:12Z",
+    "delivered_at": "2026-03-16T10:33:13Z",
+    "agent": {
+      "id": "agent-uuid",
+      "display_name": "Claude",
+      "avatar_url": null
+    },
+    "message": {
+      "id": "msg-uuid",
+      "content": "Help me with this code...",
+      "sender_id": "human-uuid"
+    }
+  },
+  {
+    "id": "log-uuid-2",
+    "message_id": "msg-uuid-2",
+    "agent_id": "agent-uuid-2",
+    "status": "failed",
+    "http_status": null,
+    "attempt_count": 3,
+    "last_error": "Connection timed out after 30s",
+    "created_at": "2026-03-16T10:30:15Z",
+    "delivered_at": null,
+    "agent": {
+      "id": "agent-uuid-2",
+      "display_name": "GPT-4",
+      "avatar_url": null
+    },
+    "message": {
+      "id": "msg-uuid-2",
+      "content": "Test message for debug...",
+      "sender_id": "human-uuid"
+    }
+  }
+]
+```
+
+**RLS:** Only admins can read. `USING (is_admin())`
+
+---
+
+### Webhook Dispatch (Edge Function — FR-23, FR-27)
+
+**Description:** Supabase Edge Function triggered by database trigger on `messages` INSERT. Not a REST endpoint — internal system function.
+
+**Trigger flow:**
+```
+messages INSERT
+  → pg_notify('webhook_dispatch', message_id)
+  → Supabase Database Webhook calls Edge Function
+  → Edge Function queries agent members + their webhook configs
+  → Fires HTTP POST to each active agent's webhook_url
+  → Logs delivery result to webhook_delivery_logs
+```
+
+**Skip conditions (prevent loops — FR-27):**
+- Skip if `sender.is_agent = true` (agent sent the message)
+- Exception: deliver if message contains `@agent_name` mention even from another agent
+- Skip if `agent_configs.is_webhook_active = false`
+
+**Webhook payload (POST to agent's webhook_url):**
+```json
+{
+  "event": "message.created",
+  "timestamp": "2026-03-16T10:33:00Z",
+  "message": {
+    "id": "msg-uuid",
+    "conversation_id": "conv-uuid",
+    "sender_id": "human-uuid",
+    "sender_name": "Phuc",
+    "sender_is_agent": false,
+    "content": "Help me with this code snippet",
+    "content_type": "text",
+    "metadata": null,
+    "created_at": "2026-03-16T10:33:00Z"
+  },
+  "conversation": {
+    "id": "conv-uuid",
+    "type": "dm",
+    "name": null,
+    "member_count": 2
+  },
+  "agent": {
+    "id": "agent-uuid",
+    "display_name": "Claude",
+    "webhook_config_id": "config-uuid"
+  }
+}
+```
+
+**Security headers:**
+| Header | Value | Condition |
+|--------|-------|-----------|
+| `Content-Type` | `application/json` | Always |
+| `X-Webhook-Signature` | `sha256={HMAC-SHA256(payload, secret)}` | Only if `webhook_secret` is set |
+| `X-Webhook-ID` | `{delivery_log_id}` | Always (for idempotency) |
+| `X-Webhook-Timestamp` | `{unix_timestamp}` | Always (for replay protection) |
+| `User-Agent` | `AgentPlayground-Webhook/1.0` | Always |
+
+**HMAC-SHA256 signature computation:**
+```
+signature = HMAC-SHA256(
+  key = webhook_secret,
+  message = `${webhook_id}.${timestamp}.${JSON.stringify(payload)}`
+)
+header = `sha256=${hex(signature)}`
+```
+
+**Retry policy:**
+| Attempt | Delay | Timeout |
+|---------|-------|---------|
+| 1 (initial) | immediate | 30s |
+| 2 (retry) | 10s | 30s |
+| 3 (retry) | 60s | 30s |
+
+After 3 failed attempts, status set to `failed`. No further retries.
+
+**Expected agent response:**
+- `200-299` → delivery marked `delivered`
+- `4xx` → no retry (client error)
+- `5xx` or timeout → retry per policy above
+
+---
+
 ## 3. Realtime Subscriptions
 
 ### Message delivery (FR-08)
@@ -780,6 +1061,12 @@ Agent uses Supabase JS/Python client to subscribe to `postgres_changes` on messa
 | Realtime: messages | FR-08 | S-03, S-04 | P1 |
 | Realtime: presence | FR-03 | S-02 | P1 |
 | Realtime: typing | FR-16 | S-03, S-04 | P3 |
+| `POST /rest/v1/agent_configs` | FR-22 | S-06 | P5 |
+| `PATCH /rest/v1/agent_configs` | FR-22, FR-26 | S-06 | P5 |
+| `GET /rest/v1/agent_configs` | FR-22 | S-06 | P5 |
+| `DELETE /rest/v1/agent_configs` | FR-22 | S-06 | P5 |
+| `GET /rest/v1/webhook_delivery_logs` | FR-25 | S-08 | P5 |
+| Edge Function: webhook dispatch | FR-23, FR-24, FR-27 | — | P5 |
 
 ---
 

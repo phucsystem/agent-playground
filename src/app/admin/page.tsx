@@ -17,6 +17,12 @@ import {
   Bot,
 } from "lucide-react";
 import type { User } from "@/types/database";
+import { useAgentConfigs } from "@/hooks/use-agent-configs";
+import { WebhookConfigForm } from "@/components/admin/webhook-config-form";
+import {
+  AgentWebhookIndicator,
+  AgentWebhookActions,
+} from "@/components/admin/agent-webhook-actions";
 
 function generateToken() {
   const charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()-_=+[]{}|;:<>?";
@@ -58,6 +64,9 @@ export default function AdminPage() {
   const [inviteIsAgent, setInviteIsAgent] = useState(false);
   const [creating, setCreating] = useState(false);
   const [generatedToken, setGeneratedToken] = useState<string | null>(null);
+  const [webhookUrl, setWebhookUrl] = useState("");
+  const [webhookSecret, setWebhookSecret] = useState("");
+  const { configs, createConfig, updateConfig, toggleWebhook } = useAgentConfigs();
 
   const fetchUsers = useCallback(async () => {
     const supabase = createBrowserSupabaseClient();
@@ -111,6 +120,21 @@ export default function AdminPage() {
       return;
     }
 
+    if (inviteIsAgent && webhookUrl) {
+      const { data: newUsers } = await supabase
+        .from("users")
+        .select("id")
+        .eq("token", token)
+        .single();
+
+      if (newUsers) {
+        const configResult = await createConfig(newUsers.id, webhookUrl, webhookSecret || undefined);
+        if (configResult.error) {
+          alert(`User created but webhook config failed: ${configResult.error}`);
+        }
+      }
+    }
+
     setGeneratedToken(token);
     setCreating(false);
     fetchUsers();
@@ -120,6 +144,8 @@ export default function AdminPage() {
     setShowInvite(false);
     setInviteIsAgent(false);
     setGeneratedToken(null);
+    setWebhookUrl("");
+    setWebhookSecret("");
   }
 
   async function toggleUserActive(userId: string, currentlyActive: boolean) {
@@ -195,7 +221,16 @@ export default function AdminPage() {
                   <span className="text-sm text-neutral-600">This is an AI agent</span>
                 </label>
 
-                <div className="flex gap-2">
+                {inviteIsAgent && (
+                  <WebhookConfigForm
+                    webhookUrl={webhookUrl}
+                    webhookSecret={webhookSecret}
+                    onUrlChange={setWebhookUrl}
+                    onSecretChange={setWebhookSecret}
+                  />
+                )}
+
+                <div className="flex gap-2 mt-4">
                   <button
                     onClick={handleCreateInvite}
                     disabled={creating}
@@ -252,6 +287,9 @@ export default function AdminPage() {
                     >
                       {appUser.role}
                     </span>
+                    {appUser.is_agent && (
+                      <AgentWebhookIndicator config={configs.get(appUser.id)} />
+                    )}
                   </div>
                   <p className="text-xs text-neutral-400 truncate">
                     {appUser.email}
@@ -260,6 +298,15 @@ export default function AdminPage() {
 
                 <div className="flex items-center gap-1">
                   <CopyButton text={appUser.token} />
+
+                  {appUser.is_agent && configs.get(appUser.id) && (
+                    <AgentWebhookActions
+                      userId={appUser.id}
+                      config={configs.get(appUser.id)}
+                      onToggle={toggleWebhook}
+                      onUpdate={updateConfig}
+                    />
+                  )}
 
                   {appUser.id !== currentUser.id && (
                     <>

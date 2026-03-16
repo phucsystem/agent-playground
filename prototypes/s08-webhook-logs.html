@@ -1,0 +1,240 @@
+<!--
+  Screen: S-08 Webhook Logs
+  CJX Stage: Retention
+  FR Mapping: FR-12 (Webhook Monitoring)
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agent Playground — Webhook Delivery Logs</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="components.css">
+</head>
+<body class="cjx-retention">
+
+  <div class="admin-page">
+
+    <!-- Header -->
+    <header class="admin-header" data-cjx-entrance>
+      <div class="admin-header-left">
+        <a href="s06-admin.html" class="admin-back-link">&#x2190; Back to Admin</a>
+        <h1 class="admin-title">Webhook Delivery Logs</h1>
+      </div>
+      <div class="admin-header-right">
+        <label class="form-checkbox auto-refresh-toggle">
+          <input type="checkbox" id="auto-refresh-check">
+          <span>Auto-refresh</span>
+        </label>
+        <button class="close-btn" title="Close" onclick="window.location='s06-admin.html'">&times;</button>
+      </div>
+    </header>
+
+    <!-- Filters -->
+    <div class="admin-content" data-cjx-entrance>
+      <div class="webhook-filters">
+        <div class="filter-group">
+          <label class="form-label">Agent</label>
+          <select class="form-select">
+            <option>All agents</option>
+            <option>Claude</option>
+            <option>GPT-4</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label class="form-label">Status</label>
+          <select class="form-select">
+            <option>All statuses</option>
+            <option>Delivered</option>
+            <option>Failed</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label class="form-label">Time range</label>
+          <select class="form-select">
+            <option>Last 24h</option>
+            <option>Last 1h</option>
+            <option>Last 7d</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Logs Table -->
+      <div class="table-container">
+        <table class="admin-table webhook-table">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Agent</th>
+              <th>Message</th>
+              <th>Status</th>
+              <th>Latency</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- Row 1: Success -->
+            <tr class="webhook-row expandable" data-expanded="false">
+              <td class="webhook-time">10:33:12 AM</td>
+              <td>
+                <div class="admin-user-cell">
+                  <div class="avatar avatar-sm avatar-teal" style="position:relative;">
+                    C
+                    <span class="bot-badge">&#x1F916;</span>
+                  </div>
+                  Claude
+                </div>
+              </td>
+              <td class="webhook-msg-preview">"Help me with this code..."</td>
+              <td><span class="webhook-status-badge webhook-success">&#x2713; 200</span></td>
+              <td class="webhook-latency">1.2s</td>
+            </tr>
+            <!-- Expanded detail (hidden by default) -->
+            <tr class="webhook-detail" style="display:none;">
+              <td colspan="5">
+                <div class="webhook-detail-content">
+                  <div class="webhook-detail-row">
+                    <span class="webhook-detail-label">URL</span>
+                    <code>https://claude-agent.example.com/webhook</code>
+                  </div>
+                  <div class="webhook-detail-row">
+                    <span class="webhook-detail-label">Message</span>
+                    <span>Help me with this code snippet for data analysis</span>
+                  </div>
+                  <div class="webhook-detail-row">
+                    <span class="webhook-detail-label">Response</span>
+                    <code>200 OK</code>
+                  </div>
+                </div>
+              </td>
+            </tr>
+
+            <!-- Row 2: Success -->
+            <tr class="webhook-row expandable" data-expanded="false">
+              <td class="webhook-time">10:32:45 AM</td>
+              <td>
+                <div class="admin-user-cell">
+                  <div class="avatar avatar-sm avatar-blue" style="position:relative;">
+                    G
+                    <span class="bot-badge">&#x1F916;</span>
+                  </div>
+                  GPT-4
+                </div>
+              </td>
+              <td class="webhook-msg-preview">"Summarize this document..."</td>
+              <td><span class="webhook-status-badge webhook-success">&#x2713; 200</span></td>
+              <td class="webhook-latency">2.1s</td>
+            </tr>
+            <tr class="webhook-detail" style="display:none;">
+              <td colspan="5">
+                <div class="webhook-detail-content">
+                  <div class="webhook-detail-row">
+                    <span class="webhook-detail-label">URL</span>
+                    <code>https://gpt4-agent.example.com/webhook</code>
+                  </div>
+                  <div class="webhook-detail-row">
+                    <span class="webhook-detail-label">Message</span>
+                    <span>Summarize this document for the team</span>
+                  </div>
+                  <div class="webhook-detail-row">
+                    <span class="webhook-detail-label">Response</span>
+                    <code>200 OK</code>
+                  </div>
+                </div>
+              </td>
+            </tr>
+
+            <!-- Row 3: Failed with retry -->
+            <tr class="webhook-row expandable" data-expanded="false">
+              <td class="webhook-time">10:31:00 AM</td>
+              <td>
+                <div class="admin-user-cell">
+                  <div class="avatar avatar-sm avatar-teal" style="position:relative;">
+                    C
+                    <span class="bot-badge">&#x1F916;</span>
+                  </div>
+                  Claude
+                </div>
+              </td>
+              <td class="webhook-msg-preview">"Hey there, how are you..."</td>
+              <td><span class="webhook-status-badge webhook-failed">&#x2717; 500</span></td>
+              <td class="webhook-latency">5.0s</td>
+            </tr>
+            <tr class="webhook-detail" style="display:none;">
+              <td colspan="5">
+                <div class="webhook-detail-content">
+                  <div class="webhook-detail-row">
+                    <span class="webhook-detail-label">URL</span>
+                    <code>https://claude-agent.example.com/webhook</code>
+                  </div>
+                  <div class="webhook-detail-row">
+                    <span class="webhook-detail-label">Error</span>
+                    <code>500 Internal Server Error</code>
+                  </div>
+                </div>
+              </td>
+            </tr>
+            <!-- Retry sub-row -->
+            <tr class="webhook-row webhook-retry-row">
+              <td></td>
+              <td></td>
+              <td class="webhook-retry-label"><span class="webhook-retry-badge retry-success">Retry 2/3</span></td>
+              <td><span class="webhook-status-badge webhook-success">&#x2713; 200</span></td>
+              <td class="webhook-latency">1.0s</td>
+            </tr>
+
+            <!-- Row 4: Failed with exhausted retries -->
+            <tr class="webhook-row expandable" data-expanded="false">
+              <td class="webhook-time">10:30:15 AM</td>
+              <td>
+                <div class="admin-user-cell">
+                  <div class="avatar avatar-sm avatar-blue" style="position:relative;">
+                    G
+                    <span class="bot-badge">&#x1F916;</span>
+                  </div>
+                  GPT-4
+                </div>
+              </td>
+              <td class="webhook-msg-preview">"Test message for debug..."</td>
+              <td><span class="webhook-status-badge webhook-failed">&#x2717; timeout</span></td>
+              <td class="webhook-latency">30s</td>
+            </tr>
+            <tr class="webhook-detail" style="display:none;">
+              <td colspan="5">
+                <div class="webhook-detail-content">
+                  <div class="webhook-detail-row">
+                    <span class="webhook-detail-label">URL</span>
+                    <code>https://gpt4-agent.example.com/webhook</code>
+                  </div>
+                  <div class="webhook-detail-row">
+                    <span class="webhook-detail-label">Error</span>
+                    <code>Connection timed out after 30s</code>
+                  </div>
+                </div>
+              </td>
+            </tr>
+            <!-- Retry sub-rows (exhausted) -->
+            <tr class="webhook-row webhook-retry-row">
+              <td></td>
+              <td></td>
+              <td class="webhook-retry-label"><span class="webhook-retry-badge retry-failed">Retry 3/3</span></td>
+              <td><span class="webhook-status-badge webhook-failed">&#x2717; timeout</span></td>
+              <td class="webhook-latency">30s</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination -->
+      <div class="webhook-pagination">
+        <span class="webhook-pagination-info">Showing 50 of 234 entries</span>
+        <button class="admin-btn admin-btn-secondary">Load more</button>
+      </div>
+
+    </div>
+
+  </div>
+
+  <script src="interactions.js"></script>
+</body>
+</html>
