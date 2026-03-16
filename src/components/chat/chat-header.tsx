@@ -47,7 +47,6 @@ export function ChatHeader({
                 avatarUrl={conversation.other_user!.avatar_url}
                 isAgent={isAgent}
                 size="sm"
-                healthStatus={isAgent ? agentHealthStatus : undefined}
               />
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-bold text-neutral-800 truncate">
