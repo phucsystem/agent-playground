@@ -149,6 +149,11 @@ function HeartButton({
   );
 }
 
+function isGifMessage(message: MessageWithSender): boolean {
+  const meta = message.metadata as Record<string, unknown> | null;
+  return message.content_type === "image" && meta?.is_gif === true;
+}
+
 export function MessageItem({
   message,
   isGrouped,
@@ -158,6 +163,8 @@ export function MessageItem({
   onToggleReaction,
   memberNames,
 }: MessageItemProps) {
+  const isGif = isGifMessage(message);
+
   if (isCurrentUser) {
     return (
       <div className="flex justify-end items-end relative group px-2 py-1">
@@ -175,11 +182,17 @@ export function MessageItem({
               {formatTimestamp(message.created_at)}
             </p>
           )}
-          <div className="bg-primary-500 text-white rounded-2xl rounded-br-sm px-4 py-2.5 shadow-sm">
-            <div className="text-[15px] leading-relaxed [&_a]:text-white [&_a]:underline [&_pre]:bg-primary-600 [&_pre]:border-primary-400 [&_code]:text-primary-100 [&_.mention-tag]:bg-white/20 [&_.mention-tag]:text-white">
+          {isGif ? (
+            <div className="flex justify-end">
               <MessageContent message={message} memberNames={memberNames} />
             </div>
-          </div>
+          ) : (
+            <div className="bg-primary-500 text-white rounded-2xl rounded-br-sm px-4 py-2.5 shadow-sm">
+              <div className="text-[15px] leading-relaxed [&_a]:text-white [&_a]:underline [&_pre]:bg-primary-600 [&_pre]:border-primary-400 [&_code]:text-primary-100 [&_.mention-tag]:bg-white/20 [&_.mention-tag]:text-white">
+                <MessageContent message={message} memberNames={memberNames} />
+              </div>
+            </div>
+          )}
           <div className="flex justify-end">
             <MessageReactions
               reactions={reactions.filter((reaction) => reaction.emoji !== "❤️")}
@@ -225,11 +238,15 @@ export function MessageItem({
             </span>
           </div>
         )}
-        <div className="bg-neutral-100 rounded-2xl rounded-bl-sm px-4 py-2.5">
-          <div className="text-[15px] leading-relaxed text-neutral-700 [&_.mention-tag]:bg-primary-100 [&_.mention-tag]:text-primary-700">
-            <MessageContent message={message} memberNames={memberNames} />
+        {isGif ? (
+          <MessageContent message={message} memberNames={memberNames} />
+        ) : (
+          <div className="bg-neutral-100 rounded-2xl rounded-bl-sm px-4 py-2.5">
+            <div className="text-[15px] leading-relaxed text-neutral-700 [&_.mention-tag]:bg-primary-100 [&_.mention-tag]:text-primary-700">
+              <MessageContent message={message} memberNames={memberNames} />
+            </div>
           </div>
-        </div>
+        )}
 
         <MessageReactions
           reactions={reactions.filter((reaction) => reaction.emoji !== "❤️")}
