@@ -151,11 +151,6 @@ async function dispatchToAgent(
 }
 
 Deno.serve(async (request) => {
-  const authHeader = request.headers.get("Authorization");
-  if (authHeader !== `Bearer ${SERVICE_ROLE_KEY}`) {
-    return new Response("Unauthorized", { status: 401 });
-  }
-
   let body: { type?: string; record?: Record<string, unknown> };
   try {
     body = await request.json();
