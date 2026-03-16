@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { toast, Toaster } from "sonner";
 import { PresenceToast } from "@/components/ui/presence-toast";
 import { formatRelativeTime } from "@/lib/session-utils";
-import type { KickedSession } from "@/types/database";
+import type { KickedSession, User } from "@/types/database";
 import { usePathname } from "next/navigation";
 import { Sidebar } from "@/components/sidebar/sidebar";
 import { useCurrentUser } from "@/hooks/use-current-user";
@@ -23,17 +23,16 @@ import { WorkspaceRail } from "@/components/sidebar/workspace-rail";
 import { WorkspaceAvatar } from "@/components/ui/workspace-avatar";
 import { Loader2 } from "lucide-react";
 
-function ChatLayoutContent({ children }: { children: React.ReactNode }) {
+function ChatLayoutContent({ children, currentUser }: { children: React.ReactNode; currentUser: User }) {
   const pathname = usePathname();
-  const { currentUser } = useCurrentUser();
   const { workspaces, activeWorkspace, switchWorkspace, loading: workspaceLoading } = useWorkspaceContext();
-  const { onlineUsers, newlyOnlineUsers, clearNewlyOnline, markUserOnline } = useSupabasePresence(currentUser ?? null, activeWorkspace?.id ?? null);
+  const { onlineUsers, newlyOnlineUsers, clearNewlyOnline, markUserOnline } = useSupabasePresence(currentUser, activeWorkspace?.id ?? null);
   const { conversations } = useConversations(activeWorkspace?.id ?? null);
   const { getStatus: getAgentHealthStatus, transitions: healthTransitions, clearTransitions: clearHealthTransitions, markActive } = useAgentHealth();
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const { isOpen, close } = useMobileSidebar();
 
-  const { triggerTestNotification } = useNotificationSound(currentUser ?? null, conversations);
+  const { triggerTestNotification } = useNotificationSound(currentUser, conversations);
 
   const activeConversationId = pathname.split("/chat/")[1];
 
@@ -169,7 +168,7 @@ function ChatLayoutContent({ children }: { children: React.ReactNode }) {
         </div>
 
         <Sidebar
-          currentUser={currentUser!}
+          currentUser={currentUser}
           onlineUserIds={onlineUserIds}
           onlineUsers={onlineUsers}
           conversations={conversations}
@@ -192,7 +191,7 @@ function ChatLayoutContent({ children }: { children: React.ReactNode }) {
 
       {showCreateGroup && activeWorkspace && (
         <CreateGroupDialog
-          currentUserId={currentUser!.id}
+          currentUserId={currentUser.id}
           workspaceId={activeWorkspace.id}
           onClose={() => setShowCreateGroup(false)}
         />
@@ -228,7 +227,7 @@ function ChatLayoutInner({ children }: { children: React.ReactNode }) {
 
   return (
     <WorkspaceProvider userId={currentUser.id}>
-      <ChatLayoutContent>{children}</ChatLayoutContent>
+      <ChatLayoutContent currentUser={currentUser}>{children}</ChatLayoutContent>
     </WorkspaceProvider>
   );
 }
