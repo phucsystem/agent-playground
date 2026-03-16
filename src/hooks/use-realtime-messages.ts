@@ -6,11 +6,24 @@ import type { MessageWithSender } from "@/types/database";
 
 const PAGE_SIZE = 50;
 
+interface CachedConversation {
+  messages: MessageWithSender[];
+  hasMore: boolean;
+  offset: number;
+}
+
+const messageCache = new Map<string, CachedConversation>();
+
 export function useRealtimeMessages(conversationId: string) {
-  const [messages, setMessages] = useState<MessageWithSender[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [hasMore, setHasMore] = useState(true);
-  const offsetRef = useRef(0);
+  const cached = messageCache.get(conversationId);
+  const [messages, setMessages] = useState<MessageWithSender[]>(cached?.messages || []);
+  const [loading, setLoading] = useState(!cached);
+  const [hasMore, setHasMore] = useState(cached?.hasMore ?? true);
+  const offsetRef = useRef(cached?.offset ?? 0);
+
+  const updateCache = useCallback((msgs: MessageWithSender[], more: boolean, offset: number) => {
+    messageCache.set(conversationId, { messages: msgs, hasMore: more, offset });
+  }, [conversationId]);
 
   const fetchMessages = useCallback(async (offset = 0) => {
     const supabase = createBrowserSupabaseClient();
@@ -27,17 +40,25 @@ export function useRealtimeMessages(conversationId: string) {
     }
 
     const fetched = (data || []) as unknown as MessageWithSender[];
+    const more = fetched.length === PAGE_SIZE;
+    const newOffset = offset + fetched.length;
 
     if (offset === 0) {
-      setMessages(fetched.reverse());
+      const reversed = fetched.reverse();
+      setMessages(reversed);
+      updateCache(reversed, more, newOffset);
     } else {
-      setMessages((prev) => [...fetched.reverse(), ...prev]);
+      setMessages((prev) => {
+        const merged = [...fetched.reverse(), ...prev];
+        updateCache(merged, more, newOffset);
+        return merged;
+      });
     }
 
-    setHasMore(fetched.length === PAGE_SIZE);
-    offsetRef.current = offset + fetched.length;
+    setHasMore(more);
+    offsetRef.current = newOffset;
     setLoading(false);
-  }, [conversationId]);
+  }, [conversationId, updateCache]);
 
   const loadMore = useCallback(() => {
     if (hasMore) {
@@ -46,9 +67,17 @@ export function useRealtimeMessages(conversationId: string) {
   }, [hasMore, fetchMessages]);
 
   useEffect(() => {
-    offsetRef.current = 0;
-    setMessages([]);
-    setLoading(true);
+    const existing = messageCache.get(conversationId);
+    if (existing) {
+      setMessages(existing.messages);
+      setHasMore(existing.hasMore);
+      offsetRef.current = existing.offset;
+      setLoading(false);
+    } else {
+      setMessages([]);
+      setLoading(true);
+      offsetRef.current = 0;
+    }
     fetchMessages(0);
 
     const supabase = createBrowserSupabaseClient();
@@ -76,7 +105,12 @@ export function useRealtimeMessages(conversationId: string) {
 
           setMessages((prev) => {
             if (prev.some((msg) => msg.id === newMessage.id)) return prev;
-            return [...prev, newMessage];
+            const updated = [...prev, newMessage];
+            const cachedData = messageCache.get(conversationId);
+            if (cachedData) {
+              messageCache.set(conversationId, { ...cachedData, messages: updated });
+            }
+            return updated;
           });
         }
       )
