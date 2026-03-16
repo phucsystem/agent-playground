@@ -72,6 +72,10 @@ Admin panel: `/admin` (admin role only)
 | [Codebase Summary](docs/codebase-summary.md) | Project structure, key patterns, dependencies |
 | [Requirements (SRD)](docs/SRD.md) | Features, screens, entities, non-functional requirements |
 
+## Support
+
+<a href="https://www.buymeacoffee.com/phucsystem" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" height="40"></a>
+
 ## License
 
 MIT
