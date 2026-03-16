@@ -12,8 +12,17 @@ import { useState, useEffect, useRef } from "react";
 import type { ReactionGroup } from "@/hooks/use-reactions";
 import { useTypewriter } from "@/hooks/use-typewriter";
 
+const MAX_TRACKED_IDS = 500;
 const animatedMessageIds = new Set<string>();
 const RECENCY_THRESHOLD_MS = 30_000;
+
+function trackAnimatedId(messageId: string) {
+  animatedMessageIds.add(messageId);
+  if (animatedMessageIds.size > MAX_TRACKED_IDS) {
+    const firstId = animatedMessageIds.values().next().value;
+    if (firstId) animatedMessageIds.delete(firstId);
+  }
+}
 
 interface MessageItemProps {
   message: MessageWithSender;
@@ -42,17 +51,13 @@ function isRecentMessage(createdAt: string): boolean {
 
 function AgentTextContent({ message, memberNames }: { message: MessageWithSender; memberNames?: string[] }) {
   const shouldAnimate = !animatedMessageIds.has(message.id) && isRecentMessage(message.created_at);
-  const markedRef = useRef(false);
 
-  const { displayText, isAnimating, isComplete } = useTypewriter(message.content, {
+  const { displayText, isAnimating, isComplete, skip } = useTypewriter(message.content, {
     enabled: shouldAnimate,
   });
 
   useEffect(() => {
-    if (!markedRef.current) {
-      animatedMessageIds.add(message.id);
-      markedRef.current = true;
-    }
+    trackAnimatedId(message.id);
   }, [message.id]);
 
   if (isComplete || !shouldAnimate) {
@@ -60,7 +65,7 @@ function AgentTextContent({ message, memberNames }: { message: MessageWithSender
   }
 
   return (
-    <span className="whitespace-pre-wrap">
+    <span className="whitespace-pre-wrap cursor-pointer" onClick={skip} title="Click to reveal full message">
       {displayText}
       {isAnimating && <span className="inline-block w-0.5 h-4 bg-neutral-400 animate-pulse ml-0.5 align-text-bottom" />}
     </span>

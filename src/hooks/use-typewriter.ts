@@ -11,17 +11,23 @@ interface UseTypewriterOptions {
 
 export function useTypewriter(fullText: string, options: UseTypewriterOptions) {
   const { enabled } = options;
+  const lockedTextRef = useRef(fullText);
   const [visibleLength, setVisibleLength] = useState(enabled ? 0 : fullText.length);
   const rafRef = useRef<number | null>(null);
   const lastTimeRef = useRef(0);
   const skippedRef = useRef(false);
 
-  const isAnimating = enabled && visibleLength < fullText.length && !skippedRef.current;
-  const shouldAnimate = enabled && fullText.length >= MIN_LENGTH_TO_ANIMATE;
+  if (!enabled) {
+    lockedTextRef.current = fullText;
+  }
+
+  const textLength = lockedTextRef.current.length;
+  const shouldAnimate = enabled && textLength >= MIN_LENGTH_TO_ANIMATE;
+  const isAnimating = shouldAnimate && visibleLength < textLength && !skippedRef.current;
 
   useEffect(() => {
     if (!shouldAnimate) {
-      setVisibleLength(fullText.length);
+      setVisibleLength(textLength);
       return;
     }
 
@@ -39,8 +45,8 @@ export function useTypewriter(fullText: string, options: UseTypewriterOptions) {
       const elapsed = timestamp - lastTimeRef.current;
       const charsToShow = Math.floor(elapsed / CHAR_INTERVAL_MS);
 
-      if (charsToShow >= fullText.length) {
-        setVisibleLength(fullText.length);
+      if (charsToShow >= textLength) {
+        setVisibleLength(textLength);
         return;
       }
 
@@ -53,18 +59,18 @@ export function useTypewriter(fullText: string, options: UseTypewriterOptions) {
     return () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
-  }, [fullText, shouldAnimate]);
+  }, [shouldAnimate, textLength]);
 
   const skip = useCallback(() => {
     skippedRef.current = true;
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    setVisibleLength(fullText.length);
-  }, [fullText.length]);
+    setVisibleLength(textLength);
+  }, [textLength]);
 
   return {
-    displayText: fullText.slice(0, visibleLength),
-    isAnimating: shouldAnimate && isAnimating,
-    isComplete: visibleLength >= fullText.length,
+    displayText: lockedTextRef.current.slice(0, visibleLength),
+    isAnimating,
+    isComplete: visibleLength >= textLength,
     skip,
   };
 }
