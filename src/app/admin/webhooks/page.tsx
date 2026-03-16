@@ -31,6 +31,14 @@ function StatusBadge({ status, httpStatus }: { status: DeliveryStatus; httpStatu
   );
 }
 
+function formatResponseBody(body: string): string {
+  try {
+    return JSON.stringify(JSON.parse(body), null, 2);
+  } catch {
+    return body;
+  }
+}
+
 function LogRow({ log }: { log: WebhookLogWithDetails }) {
   const [expanded, setExpanded] = useState(false);
   const timestamp = new Date(log.created_at).toLocaleTimeString();
@@ -94,17 +102,17 @@ function LogRow({ log }: { log: WebhookLogWithDetails }) {
                   <code className="text-red-600 bg-red-50 px-1.5 py-0.5 rounded break-all">{log.last_error}</code>
                 </div>
               )}
-              {log.response_body && (
-                <div className="flex gap-2">
-                  <span className="font-medium text-neutral-500 w-16 shrink-0">Response</span>
-                  <pre className="text-neutral-600 bg-neutral-100 px-1.5 py-0.5 rounded break-all whitespace-pre-wrap max-h-32 overflow-y-auto">{log.response_body}</pre>
+              {log.request_payload && (
+                <div className="mt-1">
+                  <span className="font-medium text-neutral-500 text-xs">Request</span>
+                  <pre className="mt-0.5 text-neutral-600 bg-neutral-100 px-2 py-1.5 rounded text-[11px] break-all whitespace-pre-wrap max-h-48 overflow-y-auto">{JSON.stringify(log.request_payload, null, 2)}</pre>
                 </div>
               )}
-              {log.request_payload && (
-                <details className="mt-1">
-                  <summary className="font-medium text-neutral-500 cursor-pointer hover:text-neutral-700">Request payload</summary>
-                  <pre className="mt-1 text-neutral-600 bg-neutral-100 px-2 py-1.5 rounded text-[11px] break-all whitespace-pre-wrap max-h-48 overflow-y-auto">{JSON.stringify(log.request_payload, null, 2)}</pre>
-                </details>
+              {log.response_body && (
+                <div className="mt-1">
+                  <span className="font-medium text-neutral-500 text-xs">Response</span>
+                  <pre className="mt-0.5 text-neutral-600 bg-neutral-100 px-2 py-1.5 rounded text-[11px] break-all whitespace-pre-wrap max-h-48 overflow-y-auto">{formatResponseBody(log.response_body)}</pre>
+                </div>
               )}
             </div>
           </td>
