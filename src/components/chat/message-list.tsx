@@ -16,6 +16,7 @@ interface MessageListProps {
   currentUserId: string;
   conversationId: string;
   typingUsers: { userId: string; displayName: string }[];
+  agentThinking?: boolean;
   getGroupedReactions: (messageId: string) => ReactionGroup[];
   onToggleReaction: (messageId: string, emoji: string) => void;
 }
@@ -48,6 +49,7 @@ export function MessageList({
   currentUserId,
   conversationId,
   typingUsers,
+  agentThinking,
   getGroupedReactions,
   onToggleReaction,
 }: MessageListProps) {
@@ -181,7 +183,7 @@ export function MessageList({
       </div>
 
       <div className="px-6">
-        <TypingIndicator typingUsers={typingUsers} />
+        <TypingIndicator typingUsers={typingUsers} agentThinking={agentThinking} />
       </div>
 
       {showScrollDown && (

@@ -12,6 +12,7 @@ import { useConversations } from "@/hooks/use-conversations";
 import { useSupabasePresence } from "@/hooks/use-supabase-presence";
 import { useTypingIndicator } from "@/hooks/use-typing-indicator";
 import { useReactions } from "@/hooks/use-reactions";
+import { useAgentThinking } from "@/hooks/use-agent-thinking";
 import { Loader2 } from "lucide-react";
 
 export default function ConversationPage() {
@@ -50,6 +51,9 @@ export default function ConversationPage() {
     if (!conversation?.other_user) return false;
     return onlineUserIds.includes(conversation.other_user.id);
   }, [conversation, onlineUserIds]);
+
+  const hasAgent = conversation?.other_user?.is_agent ?? false;
+  const { agentThinking } = useAgentThinking(messages, hasAgent);
 
   useEffect(() => {
     markAsRead();
@@ -98,6 +102,7 @@ export default function ConversationPage() {
           currentUserId={currentUser.id}
           conversationId={conversationId}
           typingUsers={typingUsers}
+          agentThinking={agentThinking}
           getGroupedReactions={getGroupedReactions}
           onToggleReaction={toggleReaction}
         />
