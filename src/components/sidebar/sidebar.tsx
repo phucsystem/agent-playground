@@ -78,13 +78,15 @@ export function Sidebar({
       </div>
 
       <div className="p-3 border-t border-neutral-200 space-y-2" style={{ marginTop: "auto" }}>
-        <button
-          onClick={onCreateGroup}
-          className="w-full flex items-center justify-center gap-2 py-2 px-4 bg-primary-100 text-primary-500 text-sm font-medium rounded-lg hover:bg-primary-200 transition cursor-pointer min-h-[44px]"
-        >
-          <span className="text-lg">+</span>
-          New Conversation
-        </button>
+        {currentUser.role === "admin" && (
+          <button
+            onClick={onCreateGroup}
+            className="w-full flex items-center justify-center gap-2 py-2 px-4 bg-primary-100 text-primary-500 text-sm font-medium rounded-lg hover:bg-primary-200 transition cursor-pointer min-h-[44px]"
+          >
+            <span className="text-lg">+</span>
+            New Conversation
+          </button>
+        )}
 
         {currentUser.role === "admin" && (
           <Link
