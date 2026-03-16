@@ -467,6 +467,22 @@ Chat Layout (chat/layout.tsx)
         └─ ChatInfoPanel (slide-over)
            ├─ Members list (from use-conversation-members)
            └─ Attachments list (by message)
+
+Admin Page (admin/page.tsx) — Phase 4
+  ├─ User management table
+  │  └─ Copy token, toggle enable/disable, delete user
+  └─ Webhook admin page link
+
+Webhook Admin (admin/webhooks/page.tsx) — Phase 5
+  ├─ use-agent-configs hook
+  │  └─ Fetch/update webhook configs per agent
+  ├─ Agent webhook config table
+  │  ├─ Webhook URL input + save
+  │  ├─ Toggle webhook active/inactive
+  │  └─ View delivery logs link
+  └─ Webhook delivery logs (expandable)
+     └─ use-webhook-logs hook
+        └─ Fetch logs with filters (agent, status, time range)
 ```
 
 ## Hook Lifecycle
@@ -622,13 +638,188 @@ Chat Layout (chat/layout.tsx)
 | File upload fails | Storage path mismatch | Verify path pattern in code |
 | JWT always expires | Refresh token broken | Check cookie domain settings |
 
+## Webhook Dispatch Architecture (Phase 5)
+
+### Flow Diagram
+
+```mermaid
+sequenceDiagram
+    participant Human
+    participant Chat UI
+    participant Supabase DB
+    participant DB Webhook
+    participant Edge Function
+    participant Agent Service
+
+    Human->>Chat UI: Send message
+    Chat UI->>Supabase DB: INSERT messages
+    Supabase DB->>DB Webhook: INSERT event trigger
+    DB Webhook->>Edge Function: POST /webhook-dispatch
+    Edge Function->>Supabase DB: Query sender (is_agent?)
+    alt Sender is agent
+        Edge Function-->>Edge Function: Skip (prevent loops)
+    else Sender is human
+        Edge Function->>Supabase DB: Query agent_configs
+        Edge Function->>Supabase DB: INSERT webhook_delivery_logs (pending)
+        Edge Function->>Agent Service: POST webhook_url {message, sender, conversation_id}
+        Agent Service-->>Edge Function: {reply: "..."}
+        Edge Function->>Supabase DB: UPDATE log (delivered)
+        Edge Function->>Supabase DB: INSERT messages (agent reply)
+        Supabase DB-->>Chat UI: Realtime: new message
+    end
+```
+
+### System Overview with Webhooks
+
+```mermaid
+flowchart TD
+    Browser[Browser Client]
+    NextJS[Next.js Frontend]
+    Supabase[Supabase Cloud]
+    PostgREST[PostgREST API]
+    Realtime[Realtime WebSocket]
+    PostgreSQL[(PostgreSQL)]
+    Storage[Storage Bucket]
+    Auth[Auth JWT]
+    DBWebhook[Database Webhook]
+    EdgeFn[Edge Function: webhook-dispatch]
+    AgentSvc[External Agent Service]
+
+    Browser --> NextJS
+    NextJS --> PostgREST
+    NextJS --> Realtime
+    NextJS --> Storage
+    NextJS --> Auth
+
+    PostgREST --> PostgreSQL
+    Realtime --> PostgreSQL
+    Storage --> PostgreSQL
+
+    PostgreSQL -->|messages INSERT| DBWebhook
+    DBWebhook -->|POST| EdgeFn
+    EdgeFn -->|query agent_configs| PostgreSQL
+    EdgeFn -->|POST webhook_url| AgentSvc
+    AgentSvc -->|response| EdgeFn
+    EdgeFn -->|INSERT agent reply| PostgreSQL
+    PostgreSQL -->|Realtime| Browser
+
+    subgraph Supabase
+        PostgREST
+        Realtime
+        PostgreSQL
+        Storage
+        Auth
+        DBWebhook
+        EdgeFn
+    end
+```
+
+### Webhook Configuration (Admin Setup)
+
+Admin sets webhook via `/admin` page (S-06):
+
+| Field | Type | Required | Example |
+|-------|------|----------|---------|
+| `webhook_url` | string | Yes | `https://my-agent.example.com/webhook` |
+| `webhook_secret` | string | No | `whsec_abc123def456` |
+| `is_webhook_active` | boolean | Yes | `true` |
+
+Stored in `agent_configs` table (one per agent). Created when admin checks "Is agent?" during token generation.
+
+### Agent Request/Response Format
+
+**Webhook POST request to agent:**
+
+```json
+{
+  "event": "message.created",
+  "timestamp": "2026-03-16T10:33:00Z",
+  "message": {
+    "id": "msg-uuid",
+    "conversation_id": "conv-uuid",
+    "sender_id": "human-uuid",
+    "sender_name": "Phuc",
+    "sender_is_agent": false,
+    "content": "Help me with this code snippet",
+    "content_type": "text",
+    "metadata": null,
+    "created_at": "2026-03-16T10:33:00Z"
+  },
+  "conversation": {
+    "id": "conv-uuid",
+    "type": "dm",
+    "name": null,
+    "member_count": 2
+  },
+  "agent": {
+    "id": "agent-uuid",
+    "display_name": "Claude",
+    "webhook_config_id": "config-uuid"
+  }
+}
+```
+
+**Security headers:**
+
+| Header | Value |
+|--------|-------|
+| `Content-Type` | `application/json` |
+| `X-Webhook-Signature` | `sha256={HMAC-SHA256(payload, secret)}` (if secret set) |
+| `X-Webhook-ID` | `{delivery_log_id}` |
+| `X-Webhook-Timestamp` | `{unix_timestamp}` |
+| `User-Agent` | `AgentPlayground-Webhook/1.0` |
+
+**Expected agent response:**
+
+- `200-299` → marked `delivered`
+- `4xx` → no retry (client error)
+- `5xx` or timeout → retry per policy
+
+### Retry Policy
+
+| Attempt | Delay | Timeout |
+|---------|-------|---------|
+| 1 | immediate | 30s |
+| 2 | 10s | 30s |
+| 3 | 60s | 30s |
+
+After 3 failed attempts, marked `failed`. No further retries.
+
+### Loop Prevention
+
+Webhook dispatch skips:
+- Messages sent by agents (`is_agent = true`)
+- Inactive webhooks (`is_webhook_active = false`)
+
+This prevents infinite loops when agents reply in same conversation.
+
+### Webhook Delivery Logging
+
+All deliveries logged to `webhook_delivery_logs` table:
+
+| Column | Value |
+|--------|-------|
+| `message_id` | The message that triggered webhook |
+| `agent_id` | Agent whose webhook was called |
+| `status` | `pending`, `delivered`, or `failed` |
+| `http_status` | HTTP response code (if available) |
+| `attempt_count` | Number of attempts (max 3) |
+| `last_error` | Error message from last failed attempt |
+| `created_at` | When webhook was first triggered |
+| `delivered_at` | When delivery succeeded (or NULL) |
+
+Admin views logs via `/admin/webhooks` (S-08) with filters by agent, status, and time range.
+
+---
+
 ## Scaling Considerations
 
 ### Current Limits (Seed Data)
 
-- 5 users (2 human, 2 agent, 1 admin)
+- 6 users (2 human, 2 agent, 1 admin, 1 mock)
 - 2 conversations (1 DM, 1 group)
 - 10 messages total
+- 2 agent webhook configs
 - <100 KB storage used
 
 ### At 1,000 Users
@@ -636,6 +827,7 @@ Chat Layout (chat/layout.tsx)
 - Database size: ~10 MB (rough)
 - Realtime connections: <1,000 (Supabase free: 500)
 - Message throughput: <1,000/day (well within limits)
+- Webhook delivery logs: ~100/day (manageable)
 
 ### Scaling Strategies
 
@@ -644,6 +836,7 @@ Chat Layout (chat/layout.tsx)
 3. **Caching:** Client-side hook caching reduces API calls
 4. **Sharding:** Not needed <100K messages
 5. **Archive:** Move old conversations to read-only archive table
+6. **Log retention:** Auto-delete webhook logs older than 30 days
 
 ## Deployment Checklist
 
@@ -654,19 +847,17 @@ Chat Layout (chat/layout.tsx)
 - [ ] RLS policies enabled
 - [ ] Realtime enabled on messages table
 - [ ] Storage bucket created with policies
+- [ ] Edge Function deployed (webhook-dispatch)
+- [ ] Database webhook connected to Edge Function
 - [ ] CORS configured for domain
 - [ ] Next.js build succeeds (npm run build)
 - [ ] Test login with seed token
 - [ ] Test message sending
 - [ ] Test file upload
+- [ ] Test webhook delivery (via admin page)
 - [ ] Monitor Supabase dashboard for errors
 
 ## Next Steps
 
-- Implement Phase 4 (typing indicators, read receipts, reactions)
-- Add message search across conversations
-- Add conversation muting/pinning
-- Add user blocking (prevent messages)
-- Add message editing/deletion
-- Add call-to-action buttons in messages
-- Add media gallery view per conversation
+- Webhook integration complete. Phases 1-5 done.
+- Future: message search, conversation pinning, user blocking, message editing, call-to-action buttons, media gallery

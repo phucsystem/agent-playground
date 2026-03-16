@@ -550,7 +550,8 @@ const signedUrl = data?.signedUrl;
 | `004_mock_flag.sql` | ✅ Applied | Add `is_mock` boolean column, update presence RLS |
 | `005_security_fixes.sql` | ✅ Applied | Add SECURITY DEFINER helpers, users_public view, update storage to signed URLs |
 | `006_fix_rls_recursion.sql` | ✅ Applied | Replace recursive RLS policies with DEFINER helpers |
-| `007_agent_webhooks.sql` | ⏳ Pending | Create `delivery_status` enum, `agent_configs` table, `webhook_delivery_logs` table, RLS policies, `notify_webhook_dispatch` trigger |
+| `007_agent_webhooks.sql` | ✅ Applied | Create `delivery_status` enum, `agent_configs` table, `webhook_delivery_logs` table, RLS policies, `notify_webhook_dispatch` trigger |
+| `008_webhook_debug_columns.sql` | ✅ Applied | Add `request_payload`, `response_body`, `webhook_url` columns to `webhook_delivery_logs` (debug support) |
 
 **Running Migrations:**
 ```bash

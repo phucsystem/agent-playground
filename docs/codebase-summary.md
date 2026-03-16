@@ -2,7 +2,7 @@
 
 **Generated:** 2026-03-16
 **Repomix output:** `./repomix-output.xml`
-**Status:** Phases 1-5 complete. All core features + webhook agent integration implemented.
+**Status:** ✅ Phases 1-5 complete. All core features + webhook agent integration implemented.
 
 ## Overview
 
@@ -216,21 +216,21 @@ const { addReaction } = useReactions();
 
 | Table | Role | Key Columns | Rows (seed) |
 |-------|------|------------|-----------|
-| `users` | User profiles (humans + agents) | `role` (admin/user/agent), `is_mock` (bool) | 6 |
-| `conversations` | DM or group container | `type` (dm/group), `name` (nullable) | 2 |
-| `conversation_members` | Membership join table | `role` (admin/member), `joined_at` | 8 |
-| `messages` | Chat messages | `content_type` (text/file/image/url), `metadata` (jsonb) | 10 |
-| `attachments` | File metadata | `file_url`, `storage_path`, `file_size` | 0 |
-| `reactions` | Emoji reactions | `emoji` (heart, etc.), UNIQUE(message_id, user_id, emoji) | 0 |
-| `agent_configs` | Webhook config per agent | `webhook_url`, `webhook_secret`, `is_webhook_active` | 2 |
-| `webhook_delivery_logs` | Delivery history per message | `status` (pending/delivered/failed), `http_status`, `attempt_count` | 0 |
+| `users` | User profiles (humans + agents) | `role` (admin/user/agent), `is_mock` (bool), `is_agent` (bool) | 6 |
+| `conversations` | DM or group container | `type` (dm/group), `name` (nullable), `created_by` | 2 |
+| `conversation_members` | Membership join table | `role` (admin/member), `joined_at`, `last_read_at` | 8 |
+| `messages` | Chat messages | `content_type` (text/file/image/url), `metadata` (jsonb), `sender_id` | 10 |
+| `attachments` | File metadata | `file_url`, `storage_path`, `file_size`, `file_type` | 0 |
+| `reactions` | Emoji reactions | `emoji`, `user_id`, UNIQUE(message_id, user_id, emoji) | 0 |
+| `agent_configs` | Webhook config per agent (Phase 5) | `webhook_url`, `webhook_secret`, `is_webhook_active`, `user_id` (unique) | 2 |
+| `webhook_delivery_logs` | Delivery history per message (Phase 5) | `status` (pending/delivered/failed), `http_status`, `attempt_count`, `message_id`, `agent_id` | 0 |
 
 **Custom Types:**
 - `user_role` — `admin`, `user`, `agent`
 - `conversation_type` — `dm`, `group`
 - `member_role` — `admin`, `member`
 - `content_type` — `text`, `file`, `image`, `url`
-- `delivery_status` — `pending`, `delivered`, `failed`
+- `delivery_status` — `pending`, `delivered`, `failed` (Phase 5)
 
 **RLS Enabled:** All tables. Uses SECURITY DEFINER helpers to prevent recursion.
 
@@ -285,6 +285,7 @@ See `docs/API_SPEC.md` for complete reference.
 | Method | Path | Feature | Phase |
 |--------|------|---------|-------|
 | POST | `/api/auth/login` | Token → JWT | P1 |
+| GET | `/rest/v1/users` | User list (presence) | P1 |
 | GET | `/rest/v1/users_public` | User list (admin view) | P4 |
 | GET | `/rpc/get_my_conversations` | User's conversations | P1 |
 | POST | `/rpc/find_or_create_dm` | Start/find DM | P1 |
@@ -294,16 +295,21 @@ See `docs/API_SPEC.md` for complete reference.
 | POST | `/rest/v1/conversations` | Create group | P2 |
 | POST | `/rest/v1/reactions` | Add reaction | P3 |
 | PATCH | `/rest/v1/users?id=eq.{id}` | Update profile | P4 |
+| POST | `/rest/v1/agent_configs` | Create webhook config | P5 |
+| PATCH | `/rest/v1/agent_configs?user_id=eq.{id}` | Update/toggle webhook | P5 |
+| GET | `/rest/v1/agent_configs` | List webhook configs | P5 |
+| GET | `/rest/v1/webhook_delivery_logs` | Query delivery logs | P5 |
+| — | Edge Function: webhook-dispatch | Dispatch webhooks | P5 |
 
 ## Implementation Phases
 
 | Phase | Status | Features | Files |
 |-------|--------|----------|-------|
-| **P1: Chat** | ✅ Complete | Auth, DMs, groups, realtime, history | src/app, src/components |
-| **P2: Content** | ✅ Complete | Files, images, URLs, markdown | src/components/chat/* |
-| **P3: Polish** | ✅ Complete | Typing, read receipts, reactions | use-typing-indicator, use-reactions |
-| **P4: Admin** | ✅ Complete | User management, setup wizard, mock flag | /admin, /setup pages |
-| **P5: Webhooks** | ✅ Complete | Agent webhook config, dispatch, delivery logs | /admin/webhooks, use-agent-configs, webhook-dispatch Edge Function |
+| **P1: Chat** | ✅ Complete | Auth, DMs, groups, realtime, history | src/app/login, src/app/chat, src/components/chat, src/components/sidebar |
+| **P2: Content** | ✅ Complete | Files, images, URLs, markdown | src/components/chat/* (file-card, image-preview, url-preview, markdown-content) |
+| **P3: Polish** | ✅ Complete | Typing, read receipts, reactions | use-typing-indicator, use-reactions, reactions-display |
+| **P4: Admin** | ✅ Complete | User management, setup wizard, mock flag | src/app/setup, src/app/admin, use-current-user |
+| **P5: Webhooks** | ✅ Complete | Agent webhook config, dispatch, delivery logs | src/app/admin/webhooks, src/hooks/use-agent-configs, src/hooks/use-webhook-logs, supabase/functions/webhook-dispatch |
 
 ## Important Notes
 
