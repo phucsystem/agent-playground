@@ -89,6 +89,9 @@ agent-playground/
 │   │   ├── 005_security_fixes.sql       # DEFINER helpers, users_public view, signed URLs
 │   │   └── 006_fix_rls_recursion.sql    # Replace recursive policies with helpers
 │   └── seed.sql                         # Test data (6 users, 2 conversations)
+├── src/app/
+│   ├── icon.svg                         # Blue bot favicon (SVG)
+│   ├── ...
 ├── docs/
 │   ├── SRD.md                           # System requirements
 │   ├── UI_SPEC.md                       # Design system + screens (S-01 to S-07)
@@ -134,17 +137,22 @@ Components receive clean data/callbacks. No fetch logic in components.
 
 ```
 Login Form (login/page.tsx)
+    ↓ checks localStorage for cached token
+    ↓ if cached, auto-login attempt (spinner shown)
+    ↓ if none or invalid, token entry form
     ↓ POST {token}
 API Route (api/auth/login/route.ts)
     ↓ rpc/login_with_token
 Supabase (exchanges token for JWT)
-    ↓ sets secure cookie
+    ↓ sets secure cookie, saves token to localStorage
 Middleware (validates JWT)
     ↓ first-time redirect → /setup
 Setup Page (setup/page.tsx)
-    ↓ avatar + nickname
+    ↓ avatar + nickname (placeholder email/name pre-filled)
 Protected Routes (/chat/*)
     ↓ render with currentUser
+Logout (both src/lib/auth.ts and sidebar.tsx)
+    ↓ clears localStorage token
 ```
 
 ### Realtime Architecture
@@ -283,14 +291,18 @@ See `docs/API_SPEC.md` for complete reference.
 
 ## Important Notes
 
-1. **Environment file not in repo** — Add `.env.local` with Supabase credentials before running
+1. **Environment file not in repo** — Add `.env` with Supabase credentials before running (uses `.env` for all environments)
 2. **RLS is security layer** — No application-level authorization checks needed
 3. **Realtime requires PUBLISH** — Supabase free tier must have realtime enabled
-4. **Service role in .env.local only** — Never expose to frontend
+4. **Service role in .env only** — Never expose to frontend
 5. **Seed data uses fixed UUIDs** — Reproducible across deploys
 6. **Mock users hidden from non-admins** — Sidebar filters by `is_mock` flag using RLS
 7. **Signed URLs for file access** — Storage uses `createSignedUrl` not `getPublicUrl`
 8. **SECURITY DEFINER helpers prevent RLS recursion** — Policies use helper functions instead of subqueries
+9. **Token caching in localStorage** — Login token saved as `agent_playground_token`, enables auto-login on page revisit
+10. **Simplified invite flow** — Admin generates token only; email (`invite-{shortId}@placeholder.local`) and display_name ("New User") auto-generated
+11. **Stronger tokens** — 64-char with full charset (A-Za-z0-9!@#$%^&*()-_=+[]{}|;:<>?) using crypto.getRandomValues
+12. **SVG favicon** — Blue bot icon at `src/app/icon.svg`, auto-detected by Next.js App Router
 
 ## Next Steps
 

@@ -248,10 +248,17 @@
 | Helper text | Caption | "Token provided by your admin." |
 | Error state | Toast/inline | "Invalid or expired token" / "Account disabled" |
 
+**Auto-Login:**
+- On page load, checks localStorage for cached token (`agent_playground_token`)
+- If found, shows spinner and auto-attempts login
+- If valid, redirects to S-02 or S-07 (based on setup status)
+- If invalid, clears cache and shows token entry form
+
 **Transitions:**
-- Valid token → S-02 Main Layout (redirect with session cookie)
-- Invalid token → inline error message, input border turns `--color-danger`
+- Valid token → cache to localStorage → S-02 Main Layout or S-07 Setup (redirect with session cookie)
+- Invalid token → inline error message, input border turns `--color-danger`, offer manual entry
 - Disabled account → "Your account has been disabled. Contact admin."
+- Logout clears localStorage token from both auth.ts and sidebar
 
 ---
 
@@ -489,6 +496,13 @@
 | Status | Badge | Active (green), Disabled (grey), Mock (blue). |
 | Actions | Buttons | Copy token, Enable/Disable toggle, Delete (destructive red). |
 | Token display | Modal | Show on "Copy Token" click. Copyable to clipboard. |
+
+**Generate Invite Token:**
+- Button: "Generate Token" (in separate panel or modal)
+- Optional checkbox: "Is agent?" (defaults to user)
+- On click: system generates 64-char token, auto-generates email (`invite-{shortId}@placeholder.local`) and name ("New User")
+- User customizes email/name on first login via /setup page
+- Modal shows generated token with copy button
 
 **Interactions:**
 - Toggle Enable/Disable: immediate state update, reflected in sidebar presence

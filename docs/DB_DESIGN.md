@@ -95,18 +95,18 @@ CREATE TYPE content_type AS ENUM ('text', 'file', 'image', 'url');
 
 ### E-01: users
 
-Stores human users and AI agents. Admin provisions tokens manually.
+Stores human users and AI agents. Admin generates tokens via UI (no name/email input needed).
 
 | Column | Type | Constraints | Default | Description |
 |--------|------|-------------|---------|-------------|
 | `id` | `uuid` | PK | `gen_random_uuid()` | Unique user ID |
-| `email` | `text` | UNIQUE, NOT NULL | — | User email (for display/identification) |
-| `display_name` | `text` | NOT NULL | — | Display name shown in chat |
-| `avatar_url` | `text` | NULLABLE | `NULL` | Profile avatar URL (DiceBear or external) |
+| `email` | `text` | UNIQUE, NOT NULL | — | Auto-generated as `invite-{shortId}@placeholder.local` for invites; user unchanged on setup. |
+| `display_name` | `text` | NOT NULL | — | Defaults to "New User" for invites; user customizes on /setup. Shown in chat. |
+| `avatar_url` | `text` | NULLABLE | `NULL` | NULL until user selects DiceBear style on /setup. DiceBear or external URL. |
 | `role` | `user_role` | NOT NULL | `'user'` | `admin` (manage platform), `user` (chat), or `agent` (API-only) |
 | `is_mock` | `boolean` | NOT NULL | `false` | True = hidden from non-admin users. Used for testing. |
 | `is_active` | `boolean` | NOT NULL | `true` | Admin toggle. False = cannot log in |
-| `token` | `text` | UNIQUE, NOT NULL | — | Pre-provisioned auth token (UUID v4) |
+| `token` | `text` | UNIQUE, NOT NULL | — | Pre-provisioned auth token (64-char with charset: A-Za-z0-9!@#$%^&*()-_=+[]{}|;:<>?, generated via crypto.getRandomValues). Cached in localStorage. |
 | `last_seen_at` | `timestamptz` | NULLABLE | `NULL` | Last activity timestamp (updated on disconnect) |
 | `created_at` | `timestamptz` | NOT NULL | `now()` | Account creation time |
 

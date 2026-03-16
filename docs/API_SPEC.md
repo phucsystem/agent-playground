@@ -46,7 +46,7 @@
 
 ### POST /rpc/login_with_token
 
-**Description:** Exchange a pre-provisioned token for a Supabase Auth JWT session.
+**Description:** Exchange a pre-provisioned token for a Supabase Auth JWT session. Token cached in localStorage for auto-login.
 **Feature:** FR-01
 **Screen:** S-01
 **Auth:** None (public endpoint)
@@ -56,9 +56,11 @@
 **Request:**
 ```json
 {
-  "token": "550e8400-e29b-41d4-a716-446655440000"
+  "token": "aBc1!@#$%^&*()-_=+[]{}|;:<>?xYzAbC1!@#$%^&*()-_=+[]{}|;:<>?xYzAbC1"
 }
 ```
+
+**Note:** Token is 64-character string with full charset (A-Za-z0-9!@#$%^&*()-_=+[]{}|;:<>?) generated via crypto.getRandomValues.
 
 **Response (200):**
 ```json
@@ -563,6 +565,31 @@
 ```
 
 **Note:** `users_public` view omits `token` column. Query via view instead of table for security.
+
+---
+
+### POST /rest/v1/users (Phase 4 — Admin Token Generation)
+
+**Description:** Admin generates invite token. System auto-generates placeholder email and default name.
+**Feature:** FR-19
+**Screen:** S-06
+**Auth:** Bearer JWT (admin only)
+
+**Request (Admin generates token):**
+```json
+{
+  "email": "invite-{shortId}@placeholder.local",
+  "display_name": "New User",
+  "token": "{64-char-random-string}",
+  "role": "user",
+  "is_agent": false,
+  "is_active": true
+}
+```
+
+**Response (201):** New user record with token. User customizes email/name on first login via /setup.
+
+**Note:** Token is 64-character string with full charset (A-Za-z0-9!@#$%^&*()-_=+[]{}|;:<>?) generated via crypto.getRandomValues. Email/name are auto-generated and replaced by user on /setup.
 
 ---
 

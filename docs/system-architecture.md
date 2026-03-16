@@ -77,28 +77,36 @@ Agent Playground uses a three-tier architecture: Next.js frontend (React 19), Su
 ### Token-Based Login Flow
 
 ```
-1. User enters pre-provisioned token
+1. User visits /login
+   ↓ localStorage check for cached token
+2. If cached token exists, auto-login attempt (spinner shown)
+3. If not cached or token invalid, show token entry form
+4. User enters pre-provisioned token (64-char)
    ↓
-2. POST /api/auth/login { token: "tok-user-001" }
+5. POST /api/auth/login { token: "{64-char-token}" }
    ↓
-3. Next.js API calls Supabase RPC: login_with_token(token)
+6. Next.js API calls Supabase RPC: login_with_token(token)
    ↓
-4. Supabase validates token in users table (is_active = true)
+7. Supabase validates token in users table (is_active = true)
    ↓
-5. Supabase Auth generates JWT (using SHA-256 password derived from userId + serviceRoleKey)
+8. Supabase Auth generates JWT (using SHA-256 password derived from userId + serviceRoleKey)
    ↓
-6. Frontend receives JWT, stores in secure HTTP-only cookie
+9. Frontend receives JWT, stores in secure HTTP-only cookie
    ↓
-7. Middleware validates JWT on every request to /chat/* or /setup
-   ↓
-8. If first login → redirect to /setup (profile wizard)
-   ↓
-9. Setup page: user picks avatar (DiceBear 12 styles) + nickname
-   ↓
-10. POST /rpc/update_profile with avatar_url + display_name
+10. Frontend saves token to localStorage (agent_playground_token key)
     ↓
-11. Redirect to /chat, UI renders with currentUser context
+11. Middleware validates JWT on every request to /chat/* or /setup
+    ↓
+12. If first login (display_name is null) → redirect to /setup (profile wizard)
+    ↓
+13. Setup page: user picks avatar (DiceBear 12 styles) + nickname (replaces placeholder email/name)
+    ↓
+14. POST /rpc/update_profile with avatar_url + display_name
+    ↓
+15. Redirect to /chat, UI renders with currentUser context
 ```
+
+**Logout:** Clears localStorage token in both auth.ts::logout() and sidebar.tsx::handleLogout(). Falls back to manual token entry if cached token is invalid.
 
 ### Session Management
 

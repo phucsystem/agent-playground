@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { useFileUpload } from "@/hooks/use-file-upload";
-import { Send, Paperclip, Loader2, X } from "lucide-react";
+import { EmojiPicker } from "./emoji-picker";
+import { GifPicker } from "./gif-picker";
+import { Send, Paperclip, Loader2, X, Smile, ImageIcon } from "lucide-react";
 import type { ContentType } from "@/types/database";
 
 interface ChatInputProps {
@@ -22,9 +24,23 @@ export function ChatInput({
   const [content, setContent] = useState("");
   const [sending, setSending] = useState(false);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showGifPicker, setShowGifPicker] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const pickerContainerRef = useRef<HTMLDivElement>(null);
   const { uploadFile, uploading } = useFileUpload();
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (pickerContainerRef.current && !pickerContainerRef.current.contains(event.target as Node)) {
+        setShowEmojiPicker(false);
+        setShowGifPicker(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const adjustHeight = useCallback(() => {
     const textarea = textareaRef.current;
@@ -106,6 +122,21 @@ export function ChatInput({
     }
   }
 
+  function handleEmojiSelect(emoji: string) {
+    setContent((prev) => prev + emoji);
+    textareaRef.current?.focus();
+  }
+
+  async function handleGifSelect(gifUrl: string) {
+    setSending(true);
+    await sendMessage(gifUrl, "image", {
+      file_name: "gif",
+      file_url: gifUrl,
+      is_gif: true,
+    });
+    setSending(false);
+  }
+
   return (
     <div className="mx-6 mb-4">
       {pendingFile && (
@@ -140,6 +171,44 @@ export function ChatInput({
         >
           <Paperclip className="w-5 h-5" />
         </button>
+
+        <div ref={pickerContainerRef} className="relative shrink-0 mb-0.5">
+          <button
+            onClick={() => {
+              setShowEmojiPicker(!showEmojiPicker);
+              setShowGifPicker(false);
+            }}
+            className="p-1 text-neutral-400 hover:text-neutral-600 transition"
+            title="Emoji"
+          >
+            <Smile className="w-5 h-5" />
+          </button>
+          {showEmojiPicker && (
+            <EmojiPicker
+              onSelect={handleEmojiSelect}
+              onClose={() => setShowEmojiPicker(false)}
+            />
+          )}
+        </div>
+
+        <div className="relative shrink-0 mb-0.5">
+          <button
+            onClick={() => {
+              setShowGifPicker(!showGifPicker);
+              setShowEmojiPicker(false);
+            }}
+            className="p-1 text-neutral-400 hover:text-neutral-600 transition"
+            title="GIF"
+          >
+            <ImageIcon className="w-5 h-5" />
+          </button>
+          {showGifPicker && (
+            <GifPicker
+              onSelect={handleGifSelect}
+              onClose={() => setShowGifPicker(false)}
+            />
+          )}
+        </div>
 
         <textarea
           ref={textareaRef}

@@ -31,7 +31,7 @@
 
 | ID | Feature | Priority | Description | Screens |
 |----|---------|----------|-------------|---------|
-| FR-01 | Token-based authentication | P1 | User enters a pre-provisioned token to log in. System validates token against `users` table, checks `is_active` flag. No self-registration. | S-01 |
+| FR-01 | Token-based authentication | P1 | User enters a pre-provisioned token (64-char with special chars, generated via crypto.getRandomValues). System validates against `users` table, checks `is_active`. Token cached in localStorage for auto-login. No self-registration. | S-01 |
 | FR-02 | Session management | P1 | After login, JWT session persisted in cookie. Auto-redirect to chat on valid session. Logout clears session. | S-01, S-02 |
 | FR-03 | Online presence | P1 | Show real-time online/offline status for all users (humans + agents) in sidebar. Use Supabase Presence API. | S-02 |
 | FR-04 | Conversation list | P1 | Sidebar shows all conversations user is a member of, sorted by last message time. Unread indicator badge. | S-02 |
@@ -65,7 +65,7 @@
 | ID | Feature | Priority | Description | Screens |
 |----|---------|----------|-------------|---------|
 | FR-19 | Admin user management | P4 | Admin can view all users, generate tokens, enable/disable, and delete accounts. Access via /admin page. | S-06 |
-| FR-20 | Profile setup wizard | P4 | New users complete avatar selection (DiceBear 12 styles) and nickname entry. Shown on first login at /setup. | S-07 |
+| FR-20 | Profile setup wizard | P4 | New users complete avatar selection (DiceBear 12 styles) and nickname entry on /setup. Admin generates invite tokens only (no name/email fields); system auto-generates placeholder email `invite-{shortId}@placeholder.local` and default name "New User". User sets real name/avatar on first login. | S-07 |
 | FR-21 | Mock user flag | P4 | Admins can mark users as mock. Non-admin users see only non-mock users in presence list. | S-02, S-06 |
 
 ## 4. Screen List (S-xx)
@@ -100,11 +100,12 @@
 - File upload: <5s for 10MB file
 
 ### Security
-- Token-based auth — tokens are unique, unguessable (UUID v4)
+- Token-based auth — tokens are unique, unguessable (64-char with full charset: A-Za-z0-9!@#$%^&*()-_=+[]{}|;:<>?, generated via crypto.getRandomValues)
 - Row Level Security (RLS) on all tables — users can only access their own conversations
 - File access restricted to conversation members via signed URLs
 - No service key exposed to frontend — use Supabase anon key + RLS
 - Agent tokens scoped to specific conversations
+- Token caching in localStorage with logout clear on both client and sidebar
 
 ### Scalability
 - Target: <50 concurrent users

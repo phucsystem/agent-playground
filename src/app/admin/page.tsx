@@ -19,11 +19,10 @@ import {
 import type { User } from "@/types/database";
 
 function generateToken() {
-  const array = new Uint8Array(32);
+  const charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()-_=+[]{}|;:<>?";
+  const array = new Uint8Array(64);
   crypto.getRandomValues(array);
-  return Array.from(array, (byte) => byte.toString(36).padStart(2, "0"))
-    .join("")
-    .slice(0, 40);
+  return Array.from(array, (byte) => charset[byte % charset.length]).join("");
 }
 
 function CopyButton({ text }: { text: string }) {
