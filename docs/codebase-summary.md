@@ -2,24 +2,26 @@
 
 **Generated:** 2026-03-16
 **Repomix output:** `./repomix-output.xml`
+**Status:** Phases 1-4 complete. All core features implemented + admin/onboarding.
 
 ## Overview
 
-Agent Playground is a ~2,300 LOC Next.js chat application with Supabase backend. Organized into 35 source files across app pages, components, hooks, utilities, and database migrations.
+Agent Playground is a ~3,300 LOC Next.js chat application with Supabase backend. Organized into 44 source files across app pages, components, hooks, utilities, and 6 database migrations.
 
 ## File Counts & Distribution
 
 | Category | Count | Files |
 |----------|-------|-------|
-| **App Pages** | 5 | layout.tsx, page.tsx, login/page.tsx, chat/layout.tsx, chat/page.tsx, [conversationId]/page.tsx, api/auth/login/route.ts |
-| **Components** | 14 | chat (9), sidebar (5), ui (1) |
-| **Hooks** | 6 | use-current-user, use-conversations, use-realtime-messages, use-supabase-presence, use-file-upload, use-conversation-members |
-| **Library/Utils** | 4 | auth.ts, supabase/client.ts, supabase/server.ts, supabase/middleware.ts, middleware.ts |
-| **Types** | 1 | database.ts |
-| **Migrations** | 1 | 001_initial_schema.sql (schema, RLS, functions) |
-| **Seed Data** | 1 | seed.sql (5 users, 2 conversations, 10 messages) |
+| **App Pages** | 7 | login/page.tsx, chat/layout.tsx, chat/page.tsx, [conversationId]/page.tsx, setup/page.tsx, admin/page.tsx, api/auth/login/route.ts, middleware.ts |
+| **Components** | 15 | chat (9: messages, input, header, markdown, file, image, url, info, reactions), sidebar (5: nav, users, conversations, create-group, user-profile), ui (1: avatar) |
+| **Hooks** | 8 | use-current-user, use-conversations, use-realtime-messages, use-supabase-presence, use-file-upload, use-conversation-members, use-typing-indicator, use-reactions |
+| **Library/Utils** | 4 | auth.ts, supabase/client.ts, supabase/server.ts, middleware.ts |
+| **Types** | 1 | database.ts (generated from schema) |
+| **Migrations** | 6 | 001_initial, 002_user_role, 003_admin_management, 004_mock_flag, 005_security_fixes, 006_fix_rls_recursion |
+| **Seed Data** | 1 | seed.sql (6 users, 2 conversations, 10 messages) |
 | **Config** | 4 | tsconfig.json, package.json, next.config.ts, postcss.config.mjs |
-| **Total** | 35+ | Source files + config |
+| **Docs** | 5 | SRD.md, UI_SPEC.md, DB_DESIGN.md, API_SPEC.md, system-architecture.md |
+| **Total** | 44+ | Source files + config |
 
 ## Directory Structure
 
@@ -27,93 +29,106 @@ Agent Playground is a ~2,300 LOC Next.js chat application with Supabase backend.
 agent-playground/
 ├── src/
 │   ├── app/
-│   │   ├── login/page.tsx          # Token entry form → calls /api/auth/login
+│   │   ├── login/page.tsx               # Token entry form
+│   │   ├── setup/page.tsx               # Avatar picker + nickname (first login)
+│   │   ├── admin/page.tsx               # User management (admin only)
 │   │   ├── chat/
-│   │   │   ├── layout.tsx          # Sidebar + main layout
-│   │   │   ├── page.tsx            # Empty chat state
-│   │   │   └── [conversationId]/   # DM or group chat view
-│   │   ├── api/auth/login/route.ts # POST /api/auth/login → JWT exchange
-│   │   ├── layout.tsx              # Root layout (fonts, globals)
-│   │   ├── page.tsx                # Redirect to /chat
-│   │   └── globals.css             # Global Tailwind styles
+│   │   │   ├── layout.tsx               # Sidebar + main layout
+│   │   │   ├── page.tsx                 # Empty chat state
+│   │   │   └── [conversationId]/page.tsx # DM or group chat
+│   │   ├── api/auth/login/route.ts      # POST /api/auth/login
+│   │   ├── layout.tsx                   # Root layout
+│   │   ├── page.tsx                     # Redirect to /chat
+│   │   ├── middleware.ts                # Auth guard
+│   │   └── globals.css                  # Tailwind styles
 │   ├── components/
 │   │   ├── chat/
-│   │   │   ├── message-list.tsx    # Infinite scroll message container
-│   │   │   ├── message-item.tsx    # Individual message (user/agent bubble)
-│   │   │   ├── chat-input.tsx      # Text input + file attachment
-│   │   │   ├── chat-header.tsx     # Conversation title + member count
-│   │   │   ├── markdown-content.tsx # react-markdown renderer
-│   │   │   ├── file-card.tsx       # File download link
-│   │   │   ├── image-preview.tsx   # Image thumbnail + lightbox
-│   │   │   ├── url-preview.tsx     # Open Graph preview card
-│   │   │   └── chat-info-panel.tsx # Slide-over with members/files
+│   │   │   ├── message-list.tsx         # Infinite scroll container
+│   │   │   ├── message-item.tsx         # Individual message (self/other)
+│   │   │   ├── chat-input.tsx           # Text + file attachment
+│   │   │   ├── chat-header.tsx          # Conversation title + member count
+│   │   │   ├── markdown-content.tsx     # react-markdown renderer
+│   │   │   ├── file-card.tsx            # File download link
+│   │   │   ├── image-preview.tsx        # Thumbnail + lightbox
+│   │   │   ├── url-preview.tsx          # Open Graph metadata card
+│   │   │   ├── chat-info-panel.tsx      # Members + files slide-over
+│   │   │   └── reactions-display.tsx    # Heart button + reaction counts
 │   │   ├── sidebar/
-│   │   │   ├── sidebar.tsx         # Main sidebar container
-│   │   │   ├── user-profile.tsx    # Current user + logout
-│   │   │   ├── online-users.tsx    # Presence list for DM creation
-│   │   │   ├── conversation-list.tsx # Sorted by updated_at
-│   │   │   └── create-group-dialog.tsx # Modal to create group
+│   │   │   ├── sidebar.tsx              # Main container
+│   │   │   ├── user-profile.tsx         # Current user + logout
+│   │   │   ├── online-users.tsx         # Presence list (filtered by mock flag)
+│   │   │   ├── conversation-list.tsx    # Sorted by updated_at
+│   │   │   └── create-group-dialog.tsx  # Modal to create group
 │   │   └── ui/
-│   │       └── avatar.tsx          # Reusable avatar component
+│   │       └── avatar.tsx               # Reusable avatar component
 │   ├── hooks/
-│   │   ├── use-current-user.ts     # Fetch & cache current user profile
-│   │   ├── use-conversations.ts    # Fetch all user's conversations
-│   │   ├── use-realtime-messages.ts # Subscribe to postgres_changes
-│   │   ├── use-supabase-presence.ts # Track & listen to online status
-│   │   ├── use-file-upload.ts      # Upload to Storage + create record
-│   │   └── use-conversation-members.ts # Fetch conversation participants
+│   │   ├── use-current-user.ts          # Fetch & cache user profile
+│   │   ├── use-conversations.ts         # Fetch all conversations
+│   │   ├── use-realtime-messages.ts     # Subscribe to postgres_changes
+│   │   ├── use-supabase-presence.ts     # Track & listen to online status
+│   │   ├── use-file-upload.ts           # Upload to Storage + create record
+│   │   ├── use-conversation-members.ts  # Fetch conversation participants
+│   │   ├── use-typing-indicator.ts      # Broadcast & listen to typing
+│   │   └── use-reactions.ts             # Add/remove emoji reactions
 │   ├── lib/
-│   │   ├── auth.ts                 # getCurrentUser() helper
+│   │   ├── auth.ts                      # getCurrentUser() helper
 │   │   ├── supabase/
-│   │   │   ├── client.ts           # Browser Supabase client
-│   │   │   ├── server.ts           # Server Supabase client
-│   │   │   └── middleware.ts       # Session validation in middleware
-│   │   └── middleware.ts           # Next.js middleware (auth guard)
+│   │   │   ├── client.ts                # Browser Supabase client
+│   │   │   ├── server.ts                # Server Supabase client
+│   │   │   └── middleware.ts            # Session validation
+│   │   └── middleware.ts                # Next.js middleware (auth guard)
 │   ├── types/
-│   │   └── database.ts             # Generated TypeScript types from schema
-│   └── middleware.ts               # Enforce /chat/* requires auth
+│   │   └── database.ts                  # Generated TypeScript types
+│   └── middleware.ts                    # Enforce /chat/* requires auth
 ├── supabase/
 │   ├── migrations/
-│   │   └── 001_initial_schema.sql  # Full schema: 6 tables, enums, RLS, functions
-│   └── seed.sql                    # Test data (users, conversations, messages)
+│   │   ├── 001_initial_schema.sql       # All tables, enums, RLS, functions
+│   │   ├── 002_user_role.sql            # Add role column
+│   │   ├── 003_admin_management.sql     # Admin functions
+│   │   ├── 004_mock_flag.sql            # Add is_mock, update RLS
+│   │   ├── 005_security_fixes.sql       # DEFINER helpers, users_public view, signed URLs
+│   │   └── 006_fix_rls_recursion.sql    # Replace recursive policies with helpers
+│   └── seed.sql                         # Test data (6 users, 2 conversations)
 ├── docs/
-│   ├── SRD.md                      # System requirement definition
-│   ├── API_SPEC.md                 # REST API + Realtime endpoints
-│   ├── DB_DESIGN.md                # Schema, RLS policies, functions
-│   ├── UI_SPEC.md                  # Design system, colors, typography
-│   └── codebase-summary.md         # This file
-├── prototypes/                     # HTML mockups (reference only)
-├── plans/                          # Research & implementation plans
-├── package.json                    # Next.js 16, React 19, Supabase 2.99
-├── next.config.ts                 # Next.js configuration
-├── tsconfig.json                  # TypeScript strict mode
-├── postcss.config.mjs             # Tailwind CSS 4
-├── Dockerfile                     # Optional Docker support
-└── README.md                       # Project overview
+│   ├── SRD.md                           # System requirements
+│   ├── UI_SPEC.md                       # Design system + screens (S-01 to S-07)
+│   ├── DB_DESIGN.md                     # Schema, RLS, DEFINER helpers, migrations
+│   ├── API_SPEC.md                      # REST + Realtime endpoints
+│   ├── system-architecture.md           # Architecture diagrams + flows
+│   └── codebase-summary.md              # This file
+├── package.json                         # Next.js 16, React 19, Supabase 2.99
+├── next.config.ts                       # Next.js config
+├── tsconfig.json                        # TypeScript strict
+├── postcss.config.mjs                   # Tailwind CSS 4
+├── Dockerfile                           # Optional container
+├── README.md                            # Project overview
+└── .gitignore                           # Exclude .env.local, node_modules
 ```
 
 ## Key Patterns
 
 ### Hooks-First Data Layer
 
-All data fetching and realtime subscriptions live in custom hooks:
+All data fetching and realtime subscriptions in custom hooks:
 
-- **use-current-user** — Fetches user profile once, caches in state
-- **use-conversations** — Lists user's conversations with unread counts
-- **use-realtime-messages** — Subscribes to postgres_changes for a conversation
-- **use-supabase-presence** — Manages online status broadcast + sync
-- **use-file-upload** — Handles file → Storage + metadata record
-- **use-conversation-members** — Lists group members with roles
+- **use-current-user** — Fetch user profile, cache in state
+- **use-conversations** — List user's conversations with unread counts
+- **use-realtime-messages** — Subscribe to postgres_changes for messages
+- **use-supabase-presence** — Manage online status broadcast
+- **use-file-upload** — Storage upload + metadata
+- **use-conversation-members** — List group members
+- **use-typing-indicator** — Broadcast & listen to typing
+- **use-reactions** — Add/remove emoji reactions
 
-Components import these hooks and receive clean data/callbacks. No fetch logic in components.
+Components receive clean data/callbacks. No fetch logic in components.
 
 ### Supabase Client Organization
 
 | File | Purpose |
 |------|---------|
-| `lib/supabase/client.ts` | Browser-side singleton Supabase client (uses anon key) |
-| `lib/supabase/server.ts` | Server-side client for API routes (uses service role) |
-| `lib/supabase/middleware.ts` | Validates JWT in middleware, refreshes if needed |
+| `lib/supabase/client.ts` | Browser-side singleton (anon key) |
+| `lib/supabase/server.ts` | Server-side client (service role) |
+| `lib/supabase/middleware.ts` | Validates JWT in middleware |
 
 ### Authentication Flow
 
@@ -124,43 +139,44 @@ API Route (api/auth/login/route.ts)
     ↓ rpc/login_with_token
 Supabase (exchanges token for JWT)
     ↓ sets secure cookie
-Middleware (middleware.ts)
-    ↓ validates session on every request
+Middleware (validates JWT)
+    ↓ first-time redirect → /setup
+Setup Page (setup/page.tsx)
+    ↓ avatar + nickname
 Protected Routes (/chat/*)
     ↓ render with currentUser
 ```
 
-### Realtime Subscriptions
+### Realtime Architecture
 
 | Channel | Event | Trigger | Use Case |
 |---------|-------|---------|----------|
 | `messages:{conversationId}` | postgres_changes INSERT | New message | Live chat |
 | `online-users` | presence sync/join/leave | User online/offline | Presence list |
-| `typing:{conversationId}` | broadcast (Phase 4) | User typing | Typing indicator |
+| `typing:{conversationId}` | broadcast | User typing | Typing indicator |
 
 ### Component Architecture
 
-Components are **presentational** — they accept props and callbacks, no direct API calls:
+Presentational components accept props/callbacks, no direct API calls:
 
 ```typescript
-// Example: MessageList accepts messages array + callback
 <MessageList
   messages={messages}
   onLoadMore={loadEarlierMessages}
-  isLoading={loading}
+  onReact={(messageId, emoji) => addReaction(messageId, emoji)}
 />
 
-// Hook handles realtime + pagination
-const { messages, isLoading, loadMore } = useRealtimeMessages(conversationId);
+const { messages, reactions } = useRealtimeMessages(conversationId);
+const { addReaction } = useReactions();
 ```
 
 ### File Upload Flow
 
-1. **Chat input detects file** → calls `useFileUpload`
-2. **Hook uploads to Storage** → `attachments/{conversationId}/{messageId}/{filename}`
-3. **Hook creates message record** with `content_type: 'file'` or `'image'` + metadata
-4. **Realtime fires** → `postgres_changes` broadcasts new message
-5. **Component renders** based on `content_type` (file card, image preview, etc.)
+1. Chat input detects file → calls `useFileUpload`
+2. Hook uploads to Storage: `attachments/{conversationId}/{messageId}/{filename}`
+3. Hook creates message record with metadata
+4. Realtime fires postgres_changes
+5. Component renders based on `content_type`
 
 ## Dependencies (Core)
 
@@ -179,21 +195,33 @@ const { messages, isLoading, loadMore } = useRealtimeMessages(conversationId);
 
 ## Database Schema (6 Tables)
 
-| Table | Role | Rows (seed) | Key Indexes |
-|-------|------|------------|------------|
-| `users` | User profiles (humans + agents) | 5 | `token` (unique), `is_active` |
-| `conversations` | DM or group container | 2 | `updated_at DESC` (sort sidebar) |
-| `conversation_members` | Membership join table | 7 | `user_id` (find conversations) |
-| `messages` | Chat messages | 10 | `(conversation_id, created_at DESC)` |
-| `attachments` | File metadata | 0 | `message_id` |
-| `reactions` | Emoji reactions (Phase 3) | 0 | `message_id` |
+| Table | Role | Key Columns | Rows (seed) |
+|-------|------|------------|-----------|
+| `users` | User profiles (humans + agents) | `role` (admin/user/agent), `is_mock` (bool) | 6 |
+| `conversations` | DM or group container | `type` (dm/group), `name` (nullable) | 2 |
+| `conversation_members` | Membership join table | `role` (admin/member), `joined_at` | 8 |
+| `messages` | Chat messages | `content_type` (text/file/image/url), `metadata` (jsonb) | 10 |
+| `attachments` | File metadata | `file_url`, `storage_path`, `file_size` | 0 |
+| `reactions` | Emoji reactions | `emoji` (heart, etc.), UNIQUE(message_id, user_id, emoji) | 0 |
 
 **Custom Types:**
-- `conversation_type` — `dm` or `group`
-- `member_role` — `admin` or `member`
+- `user_role` — `admin`, `user`, `agent`
+- `conversation_type` — `dm`, `group`
+- `member_role` — `admin`, `member`
 - `content_type` — `text`, `file`, `image`, `url`
 
-**RLS Enabled:** All tables. No SELECT/INSERT without being conversation member.
+**RLS Enabled:** All tables. Uses SECURITY DEFINER helpers to prevent recursion.
+
+## Database Migrations
+
+| File | Changes |
+|------|---------|
+| 001_initial_schema | Create tables, enums, indexes, RLS, functions |
+| 002_user_role | Add `role` (user_role enum) column |
+| 003_admin_management | Admin-only functions for user management |
+| 004_mock_flag | Add `is_mock` boolean, update presence RLS |
+| 005_security_fixes | Add SECURITY DEFINER helpers, users_public view, signed URLs |
+| 006_fix_rls_recursion | Replace recursive policies with DEFINER helpers |
 
 ## Code Standards
 
@@ -202,15 +230,15 @@ const { messages, isLoading, loadMore } = useRealtimeMessages(conversationId);
 | Pattern | Example | Usage |
 |---------|---------|-------|
 | Files | `kebab-case` | `use-realtime-messages.ts` |
-| React components | `PascalCase` | `<MessageList />` |
+| Components | `PascalCase` | `<MessageList />` |
 | Variables | `camelCase` | `conversationId`, `isLoading` |
-| Database columns | `snake_case` | `created_at`, `is_agent` |
+| Database | `snake_case` | `created_at`, `is_agent` |
 | Enums | `SCREAMING_SNAKE_CASE` | `CONVERSATION_TYPE` |
 
 ### File Size Limits
 
 - **Components** — <150 LOC (split complex layouts)
-- **Hooks** — <100 LOC (refactor large hooks into utils)
+- **Hooks** — <100 LOC (refactor large hooks)
 - **Pages** — <50 LOC (composition over logic)
 
 ### TypeScript
@@ -218,57 +246,51 @@ const { messages, isLoading, loadMore } = useRealtimeMessages(conversationId);
 - `strict: true` in tsconfig.json
 - All function signatures typed
 - Database types generated from schema
-- No `any` without `// @ts-ignore` comment
+- No `any` without `// @ts-ignore`
 
 ### Styling
 
 - Tailwind CSS 4 (no CSS modules)
 - Design tokens in `globals.css`
-- Dark mode ready (`:dark` prefix works)
+- Dark mode ready (`:dark` prefix)
 - Mobile-first responsive (sm:, md:, lg:)
 
-## API Endpoints (Partial List)
+## API Endpoints (Summary)
 
-See `docs/API_SPEC.md` for complete endpoint reference.
+See `docs/API_SPEC.md` for complete reference.
 
-| Method | Path | Feature |
-|--------|------|---------|
-| POST | `/api/auth/login` | Token → JWT exchange |
-| GET | `/rest/v1/users?is_active=eq.true` | Active users list |
-| GET | `/rpc/get_my_conversations` | User's conversations |
-| POST | `/rpc/find_or_create_dm` | Start/find DM |
-| GET | `/rest/v1/messages?conversation_id=eq.{id}` | Message history |
-| POST | `/rest/v1/messages` | Send message |
-| POST | `/storage/v1/object/attachments/{path}` | Upload file |
-| POST | `/rest/v1/conversations` | Create group |
-| POST | `/rest/v1/conversation_members` | Add group member |
-
-## Database Functions (RPC)
-
-| Function | Parameters | Returns | Purpose |
-|----------|------------|---------|---------|
-| `login_with_token` | `token: text` | JWT + user | Token auth |
-| `find_or_create_dm` | `other_user_id: uuid` | `conversation_id: uuid` | DM creation |
-| `get_my_conversations` | (none) | List with last message | Sidebar data |
-| `get_unread_counts` | (none) | `{conversation_id, count}` | Unread badges |
-| `mark_conversation_read` | `conv_id: uuid` | void | Mark read |
+| Method | Path | Feature | Phase |
+|--------|------|---------|-------|
+| POST | `/api/auth/login` | Token → JWT | P1 |
+| GET | `/rest/v1/users_public` | User list (admin view) | P4 |
+| GET | `/rpc/get_my_conversations` | User's conversations | P1 |
+| POST | `/rpc/find_or_create_dm` | Start/find DM | P1 |
+| GET | `/rest/v1/messages?conversation_id=eq.{id}` | Message history | P1 |
+| POST | `/rest/v1/messages` | Send message | P1 |
+| POST | `/storage/v1/object/attachments/{path}` | Upload file | P2 |
+| POST | `/rest/v1/conversations` | Create group | P2 |
+| POST | `/rest/v1/reactions` | Add reaction | P3 |
+| PATCH | `/rest/v1/users?id=eq.{id}` | Update profile | P4 |
 
 ## Implementation Phases
 
 | Phase | Status | Features | Files |
 |-------|--------|----------|-------|
-| **P1: Setup + DB** | ✅ Complete | Schema, migrations, seed data | supabase/ |
-| **P2: Auth + Chat** | ✅ Complete | Login, DMs, groups, realtime | src/app, src/components |
-| **P3: Rich Content** | ✅ Complete | Files, images, URLs, markdown | src/components/chat/* |
-| **P4: Polish** | ⏳ Pending | Typing indicators, read receipts, reactions | Future |
+| **P1: Chat** | ✅ Complete | Auth, DMs, groups, realtime, history | src/app, src/components |
+| **P2: Content** | ✅ Complete | Files, images, URLs, markdown | src/components/chat/* |
+| **P3: Polish** | ✅ Complete | Typing, read receipts, reactions | use-typing-indicator, use-reactions |
+| **P4: Admin** | ✅ Complete | User management, setup wizard, mock flag | /admin, /setup pages |
 
 ## Important Notes
 
-1. **No environment file in repo** — Add `.env.local` with Supabase credentials before running
+1. **Environment file not in repo** — Add `.env.local` with Supabase credentials before running
 2. **RLS is security layer** — No application-level authorization checks needed
-3. **Realtime requires PUBLISH** — Supabase free tier must have realtime enabled on tables
+3. **Realtime requires PUBLISH** — Supabase free tier must have realtime enabled
 4. **Service role in .env.local only** — Never expose to frontend
-5. **Seed data uses fixed UUIDs** — Reproducible across deploys, safe for testing
+5. **Seed data uses fixed UUIDs** — Reproducible across deploys
+6. **Mock users hidden from non-admins** — Sidebar filters by `is_mock` flag using RLS
+7. **Signed URLs for file access** — Storage uses `createSignedUrl` not `getPublicUrl`
+8. **SECURITY DEFINER helpers prevent RLS recursion** — Policies use helper functions instead of subqueries
 
 ## Next Steps
 
@@ -276,3 +298,4 @@ See `docs/API_SPEC.md` for complete endpoint reference.
 - See `docs/API_SPEC.md` for API reference
 - See `docs/DB_DESIGN.md` for schema details
 - See `docs/system-architecture.md` for architectural flows
+- See `docs/UI_SPEC.md` for design system and screens

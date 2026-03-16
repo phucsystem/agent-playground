@@ -8,13 +8,18 @@ Invite-only chat platform for AI agent builders to test agents with real users.
 
 ## Features
 
-- **Token-based authentication** — Admin-provisioned tokens for frictionless login
+- **Token-based authentication** — Admin-provisioned tokens, auto-redirect first-timers to setup wizard
+- **Profile setup** — Choose avatar (DiceBear 12 styles) + enter nickname on first login
 - **Direct messaging** — 1:1 conversations between humans and AI agents
 - **Group conversations** — Test multiple agents with humans in one space
-- **Realtime messaging** — WebSocket-powered message delivery and online presence
-- **Rich content** — Markdown rendering, file uploads (10MB max), image previews, URL metadata
+- **Realtime messaging** — WebSocket-powered message delivery and online presence (filtered by mock flag)
+- **Rich content** — Markdown rendering, file uploads (10MB max, signed URLs), image previews, URL metadata
+- **Message reactions** — Heart emoji ❤️ button for quick feedback on messages
+- **Typing indicators** — See when others are typing in real-time
+- **Admin panel** — Manage users (enable/disable/delete), generate tokens, view all accounts
 - **Agent-ready API** — Agents integrate via Supabase REST API with JWT auth
 - **Row Level Security** — Database policies enforce access control automatically
+- **Mock users** — Test accounts hidden from non-admin users via is_mock flag
 
 ## Tech Stack
 
@@ -86,22 +91,31 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 npm run dev
 
 # Open browser
-# Visit http://localhost:3000/login
+# Visit http://localhost:3000/login to log in
+# First login → auto-redirect to /setup (complete profile)
+# Subsequent logins → /chat (main interface)
+
+# Admin access: http://localhost:3000/admin (admin role only)
 ```
 
 ## Test Accounts
 
 Seed data includes pre-configured test tokens:
 
-| User | Email | Token | Role |
-|------|-------|-------|------|
-| Phuc (Admin) | admin@agentplayground.dev | `tok-admin-001` | Owner |
-| Alice | alice@example.com | `tok-alice-002` | Tester |
-| Bob | bob@example.com | `tok-bob-003` | Tester |
-| Claude Agent | claude@agents.dev | `tok-claude-agent-001` | Agent |
-| GPT-4 Agent | gpt4@agents.dev | `tok-gpt4-agent-002` | Agent |
+| User | Email | Token | Role | Notes |
+|------|-------|-------|------|-------|
+| Phuc | phuc@example.com | `tok-admin-001` | admin | Can access /admin page |
+| Alice | alice@example.com | `tok-alice-002` | user | Regular user |
+| Bob | bob@example.com | `tok-bob-003` | user | Regular user |
+| Mock Bot | mock@example.com | `tok-mock-001` | agent | Hidden from non-admin presence |
+| Claude Agent | claude@agents.dev | `tok-claude-agent-001` | agent | API-only, visible to all |
+| GPT-4 Agent | gpt4@agents.dev | `tok-gpt4-agent-002` | agent | API-only, visible to all |
 
 **To log in:** Paste any token above in the login form.
+
+**Admin features:** Log in as Phuc, then visit http://localhost:3000/admin to manage users.
+
+**First login:** New users auto-redirect to /setup to choose avatar and enter nickname.
 
 ## Project Structure
 
@@ -111,23 +125,27 @@ src/
 │   ├── layout.tsx            # Root layout
 │   ├── page.tsx              # Root redirect
 │   ├── login/page.tsx        # Login page (token entry)
+│   ├── setup/page.tsx        # Profile setup (avatar + nickname)
+│   ├── admin/page.tsx        # User management (admin only)
 │   ├── chat/
-│   │   ├── layout.tsx        # Chat layout with sidebar
+│   │   ├── layout.tsx        # Chat layout with collapsible sidebar
 │   │   ├── page.tsx          # Chat list view
 │   │   └── [conversationId]/ # Individual conversation
-│   └── api/auth/login/       # Token exchange endpoint
+│   ├── api/auth/login/route.ts # Token exchange endpoint
+│   ├── middleware.ts         # Auth guard + setup redirect
+│   └── globals.css           # Tailwind styles
 ├── components/
-│   ├── chat/                 # 9 components (messages, input, previews)
-│   ├── sidebar/              # 5 components (nav, users, conversations)
+│   ├── chat/                 # 9 components (messages, input, previews, reactions)
+│   ├── sidebar/              # 5 components (nav, users, conversations, create-group)
 │   └── ui/                   # Avatar component
-├── hooks/                    # 6 hooks (auth, realtime, data)
-├── lib/                      # Auth, Supabase client, middleware
+├── hooks/                    # 8 hooks (auth, realtime, data, typing, reactions)
+├── lib/                      # Auth, Supabase clients, middleware
 ├── types/                    # TypeScript types (database schema)
-└── middleware.ts            # Auth guard
+└── middleware.ts             # Auth guard + first-login redirect
 
 supabase/
-├── migrations/              # Database schema (001_initial_schema.sql)
-└── seed.sql                # Sample data (5 users, 2 conversations, 10 messages)
+├── migrations/               # 6 SQL migrations (001-006)
+└── seed.sql                 # Sample data (6 users, 2 conversations, 10 messages)
 ```
 
 ## Architecture
@@ -209,16 +227,16 @@ Agent uses Supabase JS/Python client to subscribe to `postgres_changes` on messa
 ## Roadmap
 
 ### Phase 1 ✅ (COMPLETE)
-- Database schema (6 tables, RLS, functions)
+- Database schema (6 tables, RLS, helper functions)
 - Token auth → JWT exchange
 - Seed data with test accounts
 
 ### Phase 2 ✅ (COMPLETE)
 - Login page (token form)
-- Sidebar (conversations, online users)
+- Sidebar (conversations, online users, collapsible sections)
 - DM and group chat
 - Message history, realtime delivery
-- File uploads, image/URL previews
+- File uploads (with signed URLs), image/URL previews
 - Group creation and member management
 
 ### Phase 3 ✅ (COMPLETE)
@@ -226,11 +244,17 @@ Agent uses Supabase JS/Python client to subscribe to `postgres_changes` on messa
 - File card, image lightbox
 - URL metadata preview (Open Graph)
 - Chat info panel with members/files
-
-### Phase 4 ⏳ (PENDING)
+- Message reactions (heart emoji ❤️ button)
 - Typing indicators (broadcast channel)
-- Read receipts (mark_conversation_read call)
-- Message reactions (emoji picker + UI)
+- Read receipts (mark_conversation_read)
+
+### Phase 4 ✅ (COMPLETE)
+- Admin page (/admin) — user management, token generation, enable/disable/delete
+- Setup wizard (/setup) — avatar picker (DiceBear 12 styles), nickname entry
+- Mock user flag — test accounts hidden from non-admin users
+- SECURITY DEFINER helpers — prevent RLS recursion
+- users_public view — expose user data without token
+- Signed URLs — secure file access with time-limited URLs
 
 ## License
 

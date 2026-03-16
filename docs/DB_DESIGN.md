@@ -78,6 +78,9 @@ erDiagram
 ## 2. Custom Types
 
 ```sql
+-- User role enum
+CREATE TYPE user_role AS ENUM ('admin', 'user', 'agent');
+
 -- Conversation type enum
 CREATE TYPE conversation_type AS ENUM ('dm', 'group');
 
@@ -99,8 +102,9 @@ Stores human users and AI agents. Admin provisions tokens manually.
 | `id` | `uuid` | PK | `gen_random_uuid()` | Unique user ID |
 | `email` | `text` | UNIQUE, NOT NULL | — | User email (for display/identification) |
 | `display_name` | `text` | NOT NULL | — | Display name shown in chat |
-| `avatar_url` | `text` | NULLABLE | `NULL` | Profile avatar URL (Supabase Storage or external) |
-| `is_agent` | `boolean` | NOT NULL | `false` | True for AI agent accounts |
+| `avatar_url` | `text` | NULLABLE | `NULL` | Profile avatar URL (DiceBear or external) |
+| `role` | `user_role` | NOT NULL | `'user'` | `admin` (manage platform), `user` (chat), or `agent` (API-only) |
+| `is_mock` | `boolean` | NOT NULL | `false` | True = hidden from non-admin users. Used for testing. |
 | `is_active` | `boolean` | NOT NULL | `true` | Admin toggle. False = cannot log in |
 | `token` | `text` | UNIQUE, NOT NULL | — | Pre-provisioned auth token (UUID v4) |
 | `last_seen_at` | `timestamptz` | NULLABLE | `NULL` | Last activity timestamp (updated on disconnect) |
@@ -226,31 +230,98 @@ Emoji reactions on messages.
 **Indexes:**
 - `idx_reactions_message_id` — on `message_id` (load reactions for messages)
 
-## 4. Row Level Security (RLS)
+## 4. Helper Views & Functions
 
-All tables have RLS enabled. Policies use `auth.uid()` from Supabase Auth JWT.
+### users_public view
+
+Exposes user data without sensitive `token` column:
+
+```sql
+CREATE VIEW users_public AS
+SELECT id, email, display_name, avatar_url, role, is_mock, is_active, last_seen_at, created_at
+FROM users;
+```
+
+**Purpose:** Frontend queries `users_public` instead of `users` to prevent accidental token exposure.
+
+### SECURITY DEFINER Helper Functions
+
+Prevent RLS recursion when policies reference other tables:
+
+```sql
+-- Check if current user is admin
+CREATE OR REPLACE FUNCTION is_admin()
+RETURNS boolean AS $$
+BEGIN
+  RETURN (SELECT role = 'admin' FROM users WHERE id = auth.uid());
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Get conversation IDs where user is member
+CREATE OR REPLACE FUNCTION my_conversation_ids()
+RETURNS TABLE(conversation_id uuid) AS $$
+BEGIN
+  RETURN QUERY
+  SELECT conversation_members.conversation_id
+  FROM conversation_members
+  WHERE conversation_members.user_id = auth.uid();
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Check membership without recursion
+CREATE OR REPLACE FUNCTION is_conversation_member(conv_id uuid)
+RETURNS boolean AS $$
+BEGIN
+  RETURN EXISTS(
+    SELECT 1 FROM conversation_members
+    WHERE conversation_id = conv_id AND user_id = auth.uid()
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Check admin status in conversation
+CREATE OR REPLACE FUNCTION is_conversation_admin(conv_id uuid)
+RETURNS boolean AS $$
+BEGIN
+  RETURN EXISTS(
+    SELECT 1 FROM conversation_members
+    WHERE conversation_id = conv_id AND user_id = auth.uid() AND role = 'admin'
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+```
+
+**Why SECURITY DEFINER:** RLS policies cannot directly query conversation_members (would cause circular dependency). DEFINER functions execute as schema owner, bypassing RLS.
+
+---
+
+## 5. Row Level Security (RLS)
+
+All tables have RLS enabled. Policies use `auth.uid()` from Supabase Auth JWT. Helper functions prevent recursion.
 
 ### users
 
 ```sql
--- Users can read all active users (for presence list)
+-- Users can read active users, but admins see all including mocks
 CREATE POLICY "users_select" ON users FOR SELECT
-  USING (is_active = true);
+  USING (is_active = true AND (is_mock = false OR is_admin()));
 
--- Users can update their own record (last_seen_at)
+-- Users can update their own record (last_seen_at, avatar_url, display_name)
 CREATE POLICY "users_update_self" ON users FOR UPDATE
   USING (auth.uid() = id)
   WITH CHECK (auth.uid() = id);
+
+-- Only admins can manage users (enable/disable/delete)
+CREATE POLICY "users_delete_admin" ON users FOR DELETE
+  USING (is_admin());
 ```
 
 ### conversations
 
 ```sql
--- Users can see conversations they are a member of
+-- Users can see conversations they are a member of (using DEFINER helper)
 CREATE POLICY "conversations_select" ON conversations FOR SELECT
-  USING (id IN (
-    SELECT conversation_id FROM conversation_members WHERE user_id = auth.uid()
-  ));
+  USING (id = ANY(my_conversation_ids()));
 
 -- Any active user can create a conversation
 CREATE POLICY "conversations_insert" ON conversations FOR INSERT
@@ -260,67 +331,51 @@ CREATE POLICY "conversations_insert" ON conversations FOR INSERT
 ### conversation_members
 
 ```sql
--- Users can see members of their conversations
+-- Users can see members of their own conversations (using DEFINER helper)
 CREATE POLICY "members_select" ON conversation_members FOR SELECT
-  USING (conversation_id IN (
-    SELECT conversation_id FROM conversation_members WHERE user_id = auth.uid()
-  ));
+  USING (is_conversation_member(conversation_id));
 
--- Conversation admins can add members
+-- Conversation admins can add members (using DEFINER helper)
 CREATE POLICY "members_insert" ON conversation_members FOR INSERT
-  WITH CHECK (
-    conversation_id IN (
-      SELECT conversation_id FROM conversation_members
-      WHERE user_id = auth.uid() AND role = 'admin'
-    )
-  );
+  WITH CHECK (is_conversation_admin(conversation_id));
 
 -- Conversation admins can remove members (or self-leave)
 CREATE POLICY "members_delete" ON conversation_members FOR DELETE
   USING (
     user_id = auth.uid()
-    OR conversation_id IN (
-      SELECT conversation_id FROM conversation_members
-      WHERE user_id = auth.uid() AND role = 'admin'
-    )
+    OR is_conversation_admin(conversation_id)
   );
 ```
 
 ### messages
 
 ```sql
--- Users can read messages in their conversations
+-- Users can read messages in their conversations (using DEFINER helper)
 CREATE POLICY "messages_select" ON messages FOR SELECT
-  USING (conversation_id IN (
-    SELECT conversation_id FROM conversation_members WHERE user_id = auth.uid()
-  ));
+  USING (is_conversation_member(conversation_id));
 
 -- Users can send messages to their conversations
 CREATE POLICY "messages_insert" ON messages FOR INSERT
   WITH CHECK (
     auth.uid() = sender_id
-    AND conversation_id IN (
-      SELECT conversation_id FROM conversation_members WHERE user_id = auth.uid()
-    )
+    AND is_conversation_member(conversation_id)
   );
 ```
 
 ### attachments
 
 ```sql
--- Users can see attachments in their conversations
+-- Users can see attachments in their conversations (using DEFINER helper)
 CREATE POLICY "attachments_select" ON attachments FOR SELECT
-  USING (message_id IN (
-    SELECT id FROM messages WHERE conversation_id IN (
-      SELECT conversation_id FROM conversation_members WHERE user_id = auth.uid()
-    )
-  ));
+  USING (is_conversation_member((
+    SELECT conversation_id FROM messages WHERE id = message_id
+  )));
 
 -- Users can create attachments for their own messages
 CREATE POLICY "attachments_insert" ON attachments FOR INSERT
-  WITH CHECK (message_id IN (
-    SELECT id FROM messages WHERE sender_id = auth.uid()
-  ));
+  WITH CHECK (
+    auth.uid() = (SELECT sender_id FROM messages WHERE id = message_id)
+  );
 ```
 
 ### reactions (Phase 3)
@@ -343,31 +398,56 @@ CREATE POLICY "reactions_delete" ON reactions FOR DELETE
   USING (auth.uid() = user_id);
 ```
 
-## 5. Supabase Storage Policies
+## 6. Supabase Storage Policies
 
 **Bucket:** `attachments`
+
+**Security:** Use signed URLs (`createSignedUrl`) instead of public URLs. Paths scoped to conversation membership via DEFINER helper.
 
 ```sql
 -- Members can upload to their conversation's folder
 CREATE POLICY "attachments_upload" ON storage.objects FOR INSERT
   WITH CHECK (
     bucket_id = 'attachments'
-    AND (storage.foldername(name))[1] IN (
-      SELECT conversation_id::text FROM conversation_members WHERE user_id = auth.uid()
-    )
+    AND (storage.foldername(name))[1]::uuid = ANY(my_conversation_ids())
   );
 
 -- Members can read files from their conversations
 CREATE POLICY "attachments_read" ON storage.objects FOR SELECT
   USING (
     bucket_id = 'attachments'
-    AND (storage.foldername(name))[1] IN (
-      SELECT conversation_id::text FROM conversation_members WHERE user_id = auth.uid()
-    )
+    AND (storage.foldername(name))[1]::uuid = ANY(my_conversation_ids())
   );
 ```
 
-## 6. Database Functions
+**URL Generation (Frontend):**
+```typescript
+// Instead of getPublicUrl(), use createSignedUrl for secure access
+const { data } = await supabase.storage
+  .from('attachments')
+  .createSignedUrl(filePath, 3600); // 1-hour expiry
+const signedUrl = data?.signedUrl;
+```
+
+## 7. Database Migrations
+
+| File | Status | Changes |
+|------|--------|---------|
+| `001_initial_schema.sql` | ✅ Applied | Create all tables, enums, indexes, RLS, functions |
+| `002_user_role.sql` | ✅ Applied | Add `role` (user_role enum) column to users |
+| `003_admin_management.sql` | ✅ Applied | Add admin-only functions for user management |
+| `004_mock_flag.sql` | ✅ Applied | Add `is_mock` boolean column, update presence RLS |
+| `005_security_fixes.sql` | ✅ Applied | Add SECURITY DEFINER helpers, users_public view, update storage to signed URLs |
+| `006_fix_rls_recursion.sql` | ✅ Applied | Replace recursive RLS policies with DEFINER helpers |
+
+**Running Migrations:**
+```bash
+supabase db push  # Runs all migrations in order
+```
+
+---
+
+## 8. Database Functions
 
 ### Find or create DM conversation
 
@@ -440,7 +520,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 ```
 
-## 7. Realtime Configuration
+## 9. Realtime Configuration
 
 ### Postgres Changes (message delivery)
 
@@ -474,7 +554,7 @@ supabase.channel('typing:{conversation_id}')
   .subscribe()
 ```
 
-## 8. Traceability
+## 10. Traceability
 
 | Entity | SRD ID | Features |
 |--------|--------|----------|

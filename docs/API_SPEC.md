@@ -1,8 +1,10 @@
 # Interface Specification (API)
 
 **Backend:** Supabase (PostgREST auto-generated API + RPC functions + Realtime)
-**Auth:** Supabase Auth (JWT via token exchange)
+**Auth:** Supabase Auth (JWT via token exchange, SHA-256 password derivation)
 **Base URL:** `https://{project-ref}.supabase.co`
+
+**Password Security:** User passwords derived deterministically from `SHA-256(userId + serviceRoleKey)` for admin authentication. Not stored as plaintext.
 
 > **Note:** Most CRUD operations use Supabase's auto-generated PostgREST API directly.
 > Custom endpoints are implemented as Supabase RPC (database functions) or Edge Functions.
@@ -29,6 +31,11 @@
 | GET | `/rest/v1/attachments?message_id=in.({ids})` | FR-11 | S-05 | P2 |
 | POST | `/rest/v1/reactions` | FR-18 | S-03, S-04 | P3 |
 | DELETE | `/rest/v1/reactions?id=eq.{id}` | FR-18 | S-03, S-04 | P3 |
+| GET | `/rest/v1/users_public?role=eq.admin` | FR-19 | S-06 | P4 |
+| POST | `/rest/v1/users` | FR-19 | S-06 | P4 |
+| PATCH | `/rest/v1/users?id=eq.{id}` | FR-19 | S-06 | P4 |
+| DELETE | `/rest/v1/users?id=eq.{id}` | FR-19 | S-06 | P4 |
+| PATCH | `/rest/v1/users?id=eq.{id}` | FR-20 | S-07 | P4 |
 | WS | Realtime: `postgres_changes` on messages | FR-08 | S-03, S-04 | P1 |
 | WS | Realtime: `presence` channel | FR-03 | S-02 | P1 |
 | WS | Realtime: `broadcast` typing | FR-16 | S-03, S-04 | P3 |
@@ -514,6 +521,112 @@
 
 ---
 
+### GET /rest/v1/users_public (Phase 4 — Admin Only)
+
+**Description:** List all users (admin view). Non-admin users see only non-mock users.
+**Feature:** FR-19, FR-21
+**Screen:** S-06 (admin), S-02 (sidebar)
+**Auth:** Bearer JWT
+
+**Query params:**
+| Param | Value | Purpose |
+|-------|-------|---------|
+| `select` | `*` | All columns except `token` (view enforces) |
+| `order` | `created_at.desc` | Newest first |
+
+**Response (200):**
+```json
+[
+  {
+    "id": "uuid-1",
+    "email": "phuc@example.com",
+    "display_name": "Phuc",
+    "avatar_url": "https://...",
+    "role": "admin",
+    "is_mock": false,
+    "is_active": true,
+    "last_seen_at": "2026-03-16T10:30:00Z",
+    "created_at": "2026-03-16T00:00:00Z"
+  },
+  {
+    "id": "uuid-2",
+    "email": "test@example.com",
+    "display_name": "Test User",
+    "avatar_url": "https://...",
+    "role": "user",
+    "is_mock": true,
+    "is_active": true,
+    "last_seen_at": null,
+    "created_at": "2026-03-16T10:00:00Z"
+  }
+]
+```
+
+**Note:** `users_public` view omits `token` column. Query via view instead of table for security.
+
+---
+
+### PATCH /rest/v1/users?id=eq.{id} (Phase 4 — Admin)
+
+**Description:** Update user (admin can manage roles/status, user can update own profile).
+**Feature:** FR-19, FR-20
+**Screen:** S-06 (admin), S-07 (setup)
+**Auth:** Bearer JWT
+
+**Request (Admin updating status):**
+```json
+{
+  "is_active": false,
+  "is_mock": true
+}
+```
+
+**Request (User updating own profile):**
+```json
+{
+  "display_name": "Alice Updated",
+  "avatar_url": "https://api.dicebear.com/9.x/adventurers/svg?seed=alice"
+}
+```
+
+**Response (200):** Updated user record.
+
+**RLS:** Users can only update own record; admins can update any record.
+
+---
+
+### DELETE /rest/v1/users?id=eq.{id} (Phase 4 — Admin Only)
+
+**Description:** Delete a user account.
+**Feature:** FR-19
+**Screen:** S-06
+**Auth:** Bearer JWT (admin only)
+
+**RLS:** Only admins can delete users.
+
+**Cascade:** Deleting user removes all conversation_members, messages stay (orphaned, re-assigned to system user if needed).
+
+---
+
+### POST /rpc/update_profile (Phase 4)
+
+**Description:** Users complete setup wizard (avatar selection + nickname).
+**Feature:** FR-20
+**Screen:** S-07
+**Auth:** Bearer JWT
+
+**Request:**
+```json
+{
+  "display_name": "Alice",
+  "avatar_url": "https://api.dicebear.com/9.x/adventurers/svg?seed=alice"
+}
+```
+
+**Response (200):** Updated user object.
+
+---
+
 ## 3. Realtime Subscriptions
 
 ### Message delivery (FR-08)
@@ -633,6 +746,10 @@ Agent uses Supabase JS/Python client to subscribe to `postgres_changes` on messa
 | `POST /rest/v1/conversations` | FR-13 | S-02 | P2 |
 | `/rest/v1/conversation_members` | FR-13 | S-02, S-04, S-05 | P2 |
 | `/rest/v1/reactions` | FR-18 | S-03, S-04 | P3 |
+| `/rest/v1/users_public` | FR-19, FR-21 | S-06, S-02 | P4 |
+| `PATCH /rest/v1/users` | FR-19, FR-20 | S-06, S-07 | P4 |
+| `DELETE /rest/v1/users` | FR-19 | S-06 | P4 |
+| `/rpc/update_profile` | FR-20 | S-07 | P4 |
 | Realtime: messages | FR-08 | S-03, S-04 | P1 |
 | Realtime: presence | FR-03 | S-02 | P1 |
 | Realtime: typing | FR-16 | S-03, S-04 | P3 |

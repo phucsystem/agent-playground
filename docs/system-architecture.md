@@ -16,11 +16,13 @@ Agent Playground uses a three-tier architecture: Next.js frontend (React 19), Su
 │  │ ┌────────────────┐  ┌──────────────────────────────────┐ │  │
 │  │ │ Pages          │  │ Components + Hooks               │ │  │
 │  │ │ - login        │  │ - ChatInput (file upload)        │ │  │
-│  │ │ - /chat        │  │ - MessageList (realtime)         │ │  │
-│  │ │ - /chat/[id]   │  │ - Sidebar (presence, convs)      │ │  │
-│  │ └────────────────┘  │ - use-realtime-messages         │ │  │
-│  │                     │ - use-supabase-presence         │ │  │
-│  │                     │ - use-file-upload               │ │  │
+│  │ │ - setup        │  │ - MessageList (realtime)         │ │  │
+│  │ │ - admin        │  │ - Sidebar (presence, convs)      │ │  │
+│  │ │ - /chat        │  │ - use-realtime-messages         │ │  │
+│  │ │ - /chat/[id]   │  │ - use-supabase-presence         │ │  │
+│  │ └────────────────┘  │ - use-file-upload               │ │  │
+│  │                     │ - use-reactions                 │ │  │
+│  │                     │ - use-typing-indicator          │ │  │
 │  │                     └──────────────────────────────────┘ │  │
 │  └──────────────────────────────────────────────────────────┘  │
 │                             │                                   │
@@ -83,13 +85,19 @@ Agent Playground uses a three-tier architecture: Next.js frontend (React 19), Su
    ↓
 4. Supabase validates token in users table (is_active = true)
    ↓
-5. Supabase Auth generates JWT
+5. Supabase Auth generates JWT (using SHA-256 password derived from userId + serviceRoleKey)
    ↓
-6. Frontend receives JWT, stores in secure cookie
+6. Frontend receives JWT, stores in secure HTTP-only cookie
    ↓
-7. Middleware validates JWT on every request to /chat/*
+7. Middleware validates JWT on every request to /chat/* or /setup
    ↓
-8. Chat UI renders with currentUser context
+8. If first login → redirect to /setup (profile wizard)
+   ↓
+9. Setup page: user picks avatar (DiceBear 12 styles) + nickname
+   ↓
+10. POST /rpc/update_profile with avatar_url + display_name
+    ↓
+11. Redirect to /chat, UI renders with currentUser context
 ```
 
 ### Session Management
@@ -101,26 +109,41 @@ Agent Playground uses a three-tier architecture: Next.js frontend (React 19), Su
 
 ### Row Level Security (RLS)
 
-All database operations filtered by `auth.uid()` from JWT. Example policies:
+All database operations filtered by `auth.uid()` from JWT. Uses SECURITY DEFINER helper functions to prevent RLS recursion.
+
+**Helper Functions (SECURITY DEFINER):**
 
 ```sql
--- Users can read messages only in their conversations
-CREATE POLICY "messages_select" ON messages FOR SELECT
-  USING (conversation_id IN (
-    SELECT conversation_id FROM conversation_members WHERE user_id = auth.uid()
-  ));
+is_admin()                    -- Check if current user is admin
+my_conversation_ids()         -- Get conversation IDs user is member of
+is_conversation_member(conv)  -- Check if member of conversation
+is_conversation_admin(conv)   -- Check if admin of conversation
+```
 
--- Users can send only to their conversations
+**Why SECURITY DEFINER:** RLS policies cannot directly query other tables without causing circular dependencies. DEFINER functions execute as schema owner, bypassing RLS for internal queries.
+
+**Example Policy (Using Helper):**
+
+```sql
+CREATE POLICY "messages_select" ON messages FOR SELECT
+  USING (is_conversation_member(conversation_id));
+
 CREATE POLICY "messages_insert" ON messages FOR INSERT
   WITH CHECK (
     auth.uid() = sender_id
-    AND conversation_id IN (
-      SELECT conversation_id FROM conversation_members WHERE user_id = auth.uid()
-    )
+    AND is_conversation_member(conversation_id)
   );
 ```
 
-**Result:** No application-level authorization needed. Database enforces all access control.
+**Result:** No application-level authorization needed. Database enforces all access control. Helpers prevent recursion issues.
+
+**Mock User Filtering:**
+
+```sql
+-- Non-admin users only see non-mock users in presence list
+CREATE POLICY "users_select" ON users FOR SELECT
+  USING (is_active = true AND (is_mock = false OR is_admin()));
+```
 
 ## Realtime Architecture
 
@@ -301,9 +324,12 @@ Bucket: attachments
 1. **File Input Change** → triggers `useFileUpload`
 2. **Create Message Record** → POST with placeholder content
 3. **Upload to Storage** → `/storage/v1/object/attachments/{path}` with JWT header
-4. **Update Message Metadata** → PATCH message with file_url, file_size, etc.
-5. **Realtime Triggers** → postgres_changes broadcasts updated message
-6. **Render Component** → MessageItem checks content_type, renders FileCard or ImagePreview
+4. **Generate Signed URL** → `createSignedUrl(path, 3600)` for secure 1-hour expiry
+5. **Update Message Metadata** → PATCH message with signed_url, file_size, etc.
+6. **Realtime Triggers** → postgres_changes broadcasts updated message
+7. **Render Component** → MessageItem checks content_type, renders FileCard or ImagePreview
+
+**Security:** Uses signed URLs instead of public URLs. Paths scoped to conversation via RLS policy using `my_conversation_ids()` helper.
 
 ### Supported File Types
 
@@ -322,6 +348,62 @@ Bucket: attachments
 | `url` | {og_title, og_description, og_image, favicon} | URLPreview (card with metadata) | "Example Article — example.com" |
 
 **Component Logic:** MessageItem renders based on content_type, delegating to specialized sub-components.
+
+**Message Reactions (Phase 3):**
+
+| metadata field | Example | Use |
+|---|---|---|
+| `reactions` | `[{user_id, emoji, created_at}]` | Store one reaction per user per message |
+
+Clients listen via `use-reactions` hook. Realtime broadcast updates reaction counts on messages.
+
+## Admin User Management Flow
+
+```
+Admin logs in
+    ↓
+Sidebar shows "Admin" option (role = 'admin')
+    ↓
+Click /admin
+    ↓
+Admin Page shows:
+  ├── User list (sortable by name, email, role)
+  ├── Inline actions:
+  │   ├── Copy Token (show in modal, copy to clipboard)
+  │   ├── Toggle Enable/Disable (immediate, affects user presence)
+  │   └── Delete User (confirm, remove from all conversations)
+  └── Auto-refresh on user changes (via realtime subscription)
+```
+
+**Security:** RLS policy `users_delete_admin` only admins can delete. `is_admin()` helper verifies role.
+
+## Profile Setup & Onboarding Flow
+
+```
+Login successful (first-time user)
+    ↓
+Middleware detects `display_name = NULL`
+    ↓
+Redirect to /setup
+    ↓
+Setup Page displays:
+  ├── Step 1: Avatar picker (DiceBear 12 styles)
+  │   ├── Adventurer, Bottts, Lorelei, Avataaars, etc.
+  │   └── Live preview as user selects
+  ├── Step 2: Nickname entry (max 32 chars)
+  │   └── Live preview below input
+  └── Complete button (POST /rpc/update_profile)
+    ↓
+POST { display_name, avatar_url }
+    ↓
+Middleware checks display_name again
+    ↓
+If set → redirect to /chat
+    ↓
+User sees conversations, can start chatting
+```
+
+**Avatar URLs:** Generated via `https://api.dicebear.com/9.x/{style}/svg?seed={nickname}`
 
 ## Conversation Types
 

@@ -151,19 +151,23 @@
 
 ### Component Patterns
 
-**User Message:** Right-aligned, rounded bubble with `--neutral-100` bg, `--neutral-700` text. No avatar shown for user messages.
+**User Message (Self):** Right-aligned, rounded bubble with `--neutral-100` bg, `--neutral-700` text, `--radius-md`. No avatar shown.
 
-**AI/Agent Message:** Left-aligned, no bubble (flat text on white bg). Content rendered as markdown. Avatar shown for agent messages.
+**Other Human Message:** Left-aligned with avatar, sender name (`--neutral-800`, bold), content below. Subtle hover state (`--neutral-50`).
 
-**Human Message (DM/Group):** Left-aligned with avatar, sender name (`--neutral-800`, bold), content below. Subtle hover state (`--neutral-50`).
+**Agent Message:** Left-aligned, no bubble (flat text on white bg). Content rendered as markdown. Avatar shown with bot badge.
 
-**Code Block:** Light background (`--neutral-50`), syntax highlighted, copy button top-right. Colored bottom-border accent (blue gradient). `--font-mono` with `--text-body2`.
+**Message Reactions:** Heart button ❤️ visible on hover (right of message). Click to add/toggle reaction. Show count badge if >0 reactions. Realtime sync across users.
 
-**Input Bar:** Rounded container with `--neutral-100` bg, no visible border. Attachment icon (left), auto-grow textarea (center), send button (right, dark `--neutral-900` bg, white arrow icon, rounded `--radius-sm`).
+**Code Block:** Light background (`--neutral-50`), syntax highlighted, copy button top-right. Colored bottom-border accent (blue). `--font-mono` with `--text-body2`.
 
-**Avatar:** `--avatar-sm` (32px) in messages, `--avatar-md` (48px) in sidebar profile. Circle with initials fallback. Agent avatars have a small bot badge (bottom-right, `--color-info`).
+**Input Bar:** Rounded container with `--neutral-100` bg, no visible border. Attachment icon (left), auto-grow textarea (center), send button (right, dark `--neutral-900` bg, white icon, rounded `--radius-sm`).
 
-**Presence Dot:** 10px circle, positioned bottom-right of avatar. `--color-success` = online, `--neutral-400` = offline.
+**Avatar:** `--avatar-sm` (32px) in messages, `--avatar-md` (48px) in sidebar. Circle with initials fallback. Agent avatars have bot badge.
+
+**Presence Dot:** 10px circle, bottom-right of avatar. `--color-success` = online, `--neutral-400` = offline. Hidden for mock users (non-admin only).
+
+**Sidebar Section:** Collapsible header with arrow icon. Click to expand/collapse. Counts badge shows number of items.
 
 **New Chat Button:** Full-width, `--primary-100` bg, `--primary-500` text, rounded `--radius-sm`.
 
@@ -174,21 +178,27 @@
 ```
 [S-01: Login]
     │
-    ▼ (valid token)
+    ▼ (valid token, first login)
+[S-07: Setup Page]
+    │ (set avatar + nickname)
+    ▼
 [S-02: Main Layout]
-    ├── Sidebar (left, fixed 260px)
+    ├── Sidebar (left, fixed 260px, collapsible sections)
     │   ├── User profile section (top)
-    │   ├── Online users / Presence list
-    │   ├── DM conversations
-    │   ├── Group conversations
+    │   ├── Online users (collapsible, filtered by mock flag)
+    │   ├── DM conversations (collapsible)
+    │   ├── Group conversations (collapsible)
     │   └── New conversation button
     │
     ├── Chat Area (right, flexible)
     │   ├── [S-03: DM Chat] ← click DM conversation
     │   └── [S-04: Group Chat] ← click group conversation
     │
-    └── [S-05: Chat Info Panel] ← click conversation header info icon
-        (slide-over from right, 320px)
+    ├── [S-05: Chat Info Panel] ← click conversation header info icon
+    │   (slide-over from right, 320px)
+    │
+    └── [S-06: Admin Page] ← (admin only, from sidebar menu)
+        User list, token generation, manage users
 ```
 
 **Navigation Rules:**
@@ -437,6 +447,104 @@
 | Members | List with avatar, name, online dot, role badge (admin). For DMs: just the other participant. |
 | Shared Files | Recent files shared in conversation. Click → download. Show file icon + name + date. Max 10, "View all" link. |
 | Settings | Leave group (for groups). For DMs: no settings. |
+
+---
+
+### S-06: Admin Page
+
+**Phase:** P4
+**Layout:** Full page (no sidebar), centered panel with user table
+**Access:** `/admin` (admin role only)
+**CJX Stage:** Retention (admin tools)
+
+```
+┌─────────────────────────────────────────────────────────┐
+│ Agent Playground — Admin                                │
+├─────────────────────────────────────────────────────────┤
+│                                                         │
+│ Users (5)                                               │
+│ ┌────────────────────────────────────────────────────┐ │
+│ │ Name      │ Email           │ Role    │ Status   │ │ │
+│ ├─────────────────────────────────────────────────────┤ │
+│ │ Phuc      │ admin@example   │ admin   │ Active ✓ │ │ │
+│ │ Alice     │ alice@example   │ user    │ Active ✓ │ │ │
+│ │ Bob       │ bob@example     │ user    │ Disabled │ │ │
+│ │ Claude    │ claude@agents   │ agent   │ Active ✓ │ │ │
+│ │ Mock Bot  │ mock@example    │ agent   │ Mock     │ │ │
+│ └────────────────────────────────────────────────────┘ │
+│                                                         │
+│ Actions (row):                                          │
+│ │ Copy Token │ Enable/Disable │ Delete │               │
+│                                                         │
+└─────────────────────────────────────────────────────────┘
+```
+
+**Elements:**
+| Element | Type | Details |
+|---------|------|---------|
+| User table | Table | Sortable by name, email, role. Inline actions. |
+| Name | Text | Display name. Click → view/edit profile. |
+| Email | Text | User email (read-only). |
+| Role | Badge | admin/user/agent labels. Color-coded. |
+| Status | Badge | Active (green), Disabled (grey), Mock (blue). |
+| Actions | Buttons | Copy token, Enable/Disable toggle, Delete (destructive red). |
+| Token display | Modal | Show on "Copy Token" click. Copyable to clipboard. |
+
+**Interactions:**
+- Toggle Enable/Disable: immediate state update, reflected in sidebar presence
+- Delete: confirm dialog, remove user from all conversations
+- Copy Token: show modal with token, auto-copy button
+- No pagination needed (< 100 users expected)
+
+---
+
+### S-07: Setup Page
+
+**Phase:** P4
+**Layout:** Centered card, two-step flow
+**Trigger:** First login (auto-redirect from /login)
+**CJX Stage:** Onboarding
+
+```
+┌─────────────────────────────────────────────────────┐
+│           Complete Your Profile                     │
+│                                                     │
+│  Step 1: Choose Avatar                             │
+│  ┌─────────────────────────────────────────────┐   │
+│  │ 🧑 Adventurer │ 🤖 Bottts │ 😺 Lorelei │    │   │
+│  │ 🎨 Avataaars │ 🎭 Miniavs │ 👻 Personas │   │   │
+│  │ 📖 Pixel Art  │ 🎪 Open     │ 🏝️ Rings   │   │   │
+│  │ 📐 Shapes    │ 🌙 Thumbs   │ 👶 Vibrant  │   │   │
+│  │  (12 styles from DiceBear)                 │   │
+│  └─────────────────────────────────────────────┘   │
+│                                                     │
+│  Selected: Adventurer                              │
+│  [Preview avatar here]                             │
+│                                                     │
+│  Step 2: Enter Nickname                            │
+│  ┌──────────────────────────────┐                  │
+│  │ Phuc                         │                  │
+│  └──────────────────────────────┘                  │
+│                                                     │
+│  [← Back]         [Complete Setup →]               │
+│                                                     │
+└─────────────────────────────────────────────────────┘
+```
+
+**Elements:**
+| Element | Type | Details |
+|---------|------|---------|
+| Title | Heading | "Complete Your Profile" |
+| Avatar picker | Grid | 12 DiceBear style buttons. Click to select. Selected has blue border. |
+| Avatar preview | Image | Live preview of selected style + nickname. |
+| Nickname input | Input | Max 32 chars. Placeholder "Your nickname". |
+| Back button | Button | Return to previous step. |
+| Complete button | Button | Primary blue. Saves profile + redirects to /chat. |
+
+**Interactions:**
+- Select avatar style → preview updates in real-time
+- Type nickname → preview updates
+- Complete → POST to update user record, redirect to /chat/
 
 ---
 
