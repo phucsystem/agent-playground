@@ -149,9 +149,8 @@ function HeartButton({
   );
 }
 
-function isGifMessage(message: MessageWithSender): boolean {
-  const meta = message.metadata as Record<string, unknown> | null;
-  return message.content_type === "image" && meta?.is_gif === true;
+function isImageMessage(message: MessageWithSender): boolean {
+  return message.content_type === "image";
 }
 
 export function MessageItem({
@@ -163,7 +162,7 @@ export function MessageItem({
   onToggleReaction,
   memberNames,
 }: MessageItemProps) {
-  const isGif = isGifMessage(message);
+  const isImage = isImageMessage(message);
 
   if (isCurrentUser) {
     return (
@@ -182,7 +181,7 @@ export function MessageItem({
               {formatTimestamp(message.created_at)}
             </p>
           )}
-          {isGif ? (
+          {isImage ? (
             <div className="flex justify-end">
               <MessageContent message={message} memberNames={memberNames} />
             </div>
@@ -238,7 +237,7 @@ export function MessageItem({
             </span>
           </div>
         )}
-        {isGif ? (
+        {isImage ? (
           <MessageContent message={message} memberNames={memberNames} />
         ) : (
           <div className="bg-neutral-100 rounded-2xl rounded-bl-sm px-4 py-2.5">
