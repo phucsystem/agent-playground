@@ -74,20 +74,38 @@ function LogRow({ log }: { log: WebhookLogWithDetails }) {
         <tr className="bg-neutral-50">
           <td colSpan={5} className="px-8 py-3">
             <div className="space-y-1.5 text-xs">
-              <div className="flex gap-2">
-                <span className="font-medium text-neutral-500 w-16">Message</span>
-                <span className="text-neutral-700">{log.message?.content || "—"}</span>
-              </div>
-              {log.last_error && (
+              {log.webhook_url && (
                 <div className="flex gap-2">
-                  <span className="font-medium text-neutral-500 w-16">Error</span>
-                  <code className="text-red-600 bg-red-50 px-1.5 py-0.5 rounded">{log.last_error}</code>
+                  <span className="font-medium text-neutral-500 w-16 shrink-0">URL</span>
+                  <code className="text-neutral-600 bg-neutral-100 px-1.5 py-0.5 rounded break-all">{log.webhook_url}</code>
                 </div>
               )}
               <div className="flex gap-2">
-                <span className="font-medium text-neutral-500 w-16">Attempts</span>
+                <span className="font-medium text-neutral-500 w-16 shrink-0">Message</span>
+                <span className="text-neutral-700">{log.message?.content || "—"}</span>
+              </div>
+              <div className="flex gap-2">
+                <span className="font-medium text-neutral-500 w-16 shrink-0">Attempts</span>
                 <span className="text-neutral-700">{log.attempt_count} / 3</span>
               </div>
+              {log.last_error && (
+                <div className="flex gap-2">
+                  <span className="font-medium text-neutral-500 w-16 shrink-0">Error</span>
+                  <code className="text-red-600 bg-red-50 px-1.5 py-0.5 rounded break-all">{log.last_error}</code>
+                </div>
+              )}
+              {log.response_body && (
+                <div className="flex gap-2">
+                  <span className="font-medium text-neutral-500 w-16 shrink-0">Response</span>
+                  <pre className="text-neutral-600 bg-neutral-100 px-1.5 py-0.5 rounded break-all whitespace-pre-wrap max-h-32 overflow-y-auto">{log.response_body}</pre>
+                </div>
+              )}
+              {log.request_payload && (
+                <details className="mt-1">
+                  <summary className="font-medium text-neutral-500 cursor-pointer hover:text-neutral-700">Request payload</summary>
+                  <pre className="mt-1 text-neutral-600 bg-neutral-100 px-2 py-1.5 rounded text-[11px] break-all whitespace-pre-wrap max-h-48 overflow-y-auto">{JSON.stringify(log.request_payload, null, 2)}</pre>
+                </details>
+              )}
             </div>
           </td>
         </tr>

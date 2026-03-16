@@ -86,6 +86,9 @@ export interface WebhookDeliveryLog {
   http_status: number | null;
   attempt_count: number;
   last_error: string | null;
+  request_payload: Record<string, unknown> | null;
+  response_body: string | null;
+  webhook_url: string | null;
   created_at: string;
   delivered_at: string | null;
 }

@@ -74,6 +74,8 @@ async function dispatchToAgent(
     return;
   }
 
+  const payloadString = JSON.stringify(webhookPayload);
+
   const { data: logEntry } = await supabase
     .from("webhook_delivery_logs")
     .insert({
@@ -81,6 +83,8 @@ async function dispatchToAgent(
       agent_id: webhookPayload.agent.id,
       status: "pending",
       attempt_count: 0,
+      webhook_url: config.webhook_url,
+      request_payload: webhookPayload,
     })
     .select("id")
     .single();
@@ -88,7 +92,6 @@ async function dispatchToAgent(
   if (!logEntry) return;
 
   const logId = logEntry.id;
-  const payloadString = JSON.stringify(webhookPayload);
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -119,6 +122,7 @@ async function dispatchToAgent(
 
       const isSuccess = response.ok;
       const isClientError = response.status >= 400 && response.status < 500;
+      const responseBody = await response.text().catch(() => "(unreadable)");
 
       await supabase
         .from("webhook_delivery_logs")
@@ -128,6 +132,7 @@ async function dispatchToAgent(
           status: isSuccess ? "delivered" : isClientError ? "failed" : "pending",
           delivered_at: isSuccess ? new Date().toISOString() : null,
           last_error: isSuccess ? null : `${response.status} ${response.statusText}`,
+          response_body: responseBody.slice(0, 4000),
         })
         .eq("id", logId);
 
