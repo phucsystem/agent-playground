@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Avatar } from "@/components/ui/avatar";
 import { AvatarEditorDialog } from "@/components/profile/avatar-editor-dialog";
 import { LogOut, Bell, BellOff, Camera } from "lucide-react";
@@ -93,12 +94,13 @@ export function UserProfile({ currentUser, onLogout, onAvatarSaved }: UserProfil
       >
         <LogOut className="w-4 h-4" />
       </button>
-      {showAvatarEditor && (
+      {showAvatarEditor && createPortal(
         <AvatarEditorDialog
           user={currentUser}
           onClose={() => setShowAvatarEditor(false)}
           onSaved={() => onAvatarSaved?.()}
-        />
+        />,
+        document.body,
       )}
     </div>
   );
