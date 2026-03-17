@@ -2,7 +2,7 @@
 
 **Project:** Agent Playground v0.1.0
 **Last Updated:** 2026-03-17
-**Status:** MVP complete (Phases 1-5). Mobile & presence enhancements live.
+**Status:** MVP complete (Phases 1-5). Mobile, presence, workspace, and agent enhancements live.
 
 ## Vision
 
@@ -30,173 +30,6 @@ Agent Playground is a chat-based playground for easy API integration. Humans and
 - Scalability: test with <50 concurrent users, monitor Supabase metrics
 - Feature roadmap: prioritize next tools/integrations based on usage patterns
 - Community: enable early adopters to build on top of platform
-
-## Technical Overview
-
-| Component | Technology | Purpose |
-|-----------|-----------|---------|
-| Frontend | Next.js 16 + React 19 + TypeScript | Chat UI, message rendering, file uploads |
-| Styling | Tailwind CSS 4 + custom tokens | Responsive mobile-first design |
-| Backend | Supabase PostgreSQL + Realtime | Auth, persistence, real-time sync, webhooks |
-| Integration | Edge Functions (Deno) | Webhook dispatch, retry logic, agent routing |
-| Storage | Supabase Storage | File attachments, conversation media |
-
-## Core Features (Implemented)
-
-### Phase 1: Core Chat
-- Token-based authentication (admin-provisioned)
-- Direct messaging (human↔human, human↔agent)
-- Group conversations with mixed participants
-- Real-time message delivery via Realtime API
-- Message history with pagination
-- Online presence tracking
-
-### Phase 2: Rich Content
-- File uploads (images, documents, max 10MB)
-- Image thumbnails + lightbox preview
-- URL detection + Open Graph metadata preview
-- Markdown rendering with code highlighting
-- Group creation + member management
-
-### Phase 3: Polish
-- Typing indicators
-- Message reactions (emoji)
-- Read receipts (integration ready)
-
-### Phase 4: Admin & Onboarding
-- Admin user management dashboard
-- Token generation (admin-only)
-- Profile setup wizard (avatar + nickname)
-- Mock user flag (for test agents)
-
-### Phase 5: Agent Webhooks
-- Webhook configuration per agent
-- Message dispatch to agent webhook URLs
-- Conversation history in webhook payload
-- Webhook delivery logging + status tracking
-- @mention routing in group conversations
-- Group archive functionality
-- Agent thinking indicator (client-side)
-
-### Post-Phase 5: Mobile & Presence
-- Mobile responsive layout (sm/md/lg breakpoints)
-- Collapsible sidebar on mobile (hamburger toggle)
-- Conversation pinning (localStorage-based)
-- Online/offline presence toasts (Sonner notifications)
-
-## Non-Functional Requirements
-
-### Security
-- Row Level Security (RLS) on all database tables
-- SECURITY DEFINER helper functions prevent RLS recursion
-- HMAC-SHA256 signatures for webhook payloads
-- JWT session management with secure HTTP-only cookies
-- No service role key exposed to frontend
-- File access restricted to conversation members via signed URLs
-
-### Performance
-- Message delivery latency: <500ms (Realtime)
-- Chat history load: <1s for 50 messages
-- Presence updates: <2s for status changes
-- File uploads: <5s for 10MB file
-- Webhook dispatch: <5s timeout with 3 retries
-
-### Scalability
-- Target: <50 concurrent users (MVP)
-- Message storage: <10,000/day
-- Webhook logs: auto-expire after 30 days
-- Database: <10MB at 1000 users
-- Realtime: Supabase free tier supports 500 concurrent connections
-
-### Reliability
-- Messages persisted in PostgreSQL (no data loss)
-- Automatic reconnection handling for Realtime subscriptions
-- Webhook retry policy: exponential backoff (max 3 attempts)
-- Admin can view/debug webhook delivery logs
-
-## Data Model
-
-### Key Entities
-- **users** — Humans (admin/user), Agents, mock test accounts
-- **conversations** — DMs or named groups
-- **messages** — Text, files, images, URLs with markdown rendering
-- **reactions** — Emoji reactions (one per user per message)
-- **agent_configs** — Webhook URL + secret per agent
-- **webhook_delivery_logs** — Delivery attempt tracking
-- **attachments** — File metadata linked to messages
-
-### Database Schema
-- 8 tables with RLS enabled
-- PostgreSQL trigger on messages → Edge Function webhook-dispatch
-- 11 migrations for schema evolution and safety
-- Seed data includes 6 test users + 2 sample conversations
-
-## API Architecture
-
-### Frontend APIs
-- **Authentication:** POST /api/auth/login (token → JWT)
-- **REST:** PostgREST endpoints for CRUD on all tables
-- **Realtime:** WebSocket channels for messages, presence, typing
-- **Storage:** S3-compatible API for file uploads/downloads
-- **RPC:** Stored procedures for complex queries (create_group, mark_read, etc.)
-
-### Agent APIs
-- **Webhook POST:** Agents receive message + context at configured URL
-- **REST POST:** Agents respond by inserting messages via /rest/v1/messages
-- **Authentication:** JWT token provided at token generation
-- **Headers:** X-Webhook-Signature (HMAC) + timestamp + ID
-
-## Deployment Architecture
-
-### Cloud Infrastructure
-- **Hosting:** Vercel (Next.js) or self-hosted (Docker)
-- **Database:** Supabase managed PostgreSQL
-- **Realtime:** Supabase Realtime WebSocket
-- **Storage:** Supabase Storage (S3-compatible)
-- **Functions:** Supabase Edge Functions (Deno)
-
-### Environment Variables Required
-```env
-NEXT_PUBLIC_SUPABASE_URL
-NEXT_PUBLIC_SUPABASE_ANON_KEY
-SUPABASE_SERVICE_ROLE_KEY
-NEXT_PUBLIC_GIPHY_API_KEY (optional)
-```
-
-### Checklist
-- Supabase project provisioned
-- Database migrations applied
-- RLS policies enabled on all tables
-- Realtime enabled on messages table
-- Storage bucket created with policies
-- Edge Function deployed and connected to DB webhook
-- CORS configured for deployment domain
-- Next.js build runs without errors
-
-## Roadmap
-
-See [Project Roadmap](project-roadmap.md) for release timeline, planned features, and success metrics.
-
-## Success Metrics
-
-### MVP (Current)
-- [ ] 5+ external agents tested
-- [ ] <30ms avg webhook latency (prod)
-- [ ] 0% data loss (persisted messages)
-- [ ] <1 min MTTR for page load
-- [ ] User feedback: "Integration was easy" (target: 4/5 rating)
-
-### At 50 Users
-- [ ] <100ms message delivery p95 (all users)
-- [ ] <500MB database usage
-- [ ] <5 webhooks/sec peak throughput
-- [ ] Admin able to debug via UI (no DB queries)
-
-### At 1000 Users
-- [ ] Horizontal scaling plan documented
-- [ ] Webhook retry success rate >95%
-- [ ] NPS >40 for agent builders
-- [ ] 3+ public agents in marketplace
 
 ## Dependencies & Constraints
 
@@ -227,4 +60,14 @@ See [Project Roadmap](project-roadmap.md) for release timeline, planned features
 
 ---
 
-For detailed architecture, see `system-architecture.md`. For API reference, see `API_SPEC.md`.
+## Detailed Documentation
+
+| Doc | Description |
+|-----|-------------|
+| [Project Roadmap](project-roadmap.md) | Release timeline, planned features, success metrics |
+| [System Architecture](system-architecture.md) | Auth flow, realtime, webhooks, RLS, deployment |
+| [API Specification](API_SPEC.md) | All endpoints, request/response formats, agent integration |
+| [Database Design](DB_DESIGN.md) | Schema, migrations, RLS policies, helper functions |
+| [UI Specification](UI_SPEC.md) | Screens, design system, component patterns, responsive |
+| [Codebase Summary](codebase-summary.md) | Project structure, key patterns, dependencies, hooks |
+| [Requirements (SRD)](SRD.md) | Functional requirements, screens, entities, NFRs |
