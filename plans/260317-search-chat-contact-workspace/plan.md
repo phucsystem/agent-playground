@@ -1,7 +1,7 @@
 ---
 title: "Search Chat & Contact Within Workspace"
 description: "Client-side sidebar search filtering conversations and contacts"
-status: pending
+status: completed
 priority: P2
 effort: S
 tags: [sidebar, search, ux]

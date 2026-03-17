@@ -18,14 +18,12 @@ const sizeClasses = {
 };
 
 const colors = [
-  "bg-gradient-to-br from-primary-400 to-primary-600",
-  "bg-gradient-to-br from-emerald-400 to-teal-600",
-  "bg-gradient-to-br from-violet-400 to-purple-600",
-  "bg-gradient-to-br from-amber-400 to-orange-600",
-  "bg-gradient-to-br from-rose-400 to-pink-600",
-  "bg-gradient-to-br from-cyan-400 to-blue-600",
-  "bg-gradient-to-br from-fuchsia-400 to-violet-600",
-  "bg-gradient-to-br from-lime-400 to-emerald-600",
+  "bg-primary-500",
+  "bg-emerald-500",
+  "bg-violet-500",
+  "bg-amber-500",
+  "bg-rose-500",
+  "bg-cyan-500",
 ];
 
 const healthDotColors: Record<AgentHealthStatus, string> = {
@@ -84,7 +82,7 @@ export function Avatar({
           title={`Agent ${healthStatus}`}
         />
       ) : isAgent ? (
-        <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-gradient-to-br from-accent-400 to-accent-600 rounded-full flex items-center justify-center border-2 border-white">
+        <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-primary-500 rounded-full flex items-center justify-center border-2 border-white">
           <Bot className="w-2.5 h-2.5 text-white" />
         </span>
       ) : null}

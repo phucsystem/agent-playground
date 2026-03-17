@@ -26,7 +26,7 @@ export function ChatHeader({
   const isAgentDm = isDM && conversation.other_user?.is_agent;
 
   return (
-    <div className="h-[var(--header-height)] border-b border-neutral-100 flex items-center px-3 md:px-6 gap-2 md:gap-3 shrink-0 bg-gradient-to-r from-white via-white to-accent-50/30">
+    <div className="h-[var(--header-height)] border-b border-neutral-200 flex items-center px-3 md:px-6 gap-2 md:gap-3 shrink-0 bg-white">
       {/* Back button on mobile */}
       <button
         onClick={() => router.push("/chat")}

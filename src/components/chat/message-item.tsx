@@ -3,7 +3,6 @@
 import { Avatar } from "@/components/ui/avatar";
 import { MarkdownContent } from "./markdown-content";
 import { FileCard } from "./file-card";
-import { SnippetCard } from "./snippet-card";
 import { ImagePreview } from "./image-preview";
 import { UrlPreview } from "./url-preview";
 import { MessageReactions } from "./message-reactions";
@@ -104,15 +103,6 @@ function MessageContent({ message, memberNames }: { message: MessageWithSender; 
         />
       );
     default:
-      if (meta?.is_snippet) {
-        return (
-          <SnippetCard
-            title={(meta.snippet_title as string) || "Untitled snippet"}
-            content={message.content}
-            lineCount={(meta.line_count as number) || message.content.split("\n").length}
-          />
-        );
-      }
       if (message.sender?.is_agent) {
         return <AgentTextContent message={message} memberNames={memberNames} />;
       }
@@ -159,10 +149,8 @@ function HeartButton({
   );
 }
 
-function isBubblelessMessage(message: MessageWithSender): boolean {
-  if (message.content_type === "image" || message.content_type === "file") return true;
-  const meta = message.metadata as Record<string, unknown> | null;
-  return !!meta?.is_snippet;
+function isImageMessage(message: MessageWithSender): boolean {
+  return message.content_type === "image";
 }
 
 export function MessageItem({
@@ -174,14 +162,11 @@ export function MessageItem({
   onToggleReaction,
   memberNames,
 }: MessageItemProps) {
-  const skipBubble = isBubblelessMessage(message);
-
-  const ownBubbleRadius = isGrouped ? "rounded-2xl rounded-br-md" : "rounded-2xl rounded-br-sm";
-  const otherBubbleRadius = isGrouped ? "rounded-2xl rounded-bl-md" : "rounded-2xl rounded-bl-sm";
+  const isImage = isImageMessage(message);
 
   if (isCurrentUser) {
     return (
-      <div className="flex justify-end items-end relative group px-2 py-0.5">
+      <div className="flex justify-end items-end relative group px-2 py-1">
         <div className="-mr-5 z-10 self-end">
           <HeartButton
             messageId={message.id}
@@ -196,13 +181,13 @@ export function MessageItem({
               {formatTimestamp(message.created_at)}
             </p>
           )}
-          {skipBubble ? (
+          {isImage ? (
             <div className="flex justify-end">
               <MessageContent message={message} memberNames={memberNames} />
             </div>
           ) : (
-            <div className={`bg-gradient-to-br from-primary-500 to-accent-500 text-white ${ownBubbleRadius} px-4 py-2.5 shadow-sm`}>
-              <div className="text-[15px] leading-relaxed [&_a]:text-white [&_a]:underline [&_pre]:bg-black/15 [&_pre]:border-white/20 [&_code]:text-white/90 [&_.mention-tag]:bg-white/20 [&_.mention-tag]:text-white">
+            <div className="bg-primary-500 text-white rounded-2xl rounded-br-sm px-4 py-2.5 shadow-sm">
+              <div className="text-[15px] leading-relaxed [&_a]:text-white [&_a]:underline [&_pre]:bg-primary-600 [&_pre]:border-primary-400 [&_code]:text-primary-100 [&_.mention-tag]:bg-white/20 [&_.mention-tag]:text-white">
                 <MessageContent message={message} memberNames={memberNames} />
               </div>
             </div>
@@ -220,7 +205,7 @@ export function MessageItem({
   }
 
   return (
-    <div className="flex gap-2.5 px-2 py-0.5 relative group">
+    <div className="flex gap-2.5 px-2 py-1 relative group">
       {!isGrouped ? (
         <Avatar
           displayName={message.sender.display_name}
@@ -238,13 +223,13 @@ export function MessageItem({
             <span
               className={`text-sm font-bold ${
                 message.sender.is_agent
-                  ? "text-accent-600"
+                  ? "text-primary-600"
                   : "text-neutral-800"
               }`}
             >
               {message.sender.display_name}
               {message.sender.is_agent && (
-                <span className="ml-1 text-[10px] font-semibold text-accent-400 uppercase tracking-wide">[agent]</span>
+                <span className="ml-1 text-[10px] font-semibold text-primary-400 uppercase">[agent]</span>
               )}
             </span>
             <span className="text-[11px] text-neutral-400">
@@ -252,10 +237,10 @@ export function MessageItem({
             </span>
           </div>
         )}
-        {skipBubble ? (
+        {isImage ? (
           <MessageContent message={message} memberNames={memberNames} />
         ) : (
-          <div className={`bg-neutral-100 ${otherBubbleRadius} px-4 py-2.5`}>
+          <div className="bg-neutral-100 rounded-2xl rounded-bl-sm px-4 py-2.5">
             <div className="text-[15px] leading-relaxed text-neutral-700 [&_.mention-tag]:bg-primary-100 [&_.mention-tag]:text-primary-700">
               <MessageContent message={message} memberNames={memberNames} />
             </div>

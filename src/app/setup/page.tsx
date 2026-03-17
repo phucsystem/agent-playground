@@ -86,12 +86,10 @@ export default function SetupPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-500 via-accent-500 to-teal-500 flex items-center justify-center p-4">
-      <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl p-8 w-full max-w-md">
+    <div className="min-h-screen bg-neutral-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-md">
         <div className="flex items-center justify-center gap-2 mb-2">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center">
-            <Bot className="w-4 h-4 text-white" />
-          </div>
+          <Bot className="w-6 h-6 text-primary-500" />
           <h1 className="text-xl font-bold text-neutral-900">
             Set up your profile
           </h1>
@@ -108,7 +106,7 @@ export default function SetupPage() {
           />
           <button
             onClick={randomizeSeed}
-            className="flex items-center gap-1.5 text-sm text-accent-500 hover:text-accent-600 transition"
+            className="flex items-center gap-1.5 text-sm text-primary-500 hover:text-primary-600 transition"
           >
             <RefreshCw className="w-3.5 h-3.5" />
             Randomize
@@ -136,7 +134,7 @@ export default function SetupPage() {
               onClick={() => setSelectedStyle(style)}
               className={`p-1 rounded-lg border-2 transition ${
                 selectedStyle === style
-                  ? "border-accent-500 bg-accent-50"
+                  ? "border-primary-500 bg-primary-50"
                   : "border-transparent hover:border-neutral-200"
               }`}
               title={style}
@@ -157,7 +155,7 @@ export default function SetupPage() {
         <button
           onClick={handleSave}
           disabled={!displayName.trim() || saving}
-          className="w-full py-3 bg-gradient-to-r from-primary-600 to-accent-600 hover:from-primary-700 hover:to-accent-700 disabled:from-neutral-300 disabled:to-neutral-300 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary-500/20"
+          className="w-full py-3 bg-primary-600 hover:bg-primary-700 disabled:bg-neutral-300 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition flex items-center justify-center gap-2"
         >
           {saving ? (
             <Loader2 className="w-5 h-5 animate-spin" />

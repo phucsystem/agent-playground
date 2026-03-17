@@ -52,10 +52,10 @@ export function UserProfile({ currentUser, onLogout, onAvatarSaved }: UserProfil
   const BellIcon = notificationEnabled ? Bell : BellOff;
 
   return (
-    <div className="flex items-center gap-2.5 px-3 py-3 border-b border-accent-100/50 bg-gradient-to-r from-accent-50/60 to-primary-50/60">
+    <div className="flex items-center gap-3 px-4 py-3 border-b border-neutral-200">
       <button
         onClick={() => setShowAvatarEditor(true)}
-        className="relative group cursor-pointer shrink-0 rounded-full"
+        className="relative group cursor-pointer shrink-0 w-9 h-9 rounded-full"
         title="Change avatar"
       >
         <Avatar
@@ -64,7 +64,7 @@ export function UserProfile({ currentUser, onLogout, onAvatarSaved }: UserProfil
           size="md"
         />
         <div className="absolute inset-0 rounded-full bg-black/0 group-hover:bg-black/30 transition flex items-center justify-center">
-          <Camera className="w-3 h-3 text-white opacity-0 group-hover:opacity-100 transition" />
+          <Camera className="w-3.5 h-3.5 text-white opacity-0 group-hover:opacity-100 transition" />
         </div>
       </button>
       <div className="flex-1 min-w-0">
@@ -76,13 +76,13 @@ export function UserProfile({ currentUser, onLogout, onAvatarSaved }: UserProfil
           Online
         </p>
       </div>
-      <div className="flex items-center gap-0">
+      <div className="flex items-center gap-0.5">
         <button
           onClick={handleToggleNotification}
           disabled={toggling}
-          className={`p-1.5 rounded-lg transition cursor-pointer ${
+          className={`p-1.5 rounded-md transition cursor-pointer ${
             notificationEnabled
-              ? "text-warm-500 hover:text-warm-600 hover:bg-warm-50"
+              ? "text-primary-500 hover:text-primary-700 hover:bg-primary-50"
               : "text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100"
           }`}
           title={notificationEnabled ? "Notifications on" : "Notifications off"}
@@ -91,7 +91,7 @@ export function UserProfile({ currentUser, onLogout, onAvatarSaved }: UserProfil
         </button>
         <button
           onClick={onLogout}
-          className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 transition cursor-pointer"
+          className="p-1.5 rounded-md text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 transition cursor-pointer"
           title="Logout"
         >
           <LogOut className="w-4 h-4" />
