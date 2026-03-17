@@ -21,7 +21,7 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
             value={value}
             onChange={(event) => onChange(event.target.value)}
             placeholder={placeholder}
-            className="w-full pl-8 pr-8 py-1.5 text-sm bg-neutral-100 text-neutral-700 placeholder:text-neutral-400 rounded-lg border-none outline-none focus:ring-1 focus:ring-accent-300 transition"
+            className="w-full pl-8 pr-8 py-1.5 text-sm bg-neutral-100 text-neutral-700 placeholder:text-neutral-400 rounded-lg border-none outline-none focus:ring-1 focus:ring-primary-300 transition"
           />
           {value && (
             <button

@@ -152,12 +152,20 @@ export function ChatInput({
   }, []);
 
   const adjustHeight = useCallback(() => {
-    const textarea = textareaRef.current;
-    if (textarea) {
-      textarea.style.height = "auto";
-      textarea.style.height = `${Math.min(textarea.scrollHeight, 120)}px`;
-    }
+    requestAnimationFrame(() => {
+      const textarea = textareaRef.current;
+      if (!textarea) return;
+      textarea.style.height = "0px";
+      const maxHeight = 200;
+      const newHeight = Math.min(textarea.scrollHeight, maxHeight);
+      textarea.style.height = `${newHeight}px`;
+      textarea.style.overflowY = textarea.scrollHeight > maxHeight ? "auto" : "hidden";
+    });
   }, []);
+
+  useEffect(() => {
+    adjustHeight();
+  }, [content, adjustHeight]);
 
   async function sendMessage(
     messageContent: string,
@@ -210,6 +218,7 @@ export function ChatInput({
     setContent("");
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
+      textareaRef.current.style.overflowY = "hidden";
       textareaRef.current.focus();
     }
 
@@ -436,7 +445,7 @@ export function ChatInput({
           onKeyDown={handleKeyDown}
           placeholder={pendingFiles.length > 0 ? `${pendingFiles.length} file${pendingFiles.length > 1 ? "s" : ""} ready — press Send to upload` : placeholder}
           rows={1}
-          className="flex-1 bg-transparent resize-none outline-none text-neutral-700 placeholder:text-neutral-400 text-[15px] leading-relaxed max-h-[120px] py-1"
+          className="flex-1 bg-transparent resize-none outline-none overflow-hidden text-neutral-700 placeholder:text-neutral-400 text-[15px] leading-relaxed py-1"
         />
 
         <button

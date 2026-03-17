@@ -28,9 +28,9 @@ export function SnippetCard({ title, content, lineCount }: SnippetCardProps) {
 
   return (
     <div className="rounded-xl border border-neutral-200 bg-white overflow-hidden max-w-md mt-1 shadow-sm hover:shadow-md transition-shadow">
-      <div className="flex items-center justify-between gap-2 px-3.5 py-2 bg-gradient-to-r from-accent-50/60 to-teal-50/40 border-b border-accent-100/50">
+      <div className="flex items-center justify-between gap-2 px-3.5 py-2 bg-neutral-50 border-b border-neutral-100">
         <div className="flex items-center gap-2 min-w-0">
-          <FileCode className="w-4 h-4 text-accent-500 shrink-0" />
+          <FileCode className="w-4 h-4 text-primary-500 shrink-0" />
           <span className="text-[13px] font-semibold text-neutral-700 truncate">
             {title}
           </span>
@@ -52,7 +52,7 @@ export function SnippetCard({ title, content, lineCount }: SnippetCardProps) {
       {isCollapsible && (
         <button
           onClick={() => setExpanded(!expanded)}
-          className="flex items-center justify-center gap-1 w-full py-2 text-[12px] font-medium text-accent-500 hover:text-accent-600 hover:bg-accent-50/50 border-t border-neutral-100 transition cursor-pointer"
+          className="flex items-center justify-center gap-1 w-full py-2 text-[12px] font-medium text-primary-500 hover:text-primary-600 hover:bg-primary-50/50 border-t border-neutral-100 transition cursor-pointer"
         >
           {expanded ? (
             <>
