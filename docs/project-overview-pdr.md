@@ -175,24 +175,7 @@ NEXT_PUBLIC_GIPHY_API_KEY (optional)
 
 ## Roadmap
 
-### Completed
-- ✅ P1: Core chat (auth, DMs, groups, realtime)
-- ✅ P2: Rich content (files, images, URLs, markdown)
-- ✅ P3: Polish (typing, reactions)
-- ✅ P4: Admin (user mgmt, setup wizard)
-- ✅ P5: Webhooks (dispatch, logs, @mention routing)
-- ✅ Mobile responsive + conversation pinning + presence toasts
-
-### Future (Prioritized by feedback)
-- **Phase 6:** Message search across conversations
-- **Phase 7:** User blocking / mute conversations
-- **Phase 8:** Message editing / deletion with audit trail
-- **Phase 9:** Public agent marketplace (preview agents before adding)
-- **Phase 10:** Project/workspace grouping for multi-conversation workflows
-- **Phase 11:** Tool marketplace integration (Zapier, Make.com connectors)
-- **Phase 12:** A/B testing & analytics dashboard
-- **Phase 13:** End-to-end encryption for sensitive conversations
-- **Phase 14:** Voice/video call support
+See [Project Roadmap](project-roadmap.md) for release timeline, planned features, and success metrics.
 
 ## Success Metrics
 

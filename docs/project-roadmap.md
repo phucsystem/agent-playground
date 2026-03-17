@@ -18,6 +18,8 @@
 - P5: Agent webhooks (dispatch, delivery logs, @mention routing, thinking indicator)
 
 **Post-Phase 5 Enhancements:**
+
+Mobile & Presence:
 - Mobile responsive layout (sm/md/lg breakpoints)
 - Hamburger sidebar toggle for mobile
 - Conversation pinning (localStorage-based)
@@ -26,6 +28,26 @@
 - Group archive functionality
 - @mention autocomplete in group messages
 
+Agent Experience:
+- Agent health checks with status dot and toast notifications
+- Typewriter animation for agent messages (40ms/char)
+- Agent-specific avatar styles when editing profiles
+
+User Experience:
+- Multi-session support with 3-session cap
+- Browser notifications with sound for DMs and @mentions
+- Avatar upload with circle crop (react-easy-crop) + DiceBear generation
+- Clipboard image paste and multi-file attachment support
+
+Admin:
+- Admin conversation deletion with file cleanup
+- Sentry error tracking and monitoring
+
+Workspace:
+- Multi-workspace support with Discord-style icon rail switcher
+- Workspace avatar with deterministic color from ID
+- Workspace color picker and settings UX
+
 **Technology Stack:**
 - Next.js 16, React 19, TypeScript 5.9
 - Tailwind CSS 4.2
@@ -33,53 +55,29 @@
 - Markdown: react-markdown + remark-gfm + rehype-highlight
 - UI: Lucide icons, Sonner toasts, TanStack React Virtual
 
-**Metrics:**
-- ~75 source files
-- ~6,080 LOC
-- 12 custom hooks
-- 26 components
-- 11 database migrations
-- 1 Edge Function
+See `docs/codebase-summary.md` for current file counts and project structure.
 
 ---
 
-### 🎯 0.2.0 — Search & Discovery (Planned Q2 2026)
+### 🎯 0.2.0 — Rate Limiting & Security Hardening (Planned Q2 2026)
 
-**Duration:** 4-6 weeks
-**Priority:** Medium (user feedback driven)
+**Effort:** S (small)
+**Priority:** High (security prerequisite for any public-facing feature)
 
 **Features:**
-- Full-text message search across conversations
-- Filter by sender, date range, content type
-- Search results with context snippet
-- Indexed search (PostgreSQL full-text or Meilisearch)
+- Per-user/per-agent request throttling
+- Webhook rate limits
+- API abuse prevention
 
 **Rationale:**
-- Users want to find old conversations quickly
-- Essential for 10+ agent workflows
+- Blocks marketplace launch — current system has no protection against DoS
+- Required before any public-facing release
 
 ---
 
-### 🎯 0.3.0 — User Controls (Planned Q2 2026)
+### 🎯 0.3.0 — Message Management (Planned Q2 2026)
 
-**Duration:** 2-3 weeks
-**Priority:** Medium
-
-**Features:**
-- User blocking (prevent messages from blocked users)
-- Mute conversations (hide from sidebar, no notifications)
-- Delete conversation (soft delete, archive)
-- Privacy settings per conversation
-
-**Rationale:**
-- Reduces noise in multi-user setups
-- Better control over collaboration scope
-
----
-
-### 🎯 0.4.0 — Message Management (Planned Q3 2026)
-
-**Duration:** 3-4 weeks
+**Effort:** M (medium)
 **Priority:** Medium-High (compliance)
 
 **Features:**
@@ -95,9 +93,43 @@
 
 ---
 
-### 🎯 0.5.0 — Public Agent Marketplace (Planned Q3 2026)
+### 🎯 0.4.0 — Search & Discovery (Planned Q2-Q3 2026)
 
-**Duration:** 6-8 weeks
+**Effort:** M (medium)
+**Priority:** Medium (user feedback driven)
+
+**Features:**
+- Full-text message search across conversations
+- Filter by sender, date range, content type
+- Search results with context snippet
+- Indexed search (PostgreSQL full-text or Meilisearch)
+
+**Rationale:**
+- Users want to find old conversations quickly
+- Essential for 10+ agent workflows
+
+---
+
+### 🎯 0.5.0 — User Controls (Planned Q3 2026)
+
+**Effort:** S (small)
+**Priority:** Medium
+
+**Features:**
+- User blocking (prevent messages from blocked users)
+- Mute conversations (hide from sidebar, no notifications)
+- Delete conversation (soft delete, archive)
+- Privacy settings per conversation
+
+**Rationale:**
+- Reduces noise in multi-user setups
+- Better control over collaboration scope
+
+---
+
+### 🎯 0.6.0 — Public Agent Marketplace (Planned Q3 2026)
+
+**Effort:** L (large)
 **Priority:** High (growth)
 
 **Features:**
@@ -112,6 +144,10 @@
 - Agent metadata schema (description, avatar, tags)
 - Preview conversation isolated from main workspace
 - Agent stats: usage count, uptime, avg response time
+- `workspace_id` FK needed on agent marketplace installs
+- Agents installed from marketplace scoped to specific workspace
+- `agent_configs` may need workspace_id column
+- Depends on existing workspace infrastructure
 
 **Rationale:**
 - Enable marketplace ecosystem
@@ -120,33 +156,9 @@
 
 ---
 
-### 🎯 0.6.0 — Projects & Workspaces (Planned Q3-Q4 2026)
-
-**Duration:** 8-10 weeks
-**Priority:** High (enterprise)
-
-**Features:**
-- Project/workspace grouping
-- Multiple workspaces per user
-- Per-workspace agents
-- Per-workspace conversation limits/quotas
-- Workspace settings (name, description, avatar)
-
-**Architecture:**
-- New `workspaces` table
-- Update `conversations`, `agent_configs` to include `workspace_id`
-- New RLS policies per workspace
-
-**Rationale:**
-- Support teams managing multiple projects
-- Enable better organization of conversations
-- Foundation for SaaS pricing model
-
----
-
 ### 🎯 0.7.0 — Tool Marketplace (Planned Q4 2026)
 
-**Duration:** 8-12 weeks
+**Effort:** XL (extra large)
 **Priority:** Medium-High (extensibility)
 
 **Features:**
@@ -166,29 +178,25 @@
 
 ---
 
-## Backlog (Future Consideration)
+## Backlog
 
-### Nice-to-Have Features
-- **Voice/Video Calls** — In-conversation video (Livekit, Daily.co)
-- **CMS Integration** — Import docs as agents (knowledge base)
-- **Analytics Dashboard** — Agent usage, conversation metrics, engagement
-- **A/B Testing** — Test prompt variations, measure conversion
-- **End-to-End Encryption** — For sensitive conversations
-- **Message Reactions** — Beyond emoji (custom stickers, GIFs)
-- **Conversation Templates** — Pre-built workflows
-- **Agent-to-Agent** — Allow agents to message each other
-- **Scheduled Messages** — Send at specific time
-- **Rate Limiting** — Per-user, per-agent quotas
-- **Sentiment Analysis** — Auto-tag conversations by sentiment
-- **Conversation Summaries** — Auto-generate conversation summary
+### Deferred (Considered, descoped with rationale)
 
-### Under Investigation
-- **Alternative Backends** — Self-hosted option (n8n, Apache Airflow)
-- **Mobile Native** — React Native for iOS/Android
-- **Desktop App** — Electron for Windows/Mac
-- **Webhooks v2** — Event streaming (Kafka, webhook queues)
-- **GraphQL** — Alternative to REST API
-- **Multi-Language** — i18n support
+- **Analytics Dashboard** — Deferred until observability infrastructure exists
+- **Conversation Summaries** — Deferred until search is built (overlapping effort)
+- **A/B Testing** — Deferred until marketplace provides agent variety to test
+- **Scheduled Messages** — Low demand, revisit based on feedback
+
+### Speculative (No timeline, genuinely future)
+
+- **Voice/Video Calls** — Requires Livekit/Daily.co integration
+- **CMS Integration** — Knowledge base agents
+- **End-to-End Encryption** — Significant architecture change
+- **Agent-to-Agent Communication** — Open design question
+- **Mobile Native (React Native)** — If web proves insufficient
+- **Desktop App (Electron)** — If demand exists
+- **GraphQL API** — Alternative to REST
+- **Multi-Language (i18n)** — International expansion
 
 ---
 
@@ -211,45 +219,39 @@
 
 ---
 
-## Metrics to Track
+## Success Metrics
 
-### Adoption Metrics
-- Number of signed-up users
-- Monthly active users (MAU)
-- Conversation creation rate
-- Agent integration rate
-
-### Engagement Metrics
-- Avg messages/user/day
-- Conversation completion rate (resolved vs. abandoned)
-- Webhook success rate
-- Time from agent question to response
-
-### Quality Metrics
-- Message delivery latency (p50, p95, p99)
-- Webhook retry rate
-- Error rate (4xx, 5xx)
-- Availability (target: 99.5%)
-
-### Business Metrics
-- NPS (Net Promoter Score) target: >50
-- Time to agent integration (target: <1 hour)
-- Support ticket volume
-- Feature request frequency
+| Metric | Target | Measurable Today? | Source |
+|--------|--------|-------------------|--------|
+| Active agents | 20+ | Yes | DB query |
+| Error rate (4xx, 5xx) | <1% | Yes | Sentry |
+| Database size | <500MB | Yes | Supabase dashboard |
+| Webhook delivery success | >95% | Yes | webhook_delivery_logs table |
+| User count | 50+ | Yes | DB query |
+| Message delivery latency (p95) | <500ms | No — needs Sentry perf | Planned |
+| Monthly active users | Track | No — needs analytics | Planned |
+| NPS | >50 | No — needs survey tool | Planned |
+| Webhook latency (p95) | <5s | No — needs instrumentation | Planned |
+| Availability | 99.5% | No — needs uptime monitor | Planned |
 
 ---
 
 ## Feedback Channels
 
-- **Discord/Slack** — Community feedback & feature requests
-- **GitHub Issues** — Bug reports & technical discussions
-- **User Interviews** — Monthly calls with early adopters
-- **Usage Analytics** — Supabase dashboard metrics
-- **Admin Dashboard** — Feature usage tracking
+**Active:**
+- GitHub Issues — Bug reports & feature requests
+- Buy Me A Coffee — Community support
+
+**Planned:**
+- Discord/Slack community
+- User interviews with early adopters
+- Usage analytics dashboard
 
 ---
 
 ## Release Process
+
+> **Note:** Target process for when team grows beyond solo development. Current releases are deployed directly.
 
 ### Pre-Release
 - [ ] Feature complete + tested
@@ -276,24 +278,28 @@
 
 1. **No message encryption** — All messages visible to admins
 2. **No bot-to-bot messaging** — Agents can't message each other
-3. **Limited webhook customization** — Fixed payload format (could be template-based)
-4. **No conversation search** — Linear scan only (will add in 0.2.0)
-5. **Pinning is local only** — Not synced across devices
-6. **No rate limiting** — Agents can spam (should add throttling)
-7. **Manual testing only** — No load tests yet
+3. **Limited webhook customization** — Fixed payload format
+4. **No conversation search** — Linear scan only (planned for 0.4.0)
+5. **Pinning is local only** — Not synced across devices (localStorage)
+6. **No rate limiting** — Agents can spam (planned for 0.2.0)
+7. **Manual testing only** — No automated test suite
 8. **Single webhook per agent** — Can't distribute to multiple endpoints
+9. **No workspace-level admin** — Only global admin role exists
+10. **Multi-session cap hardcoded** — 3-session limit not configurable
+11. **No avatar upload moderation** — Users can upload any image
+12. **Agent health check has no auto-recovery** — Manual intervention needed
+13. **No message read receipt UI** — Infrastructure exists but no visual indicator
+14. **Workspace switch doesn't preserve scroll position**
 
 ---
 
-## Success Definition (6-Month Horizon)
+## Scaling Considerations
 
-- [ ] 20+ active agents in system
-- [ ] <500ms avg webhook latency
-- [ ] Public agent marketplace launched
-- [ ] 5+ teams using for multi-project workflows
-- [ ] NPS >50 from users
-- [ ] 0 security incidents
-- [ ] Self-hosted documentation + deployment guide
+**Current capacity:** ~25-50 concurrent users depending on workspace count
+- Supabase free tier: 500 realtime connections
+- Each user joins 1 presence channel per workspace
+- Example: 30 users × 5 workspaces = 150 presence connections + message channels
+- Upgrade to Supabase Pro recommended at 20+ concurrent users
 
 ---
 
