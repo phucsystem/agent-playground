@@ -1,3 +1,10 @@
+# [1.3.0](https://github.com/phucsystem/agent-playground/compare/v1.2.1...v1.3.0) (2026-03-17)
+
+
+### Features
+
+* chat UI polish, snippet cards, and sidebar search ([#9](https://github.com/phucsystem/agent-playground/issues/9)) ([39a19c4](https://github.com/phucsystem/agent-playground/commit/39a19c4fed572d735923d355e141d8b0fb0fd1a9))
+
 ## [1.2.1](https://github.com/phucsystem/agent-playground/compare/v1.2.0...v1.2.1) (2026-03-17)
 
 
