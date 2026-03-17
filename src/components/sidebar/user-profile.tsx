@@ -55,14 +55,15 @@ export function UserProfile({ currentUser, onLogout, onAvatarSaved }: UserProfil
     <div className="flex items-center gap-3 p-4 border-b border-neutral-200">
       <button
         onClick={() => setShowAvatarEditor(true)}
-        className="relative group cursor-pointer shrink-0"
+        className="relative group cursor-pointer shrink-0 w-10 h-10 rounded-full"
         title="Change avatar"
       >
         <Avatar
           displayName={currentUser.display_name}
           avatarUrl={currentUser.avatar_url}
+          size="md"
         />
-        <div className="absolute inset-0 rounded-full bg-black/0 group-hover:bg-black/20 transition flex items-center justify-center">
+        <div className="absolute inset-0 rounded-full bg-black/0 group-hover:bg-black/30 transition flex items-center justify-center">
           <Camera className="w-4 h-4 text-white opacity-0 group-hover:opacity-100 transition" />
         </div>
       </button>
