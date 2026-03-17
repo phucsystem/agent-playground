@@ -2,13 +2,14 @@
 
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
-import { useFileUpload } from "@/hooks/use-file-upload";
+import { useFileUpload, isFileBlocked, MAX_FILE_SIZE } from "@/hooks/use-file-upload";
 import { useConversationMembers } from "@/hooks/use-conversation-members";
 import { EmojiPicker } from "./emoji-picker";
 import { GifPicker } from "./gif-picker";
+import { SnippetModal } from "./snippet-modal";
 import { MentionPicker } from "./mention-picker";
 import type { MentionCandidate } from "./mention-picker";
-import { Send, Paperclip, Loader2, X, Smile, ImageIcon } from "lucide-react";
+import { Send, Paperclip, Loader2, X, Smile, ImageIcon, FileCode } from "lucide-react";
 import { toast } from "sonner";
 import type { ContentType, MessageWithSender } from "@/types/database";
 
@@ -42,6 +43,7 @@ export function ChatInput({
   const previewUrlsRef = useRef<Map<File, string>>(new Map());
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showGifPicker, setShowGifPicker] = useState(false);
+  const [showSnippetModal, setShowSnippetModal] = useState(false);
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const [mentionIndex, setMentionIndex] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -117,6 +119,11 @@ export function ChatInput({
     const validFiles = files.filter((file) => {
       if (file.size > MAX_FILE_SIZE) {
         toast.error(`${file.name} exceeds 5MB limit`);
+        return false;
+      }
+      const blockedReason = isFileBlocked(file);
+      if (blockedReason) {
+        toast.error(`${file.name}: ${blockedReason}`);
         return false;
       }
       return true;
@@ -263,8 +270,6 @@ export function ChatInput({
     }
   }
 
-  const MAX_FILE_SIZE = 5 * 1024 * 1024;
-
   function handleFileSelect(event: React.ChangeEvent<HTMLInputElement>) {
     const selectedFiles = event.target.files;
     if (selectedFiles && selectedFiles.length > 0) {
@@ -281,12 +286,16 @@ export function ChatInput({
 
     const pastedFiles: File[] = [];
     for (const item of items) {
-      if (item.type.startsWith("image/")) {
+      if (item.kind === "file") {
         const blob = item.getAsFile();
         if (!blob) continue;
-        const timestamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
-        const extension = blob.type.split("/")[1] || "png";
-        pastedFiles.push(new File([blob], `paste-${timestamp}.${extension}`, { type: blob.type }));
+        if (blob.type.startsWith("image/") && !blob.name.match(/\.\w+$/)) {
+          const timestamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+          const extension = blob.type.split("/")[1] || "png";
+          pastedFiles.push(new File([blob], `paste-${timestamp}.${extension}`, { type: blob.type }));
+        } else {
+          pastedFiles.push(blob);
+        }
       }
     }
     if (pastedFiles.length > 0) {
@@ -300,6 +309,18 @@ export function ChatInput({
     textareaRef.current?.focus();
   }
 
+  async function handleSnippetSubmit(title: string, snippetContent: string) {
+    setShowSnippetModal(false);
+    setSending(true);
+    const lineCount = snippetContent.split("\n").length;
+    await sendMessage(snippetContent, "text", {
+      is_snippet: true,
+      snippet_title: title,
+      line_count: lineCount,
+    });
+    setSending(false);
+  }
+
   async function handleGifSelect(gifUrl: string) {
     setSending(true);
     await sendMessage(gifUrl, "image", {
@@ -310,15 +331,42 @@ export function ChatInput({
     setSending(false);
   }
 
+  const [dragOver, setDragOver] = useState(false);
+  const isSendable = content.trim() || pendingFiles.length > 0;
+
+  function handleDragOver(event: React.DragEvent) {
+    event.preventDefault();
+    setDragOver(true);
+  }
+
+  function handleDragLeave(event: React.DragEvent) {
+    event.preventDefault();
+    setDragOver(false);
+  }
+
+  function handleDrop(event: React.DragEvent) {
+    event.preventDefault();
+    setDragOver(false);
+    const droppedFiles = Array.from(event.dataTransfer.files);
+    if (droppedFiles.length > 0) {
+      addFiles(droppedFiles);
+    }
+  }
+
   return (
-    <div className="mx-2 sm:mx-4 md:mx-6 mb-2 md:mb-4">
+    <div
+      className="mx-2 sm:mx-4 md:mx-6 mb-2 md:mb-4"
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
       {pendingFiles.length > 0 && (
-        <div className="bg-neutral-100 rounded-2xl rounded-b-none px-3 pt-3 pb-2">
-          <div className="flex gap-2 overflow-x-auto">
+        <div className="bg-neutral-50 border border-neutral-200 border-b-0 rounded-2xl rounded-b-none px-3 pt-3 pb-2">
+          <div className="flex gap-2 overflow-x-auto scrollbar-thin">
             {pendingFiles.map((file, fileIndex) => {
               const previewUrl = getPreviewUrl(file);
               return (
-                <div key={`${file.name}-${fileIndex}`} className="relative shrink-0 group rounded-xl border border-neutral-200 bg-white p-1 shadow-sm">
+                <div key={`${file.name}-${fileIndex}`} className="relative shrink-0 group rounded-xl border border-neutral-200 bg-white p-1 shadow-sm hover:shadow-md transition-shadow">
                   {previewUrl ? (
                     <img
                       src={previewUrl}
@@ -356,7 +404,11 @@ export function ChatInput({
         </div>
       )}
 
-      <div className={`relative flex items-end gap-1.5 bg-neutral-100 rounded-2xl px-3 py-2.5 ${pendingFiles.length > 0 ? "rounded-t-none" : ""}`}>
+      <div
+        className={`relative flex flex-col border rounded-2xl transition-all duration-200 ${
+          pendingFiles.length > 0 ? "rounded-t-none border-neutral-200" : "border-neutral-200"
+        } ${dragOver ? "border-primary-400 bg-primary-50/50 ring-2 ring-primary-100" : "bg-white focus-within:border-neutral-300 focus-within:shadow-sm"}`}
+      >
         {mentionCandidates.length > 0 && (
           <MentionPicker
             candidates={mentionCandidates}
@@ -364,60 +416,21 @@ export function ChatInput({
             onSelect={insertMention}
           />
         )}
+
         <input
           ref={fileInputRef}
           type="file"
           multiple
           onChange={handleFileSelect}
-          accept="image/jpeg,image/png,image/gif,image/webp,application/pdf,text/plain,text/markdown,text/csv"
+          accept="*/*"
           className="hidden"
         />
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          className="p-1.5 text-neutral-400 hover:text-neutral-600 transition shrink-0 cursor-pointer"
-        >
-          <Paperclip className="w-5 h-5" />
-        </button>
 
-        <div ref={pickerContainerRef} className="flex items-center gap-0.5 shrink-0">
-          <div className="relative">
-            <button
-              onClick={() => {
-                setShowEmojiPicker(!showEmojiPicker);
-                setShowGifPicker(false);
-              }}
-              className="p-1 text-neutral-400 hover:text-neutral-600 transition cursor-pointer"
-              title="Emoji"
-            >
-              <Smile className="w-5 h-5" />
-            </button>
-            {showEmojiPicker && (
-              <EmojiPicker
-                onSelect={handleEmojiSelect}
-                onClose={() => setShowEmojiPicker(false)}
-              />
-            )}
+        {dragOver && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-primary-50/80 border-2 border-dashed border-primary-300 pointer-events-none">
+            <p className="text-sm font-medium text-primary-600">Drop files here</p>
           </div>
-
-          <div className="relative">
-            <button
-              onClick={() => {
-                setShowGifPicker(!showGifPicker);
-                setShowEmojiPicker(false);
-              }}
-              className="p-1 text-neutral-400 hover:text-neutral-600 transition cursor-pointer"
-              title="GIF"
-            >
-              <ImageIcon className="w-5 h-5" />
-            </button>
-            {showGifPicker && (
-              <GifPicker
-                onSelect={handleGifSelect}
-                onClose={() => setShowGifPicker(false)}
-              />
-            )}
-          </div>
-        </div>
+        )}
 
         <textarea
           ref={textareaRef}
@@ -434,23 +447,92 @@ export function ChatInput({
           }}
           onPaste={handlePaste}
           onKeyDown={handleKeyDown}
-          placeholder={pendingFiles.length > 0 ? `${pendingFiles.length} file${pendingFiles.length > 1 ? "s" : ""} ready — press Send to upload` : placeholder}
+          placeholder={pendingFiles.length > 0 ? `${pendingFiles.length} file${pendingFiles.length > 1 ? "s" : ""} ready — press Send` : placeholder}
           rows={1}
-          className="flex-1 bg-transparent resize-none outline-none text-neutral-700 placeholder:text-neutral-400 text-[15px] leading-relaxed max-h-[120px] py-1"
+          className="flex-1 bg-transparent resize-none outline-none text-neutral-700 placeholder:text-neutral-400 text-[15px] leading-relaxed max-h-[120px] px-4 pt-3 pb-1"
         />
 
-        <button
-          onClick={handleSend}
-          disabled={(!content.trim() && pendingFiles.length === 0) || sending || uploading}
-          className="p-2 bg-neutral-900 hover:bg-neutral-800 disabled:bg-neutral-300 disabled:cursor-not-allowed text-white rounded-xl transition shrink-0 cursor-pointer"
-        >
-          {sending || uploading ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          ) : (
-            <Send className="w-4 h-4" />
-          )}
-        </button>
+        <div className="flex items-center justify-between px-2 pb-2">
+          <div ref={pickerContainerRef} className="flex items-center gap-0.5">
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="p-1.5 text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 rounded-lg transition shrink-0 cursor-pointer"
+              title="Attach file"
+            >
+              <Paperclip className="w-[18px] h-[18px]" />
+            </button>
+
+            <div className="relative">
+              <button
+                onClick={() => {
+                  setShowEmojiPicker(!showEmojiPicker);
+                  setShowGifPicker(false);
+                }}
+                className="p-1.5 text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 rounded-lg transition cursor-pointer"
+                title="Emoji"
+              >
+                <Smile className="w-[18px] h-[18px]" />
+              </button>
+              {showEmojiPicker && (
+                <EmojiPicker
+                  onSelect={handleEmojiSelect}
+                  onClose={() => setShowEmojiPicker(false)}
+                />
+              )}
+            </div>
+
+            <div className="relative">
+              <button
+                onClick={() => {
+                  setShowGifPicker(!showGifPicker);
+                  setShowEmojiPicker(false);
+                }}
+                className="p-1.5 text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 rounded-lg transition cursor-pointer"
+                title="GIF"
+              >
+                <ImageIcon className="w-[18px] h-[18px]" />
+              </button>
+              {showGifPicker && (
+                <GifPicker
+                  onSelect={handleGifSelect}
+                  onClose={() => setShowGifPicker(false)}
+                />
+              )}
+            </div>
+
+            <button
+              onClick={() => setShowSnippetModal(true)}
+              className="p-1.5 text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 rounded-lg transition cursor-pointer"
+              title="Text snippet"
+            >
+              <FileCode className="w-[18px] h-[18px]" />
+            </button>
+          </div>
+
+          <button
+            onClick={handleSend}
+            disabled={!isSendable || sending || uploading}
+            className={`p-2 rounded-xl transition shrink-0 cursor-pointer ${
+              isSendable && !sending && !uploading
+                ? "bg-primary-500 hover:bg-primary-600 text-white shadow-sm"
+                : "bg-neutral-200 text-neutral-400 cursor-not-allowed"
+            }`}
+          >
+            {sending || uploading ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Send className="w-4 h-4" />
+            )}
+          </button>
+        </div>
       </div>
+
+      {showSnippetModal && (
+        <SnippetModal
+          onSubmit={handleSnippetSubmit}
+          onClose={() => setShowSnippetModal(false)}
+        />
+      )}
     </div>
   );
 }
