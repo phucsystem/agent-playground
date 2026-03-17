@@ -1,12 +1,22 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, LogOut, Archive, ArchiveRestore, UserPlus, Check, Search, Trash2, Pencil } from "lucide-react";
+import { X, LogOut, Archive, ArchiveRestore, UserPlus, Check, Search, Trash2, Pencil, FileText, FileImage, FileSpreadsheet, File, Download } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { useConversationMembers } from "@/hooks/use-conversation-members";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
-import type { ConversationWithDetails, User } from "@/types/database";
+import type { ConversationWithDetails, User, Message } from "@/types/database";
+
+interface SharedFile {
+  messageId: string;
+  fileName: string;
+  fileUrl: string;
+  fileType: string;
+  fileSize: number;
+  createdAt: string;
+  senderName: string;
+}
 
 interface ChatInfoPanelProps {
   conversation: ConversationWithDetails;
@@ -36,6 +46,8 @@ export function ChatInfoPanel({
   const [deleting, setDeleting] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
   const [editedName, setEditedName] = useState(conversation.name || "");
+  const [sharedFiles, setSharedFiles] = useState<SharedFile[]>([]);
+  const [loadingFiles, setLoadingFiles] = useState(true);
 
   const currentMember = members.find((member) => member.user_id === currentUserId);
   const isAdmin = currentMember?.role === "admin";
@@ -59,6 +71,41 @@ export function ChatInfoPanel({
     }
     fetchAvailableUsers();
   }, [showAddMembers, memberUserIds.join(",")]);
+
+  useEffect(() => {
+    async function fetchSharedFiles() {
+      setLoadingFiles(true);
+      const supabase = createBrowserSupabaseClient();
+      const { data } = await supabase
+        .from("messages")
+        .select("id, content_type, metadata, created_at, sender:users!inner(display_name)")
+        .eq("conversation_id", conversation.id)
+        .in("content_type", ["file", "image"])
+        .order("created_at", { ascending: false })
+        .limit(50);
+
+      if (data) {
+        const files: SharedFile[] = data
+          .filter((msg: Record<string, unknown>) => msg.metadata && (msg.metadata as Record<string, unknown>).file_url)
+          .map((msg: Record<string, unknown>) => {
+            const meta = msg.metadata as Record<string, unknown>;
+            const sender = msg.sender as { display_name: string } | null;
+            return {
+              messageId: msg.id as string,
+              fileName: (meta.file_name as string) || "Unknown",
+              fileUrl: meta.file_url as string,
+              fileType: (meta.file_type as string) || "application/octet-stream",
+              fileSize: (meta.file_size as number) || 0,
+              createdAt: msg.created_at as string,
+              senderName: sender?.display_name || "Unknown",
+            };
+          });
+        setSharedFiles(files);
+      }
+      setLoadingFiles(false);
+    }
+    fetchSharedFiles();
+  }, [conversation.id]);
 
   const filteredUsers = availableUsers.filter((appUser) =>
     appUser.display_name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -314,6 +361,8 @@ export function ChatInfoPanel({
         </div>
       </div>
 
+      <SharedFilesSection files={sharedFiles} loading={loadingFiles} />
+
       {isGroup && (
         <div className="px-5 py-4 space-y-1">
           {isAdmin && (
@@ -358,5 +407,102 @@ export function ChatInfoPanel({
       )}
     </div>
     </>
+  );
+}
+
+function getFileIcon(fileType: string) {
+  if (fileType.startsWith("image/")) return FileImage;
+  if (fileType === "application/pdf") return FileText;
+  if (fileType === "text/csv") return FileSpreadsheet;
+  return File;
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function SharedFilesSection({ files, loading }: { files: SharedFile[]; loading: boolean }) {
+  const images = files.filter((file) => file.fileType.startsWith("image/"));
+  const documents = files.filter((file) => !file.fileType.startsWith("image/"));
+
+  if (loading) {
+    return (
+      <div className="px-5 py-4 border-b border-neutral-100">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500 mb-3">
+          Shared Files
+        </p>
+        <div className="space-y-2">
+          {[1, 2, 3].map((placeholder) => (
+            <div key={placeholder} className="h-10 bg-neutral-100 rounded-lg animate-pulse" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (files.length === 0) return null;
+
+  return (
+    <div className="px-5 py-4 border-b border-neutral-100">
+      {images.length > 0 && (
+        <>
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500 mb-3">
+            Shared Images ({images.length})
+          </p>
+          <div className="grid grid-cols-3 gap-1.5 mb-4">
+            {images.map((image) => (
+              <a
+                key={image.messageId}
+                href={image.fileUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="aspect-square rounded-lg overflow-hidden bg-neutral-100 hover:opacity-80 transition"
+              >
+                <img
+                  src={image.fileUrl}
+                  alt={image.fileName}
+                  className="w-full h-full object-cover"
+                />
+              </a>
+            ))}
+          </div>
+        </>
+      )}
+
+      {documents.length > 0 && (
+        <>
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500 mb-3">
+            Shared Files ({documents.length})
+          </p>
+          <div className="space-y-1.5">
+            {documents.map((doc) => {
+              const Icon = getFileIcon(doc.fileType);
+              return (
+                <a
+                  key={doc.messageId}
+                  href={doc.fileUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-neutral-50 transition group"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-neutral-100 flex items-center justify-center shrink-0">
+                    <Icon className="w-4 h-4 text-neutral-500" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-neutral-700 truncate">{doc.fileName}</p>
+                    <p className="text-[10px] text-neutral-400">
+                      {formatFileSize(doc.fileSize)} &middot; {doc.senderName}
+                    </p>
+                  </div>
+                  <Download className="w-3.5 h-3.5 text-neutral-400 opacity-0 group-hover:opacity-100 transition shrink-0" />
+                </a>
+              );
+            })}
+          </div>
+        </>
+      )}
+    </div>
   );
 }
