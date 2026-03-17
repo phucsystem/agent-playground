@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import Link from "next/link";
 import { Avatar } from "@/components/ui/avatar";
 import { Hash, Archive, Pin, GripVertical } from "lucide-react";
@@ -24,6 +24,7 @@ import { useConversationOrder } from "@/hooks/use-conversation-order";
 import { useWorkspaceContext } from "@/contexts/workspace-context";
 import type { ConversationWithDetails } from "@/types/database";
 import type { AgentHealthStatus } from "@/hooks/use-agent-health";
+import { useState } from "react";
 
 interface ConversationListProps {
   conversations: ConversationWithDetails[];
