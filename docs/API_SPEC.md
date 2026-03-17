@@ -45,6 +45,23 @@
 | DELETE | `/rest/v1/agent_configs?user_id=eq.{id}` | FR-22 | S-06 | P5 |
 | GET | `/rest/v1/webhook_delivery_logs` | FR-25 | S-08 | P5 |
 | POST | `/rpc/dispatch_webhook` | FR-23, FR-27 | — (Edge Function) | P5 |
+| POST | `/api/auth/logout` | FR-02 | S-02 | P1 |
+| GET | `/api/agents/health` | FR-30 | S-02 | P6 |
+| GET | `/api/conversations/[conversationId]` | FR-04 | S-04 | P6 |
+| DELETE | `/api/conversations/[conversationId]` | FR-04 | S-04 | P6 |
+| POST | `/rpc/create_group` | FR-13 | S-02 | P2 |
+| GET | `/rest/v1/workspaces` | FR-31 | S-09 | P6 |
+| POST | `/rest/v1/workspaces` | FR-31 | S-09 | P6 |
+| PATCH | `/rest/v1/workspaces?id=eq.{id}` | FR-31 | S-09 | P6 |
+| GET | `/rest/v1/workspace_members` | FR-31 | S-09 | P6 |
+| POST | `/rest/v1/workspace_members` | FR-31 | S-09 | P6 |
+| DELETE | `/rest/v1/workspace_members` | FR-31 | S-09 | P6 |
+| GET | `/rest/v1/user_sessions?user_id=eq.{id}` | FR-32 | S-02 | P6 |
+| DELETE | `/rest/v1/user_sessions?id=eq.{id}` | FR-32 | S-02 | P6 |
+| POST | `/storage/v1/object/avatars/{path}` | FR-33 | S-07 | P6 |
+| PATCH | `/rest/v1/users?id=eq.{id}` (notification_enabled) | FR-34 | S-02 | P6 |
+| WS | Realtime: workspace presence channel | FR-31 | S-09 | P6 |
+| WS | Realtime: `postgres_changes` on conversations (DELETE) | FR-04 | S-02 | P6 |
 
 ## 2. Endpoint Details
 
@@ -952,6 +969,112 @@ After 3 failed attempts, status set to `failed`. No further retries.
 
 ---
 
+### POST /api/auth/logout (Phase 1)
+
+**Description:** Revoke current session and sign out.
+**Feature:** FR-02
+**Auth:** Bearer JWT
+
+**Response (200):** `{ "success": true }`
+
+---
+
+### GET /api/agents/health (Phase 6)
+
+**Description:** Poll health check URLs for all agents with configured `health_check_url`. Returns a status map keyed by agent UUID.
+**Feature:** FR-30
+**Screen:** S-02
+**Auth:** Bearer JWT
+
+**Response (200):**
+```json
+{
+  "agent-uuid-1": "healthy",
+  "agent-uuid-2": "unhealthy"
+}
+```
+
+**Cache:** 5-minute server-side cache.
+**Security:** SSRF protection — only HTTPS URLs allowed, private IPs rejected.
+
+---
+
+### GET /api/conversations/[conversationId] (Phase 6)
+
+**Description:** Get conversation details.
+**Feature:** FR-04
+**Screen:** S-04
+**Auth:** Bearer JWT
+
+---
+
+### DELETE /api/conversations/[conversationId] (Phase 6)
+
+**Description:** Delete a conversation. Admin role required.
+**Feature:** FR-04
+**Screen:** S-04
+**Auth:** Bearer JWT (admin only)
+
+---
+
+### Workspace CRUD endpoints (Phase 6)
+
+Standard PostgREST CRUD on `workspaces` and `workspace_members` tables. RLS restricts access to workspace members only.
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/rest/v1/workspaces` | GET | List workspaces the current user belongs to |
+| `/rest/v1/workspaces` | POST | Create a new workspace |
+| `/rest/v1/workspaces?id=eq.{id}` | PATCH | Update workspace name/settings |
+| `/rest/v1/workspace_members` | GET | List members of a workspace |
+| `/rest/v1/workspace_members` | POST | Add member to workspace |
+| `/rest/v1/workspace_members` | DELETE | Remove member from workspace |
+
+**Feature:** FR-31
+**Screen:** S-09
+**Auth:** Bearer JWT
+
+---
+
+### User Sessions endpoints (Phase 6)
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/rest/v1/user_sessions?user_id=eq.{id}` | GET | List active sessions for a user |
+| `/rest/v1/user_sessions?id=eq.{id}` | DELETE | Revoke a specific session |
+
+**Feature:** FR-32
+**Screen:** S-02
+**Auth:** Bearer JWT
+
+---
+
+### POST /storage/v1/object/avatars/{userId}/{filename} (Phase 6)
+
+**Description:** Upload user avatar to the `avatars` storage bucket.
+**Feature:** FR-33
+**Screen:** S-07
+**Auth:** Bearer JWT
+
+**Request:** `multipart/form-data` with image body
+**Path:** `avatars/{userId}/{filename}`
+
+**Constraints:**
+- Max file size: 5MB
+- Allowed types: WebP, JPEG, PNG only
+
+---
+
+### RPC function updates (Phase 6)
+
+| Function | New Parameter | Purpose |
+|----------|---------------|---------|
+| `find_or_create_dm` | `ws_id` | Workspace-scoped DMs |
+| `get_my_conversations` | `ws_id` | Filter conversations by workspace |
+| `create_group` | `ws_id` | Workspace-scoped group conversations |
+
+---
+
 ## 3. Realtime Subscriptions
 
 ### Message delivery (FR-08)
@@ -990,6 +1113,32 @@ presenceChannel
       })
     }
   })
+```
+
+### Workspace presence (FR-31 — Phase 6)
+
+```typescript
+supabase
+  .channel(`workspace:${workspaceId}:presence`)
+  .on('presence', { event: 'sync' }, () => {
+    // Update workspace member online status
+  })
+  .subscribe()
+```
+
+### Conversation delete events (FR-04 — Phase 6)
+
+```typescript
+supabase
+  .channel('conversations')
+  .on('postgres_changes', {
+    event: 'DELETE',
+    schema: 'public',
+    table: 'conversations'
+  }, (payload) => {
+    // Remove deleted conversation from sidebar
+  })
+  .subscribe()
 ```
 
 ### Typing indicators (FR-16 — Phase 3)
@@ -1084,6 +1233,20 @@ Agent uses Supabase JS/Python client to subscribe to `postgres_changes` on messa
 | `DELETE /rest/v1/agent_configs` | FR-22 | S-06 | P5 |
 | `GET /rest/v1/webhook_delivery_logs` | FR-25 | S-08 | P5 |
 | Edge Function: webhook dispatch | FR-23, FR-24, FR-27 | — | P5 |
+| `POST /api/auth/logout` | FR-02 | S-02 | P1 |
+| `GET /api/agents/health` | FR-30 | S-02 | P6 |
+| `GET /api/conversations/[id]` | FR-04 | S-04 | P6 |
+| `DELETE /api/conversations/[id]` | FR-04 | S-04 | P6 |
+| `/rpc/create_group` | FR-13 | S-02 | P2 |
+| `GET/POST /rest/v1/workspaces` | FR-31 | S-09 | P6 |
+| `PATCH /rest/v1/workspaces` | FR-31 | S-09 | P6 |
+| `/rest/v1/workspace_members` | FR-31 | S-09 | P6 |
+| `GET /rest/v1/user_sessions` | FR-32 | S-02 | P6 |
+| `DELETE /rest/v1/user_sessions` | FR-32 | S-02 | P6 |
+| `/storage/v1/object/avatars` | FR-33 | S-07 | P6 |
+| `PATCH /rest/v1/users` (notification_enabled) | FR-34 | S-02 | P6 |
+| Realtime: workspace presence | FR-31 | S-09 | P6 |
+| Realtime: conversations DELETE | FR-04 | S-02 | P6 |
 
 ---
 

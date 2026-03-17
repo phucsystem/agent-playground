@@ -6,9 +6,10 @@ import { useFileUpload } from "@/hooks/use-file-upload";
 import { useConversationMembers } from "@/hooks/use-conversation-members";
 import { EmojiPicker } from "./emoji-picker";
 import { GifPicker } from "./gif-picker";
+import { SnippetModal } from "./snippet-modal";
 import { MentionPicker } from "./mention-picker";
 import type { MentionCandidate } from "./mention-picker";
-import { Send, Paperclip, Loader2, X, Smile, ImageIcon } from "lucide-react";
+import { Send, Paperclip, Loader2, X, Smile, ImageIcon, FileCode, Upload } from "lucide-react";
 import { toast } from "sonner";
 import type { ContentType, MessageWithSender } from "@/types/database";
 
@@ -42,6 +43,10 @@ export function ChatInput({
   const previewUrlsRef = useRef<Map<File, string>>(new Map());
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showGifPicker, setShowGifPicker] = useState(false);
+  const [showSnippetModal, setShowSnippetModal] = useState(false);
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
+  const dragCounterRef = useRef(0);
+  const [snippetInitialContent, setSnippetInitialContent] = useState("");
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const [mentionIndex, setMentionIndex] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -116,7 +121,7 @@ export function ChatInput({
   function addFiles(files: File[]) {
     const validFiles = files.filter((file) => {
       if (file.size > MAX_FILE_SIZE) {
-        toast.error(`${file.name} exceeds 5MB limit`);
+        toast.error(`${file.name} exceeds 20MB limit`);
         return false;
       }
       return true;
@@ -152,12 +157,20 @@ export function ChatInput({
   }, []);
 
   const adjustHeight = useCallback(() => {
-    const textarea = textareaRef.current;
-    if (textarea) {
-      textarea.style.height = "auto";
-      textarea.style.height = `${Math.min(textarea.scrollHeight, 120)}px`;
-    }
+    requestAnimationFrame(() => {
+      const textarea = textareaRef.current;
+      if (!textarea) return;
+      textarea.style.height = "0px";
+      const maxHeight = 200;
+      const newHeight = Math.min(textarea.scrollHeight, maxHeight);
+      textarea.style.height = `${newHeight}px`;
+      textarea.style.overflowY = textarea.scrollHeight > maxHeight ? "auto" : "hidden";
+    });
   }, []);
+
+  useEffect(() => {
+    adjustHeight();
+  }, [content, adjustHeight]);
 
   async function sendMessage(
     messageContent: string,
@@ -210,6 +223,7 @@ export function ChatInput({
     setContent("");
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
+      textareaRef.current.style.overflowY = "hidden";
       textareaRef.current.focus();
     }
 
@@ -263,7 +277,7 @@ export function ChatInput({
     }
   }
 
-  const MAX_FILE_SIZE = 5 * 1024 * 1024;
+  const MAX_FILE_SIZE = 20 * 1024 * 1024;
 
   function handleFileSelect(event: React.ChangeEvent<HTMLInputElement>) {
     const selectedFiles = event.target.files;
@@ -275,29 +289,51 @@ export function ChatInput({
     }
   }
 
-  function handlePaste(event: React.ClipboardEvent) {
-    const items = event.clipboardData?.items;
-    if (!items) return;
+  const SNIPPET_LINE_THRESHOLD = 10;
+  const SNIPPET_CHAR_THRESHOLD = 500;
 
-    const pastedFiles: File[] = [];
-    for (const item of items) {
-      if (item.type.startsWith("image/")) {
-        const blob = item.getAsFile();
-        if (!blob) continue;
-        const timestamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
-        const extension = blob.type.split("/")[1] || "png";
-        pastedFiles.push(new File([blob], `paste-${timestamp}.${extension}`, { type: blob.type }));
-      }
-    }
-    if (pastedFiles.length > 0) {
+  function handlePaste(event: React.ClipboardEvent) {
+    const clipboardFiles = event.clipboardData?.files;
+    if (clipboardFiles && clipboardFiles.length > 0) {
       event.preventDefault();
-      addFiles(pastedFiles);
+      const filesArray: File[] = [];
+      for (const file of clipboardFiles) {
+        if (file.type.startsWith("image/") && !file.name) {
+          const timestamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+          const extension = file.type.split("/")[1] || "png";
+          filesArray.push(new File([file], `paste-${timestamp}.${extension}`, { type: file.type }));
+        } else {
+          filesArray.push(file);
+        }
+      }
+      addFiles(filesArray);
+      return;
+    }
+
+    const pastedText = event.clipboardData?.getData("text/plain") || "";
+    const lineCount = pastedText.split("\n").length;
+    if (lineCount >= SNIPPET_LINE_THRESHOLD || pastedText.length >= SNIPPET_CHAR_THRESHOLD) {
+      event.preventDefault();
+      setSnippetInitialContent(pastedText);
+      setShowSnippetModal(true);
     }
   }
 
   function handleEmojiSelect(emoji: string) {
     setContent((prev) => prev + emoji);
     textareaRef.current?.focus();
+  }
+
+  async function handleSnippetSubmit(title: string, snippetContent: string) {
+    setShowSnippetModal(false);
+    setSending(true);
+    const lineCount = snippetContent.split("\n").length;
+    await sendMessage(snippetContent, "text", {
+      is_snippet: true,
+      snippet_title: title,
+      line_count: lineCount,
+    });
+    setSending(false);
   }
 
   async function handleGifSelect(gifUrl: string) {
@@ -310,8 +346,57 @@ export function ChatInput({
     setSending(false);
   }
 
+  function handleDragEnter(event: React.DragEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+    dragCounterRef.current++;
+    if (event.dataTransfer.types.includes("Files")) {
+      setIsDraggingOver(true);
+    }
+  }
+
+  function handleDragLeave(event: React.DragEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+    dragCounterRef.current--;
+    if (dragCounterRef.current === 0) {
+      setIsDraggingOver(false);
+    }
+  }
+
+  function handleDragOver(event: React.DragEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
+  function handleDrop(event: React.DragEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+    dragCounterRef.current = 0;
+    setIsDraggingOver(false);
+    const droppedFiles = event.dataTransfer.files;
+    if (droppedFiles && droppedFiles.length > 0) {
+      addFiles(Array.from(droppedFiles));
+    }
+  }
+
   return (
-    <div className="mx-2 sm:mx-4 md:mx-6 mb-2 md:mb-4">
+    <div
+      className="mx-2 sm:mx-4 md:mx-6 mb-2 md:mb-4 relative"
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+    >
+      {isDraggingOver && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-primary-50/90 border-2 border-dashed border-primary-400 rounded-2xl backdrop-blur-sm">
+          <div className="flex flex-col items-center gap-1.5 text-primary-600">
+            <Upload className="w-6 h-6" />
+            <span className="text-sm font-medium">Drop files here</span>
+          </div>
+        </div>
+      )}
+
       {pendingFiles.length > 0 && (
         <div className="bg-neutral-100 rounded-2xl rounded-b-none px-3 pt-3 pb-2">
           <div className="flex gap-2 overflow-x-auto">
@@ -369,7 +454,7 @@ export function ChatInput({
           type="file"
           multiple
           onChange={handleFileSelect}
-          accept="image/jpeg,image/png,image/gif,image/webp,application/pdf,text/plain,text/markdown,text/csv"
+          accept="*/*"
           className="hidden"
         />
         <button
@@ -417,6 +502,14 @@ export function ChatInput({
               />
             )}
           </div>
+
+          <button
+            onClick={() => { setSnippetInitialContent(""); setShowSnippetModal(true); }}
+            className="p-1 text-neutral-400 hover:text-neutral-600 transition cursor-pointer"
+            title="Text snippet"
+          >
+            <FileCode className="w-5 h-5" />
+          </button>
         </div>
 
         <textarea
@@ -436,7 +529,7 @@ export function ChatInput({
           onKeyDown={handleKeyDown}
           placeholder={pendingFiles.length > 0 ? `${pendingFiles.length} file${pendingFiles.length > 1 ? "s" : ""} ready — press Send to upload` : placeholder}
           rows={1}
-          className="flex-1 bg-transparent resize-none outline-none text-neutral-700 placeholder:text-neutral-400 text-[15px] leading-relaxed max-h-[120px] py-1"
+          className="flex-1 bg-transparent resize-none outline-none overflow-hidden text-neutral-700 placeholder:text-neutral-400 text-[15px] leading-relaxed py-1"
         />
 
         <button
@@ -451,6 +544,14 @@ export function ChatInput({
           )}
         </button>
       </div>
+
+      {showSnippetModal && (
+        <SnippetModal
+          onSubmit={handleSnippetSubmit}
+          onClose={() => { setShowSnippetModal(false); setSnippetInitialContent(""); }}
+          initialContent={snippetInitialContent}
+        />
+      )}
     </div>
   );
 }

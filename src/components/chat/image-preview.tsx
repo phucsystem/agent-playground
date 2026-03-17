@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
 interface ImagePreviewProps {
@@ -26,7 +27,7 @@ export function ImagePreview({ src, alt }: ImagePreviewProps) {
         />
       </button>
 
-      {showLightbox && (
+      {showLightbox && createPortal(
         <div
           className="fixed inset-0 z-[200] bg-black/50 flex items-center justify-center p-8"
           onClick={() => setShowLightbox(false)}
@@ -43,7 +44,8 @@ export function ImagePreview({ src, alt }: ImagePreviewProps) {
             className="max-w-full max-h-full object-contain rounded-lg"
             onClick={(event) => event.stopPropagation()}
           />
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

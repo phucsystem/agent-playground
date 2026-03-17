@@ -1,10 +1,10 @@
 "use client";
 
 export const AVATAR_COLORS = [
-  "#e74c3c", "#e67e22", "#f1c40f", "#2ecc71", "#1abc9c",
-  "#3498db", "#9b59b6", "#e84393", "#00b894", "#6c5ce7",
-  "#fd79a8", "#0984e3", "#00cec9", "#d63031", "#a29bfe",
-  "#fab1a0", "#55efc4", "#74b9ff", "#636e72", "#2d3436",
+  "#7c8db5", "#8b7e9b", "#7ba69e", "#b0896d", "#9b8a7c",
+  "#6d8fa8", "#a07e8f", "#8a9e7c", "#9c8fb0", "#7e9baa",
+  "#a08e7a", "#8b9c8e", "#9a7e8d", "#7c93a6", "#a69880",
+  "#8e8ca0", "#7da094", "#a88d7e", "#8c96a8", "#9a9080",
 ];
 
 export function getWorkspaceColor(workspaceId: string): string {

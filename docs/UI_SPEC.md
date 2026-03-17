@@ -77,6 +77,8 @@
 | `--color-sidebar-accent` | `#2b7fff` | Active chat item text, "New chat" text (--primary-500) |
 | `--color-sidebar-new-chat-bg` | `#dbeafe` | "New chat" button bg (--primary-100) |
 | `--color-sidebar-border` | `#e4e4e7` | Sidebar right border (--neutral-200) |
+| `--color-rail-bg` | `#27272a` | Workspace rail background (--neutral-800) |
+| `--color-rail-active-ring` | `#8ec5ff` | Active workspace ring (--primary-300) |
 
 ### Typography
 
@@ -149,6 +151,7 @@
 | **Retention** | S-03, S-04 (message history) | Persistent history brings users back |
 | **Discovery** | S-02 (presence list), S-05 (info panel) | Find new agents/testers to interact with |
 | **Operations** | S-06 (admin), S-08 (webhook logs) | Monitor agent health, debug webhook delivery |
+| **Navigation** | S-09 Workspace Rail | Quick workspace switching, context scoping |
 
 ### Component Patterns
 
@@ -172,6 +175,20 @@
 
 **New Chat Button:** Full-width, `--primary-100` bg, `--primary-500` text, rounded `--radius-sm`.
 
+**Workspace Avatar:** Color-coded circle with first letter of workspace name. Custom image if set. Sizes: sm (32px), md (40px), lg (48px).
+
+**Collapsible Section:** Expandable sidebar section with chevron icon, title, count badge. Click header to toggle. 11px uppercase tracking-wide label.
+
+**Flip Loader:** 3D animated loading indicator with rotating square. Sizes: sm, md, lg. Optional text label below.
+
+**Presence Toast:** Sonner toast notification when user comes online/offline. Shows avatar + "User is now online/offline".
+
+**Agent Health Dot:** Colored dot on agent avatar. Green = healthy, grey = unhealthy/unknown. Only shown for agents with health_check_url configured.
+
+**Notification Bell:** Toggle button in user profile header. Blue = enabled, grey = disabled. Click requests browser notification permission if needed.
+
+**Pin Button:** Small pin icon on conversation items. Visible on hover, filled when pinned. Click to toggle pin state. Pinned conversations appear at top of section.
+
 ---
 
 ## 2. Screen Flow
@@ -184,7 +201,14 @@
     │ (set avatar + nickname)
     ▼
 [S-02: Main Layout]
-    ├── Sidebar (left, fixed 260px, collapsible sections)
+    ├── [S-09: Workspace Rail (60px)] | [Sidebar (260px)] | [Chat Area]
+    │   (desktop layout — rail always visible left of sidebar)
+    │
+    ├── [S-09: Workspace Rail] (left, 60px dark rail)
+    │   ├── Workspace avatars (stacked vertically)
+    │   └── Create workspace button (admin only)
+    │
+    ├── Sidebar (fixed 260px, collapsible sections)
     │   ├── User profile section (top)
     │   ├── Online users (collapsible, filtered by mock flag)
     │   ├── DM conversations (collapsible)
@@ -204,8 +228,13 @@
         └── [S-08: Webhook Logs] ← click "View Logs" on agent row
 ```
 
+**Desktop layout:** `[S-09: Workspace Rail (60px)] | [S-02: Sidebar (260px)] | [Chat Area]`
+
+**Mobile layout:** Sidebar slides over full-width with workspace strip at top (horizontal 32px avatars, scrollable).
+
 **Navigation Rules:**
 - Login → Main Layout (auto-redirect if session valid)
+- Click workspace in rail → switch workspace context, sidebar updates
 - Sidebar conversation click → loads chat in right panel
 - Click user in presence list → opens/creates DM
 - Info icon in chat header → toggles info panel slide-over
@@ -268,34 +297,34 @@
 ### S-02: Main Layout (Sidebar)
 
 **Phase:** P1
-**Layout:** Fixed sidebar (260px) + flexible chat area
+**Layout:** Workspace Rail (60px) + fixed sidebar (260px) + flexible chat area
 **CJX Stage:** Usage + Discovery
 
 ```
-┌──────────┬─────────────────────────────────────┐
-│ SIDEBAR  │                                     │
-│ 260px    │                                     │
-│          │                                     │
-│ ┌──────┐ │         Select a conversation       │
-│ │ Phuc │ │         to start chatting            │
-│ │●online│ │                                     │
-│ └──────┘ │                                     │
-│          │                                     │
-│ ONLINE(3)│                                     │
-│ ● Alice  │                                     │
-│ 🤖 GPT-4 │                                     │
-│ 🤖 Claude│                                     │
-│          │                                     │
-│ DMs      │                                     │
-│ Alice    │                                     │
-│ GPT-4 🤖 │                                     │
-│          │                                     │
-│ GROUPS   │                                     │
-│ # test-a │                                     │
-│ # agents │                                     │
-│          │                                     │
-│ [+ New]  │                                     │
-└──────────┴─────────────────────────────────────┘
+┌────┬──────────┬─────────────────────────────────────┐
+│RAIL│ SIDEBAR  │                                     │
+│60px│ 260px    │                                     │
+│    │          │                                     │
+│ ⬤  │ ┌──────┐ │         Select a conversation       │
+│ W1 │ │ Phuc │ │         to start chatting            │
+│    │ │●online│ │                                     │
+│ ⬤  │ └──────┘ │                                     │
+│ W2 │          │                                     │
+│    │ ONLINE(3)│                                     │
+│ ┄┄ │ ● Alice  │                                     │
+│ +  │ 🤖 GPT-4 │                                     │
+│    │ 🤖 Claude│                                     │
+│    │          │                                     │
+│    │ DMs      │                                     │
+│    │ Alice    │                                     │
+│    │ GPT-4 🤖 │                                     │
+│    │          │                                     │
+│    │ GROUPS   │                                     │
+│    │ # test-a │                                     │
+│    │ # agents │                                     │
+│    │          │                                     │
+│    │ [+ New]  │                                     │
+└────┴──────────┴─────────────────────────────────────┘
 ```
 
 **Sidebar Sections:**
@@ -310,7 +339,9 @@
 
 **Empty State:** Center text "Select a conversation to start chatting" with subtle illustration.
 
-**Responsive:** Sidebar collapses to icon-only on screens <768px. Hamburger menu to toggle.
+**Responsive:**
+- Desktop (≥1024px): Workspace Rail (60px) + Sidebar (260px) + Chat Area
+- Mobile (<768px): Sidebar slides over full-width with workspace strip at top; hamburger menu to toggle.
 
 ---
 
@@ -660,6 +691,50 @@
 
 ---
 
+### S-09: Workspace Rail
+
+**Phase:** P6
+**Layout:** Vertical rail (60px wide), dark bg (`--neutral-800`), left of sidebar
+**CJX Stage:** Navigation
+
+```
+┌────┬──────────┬──────────────────────────┐
+│RAIL│ SIDEBAR  │                          │
+│60px│ 260px    │                          │
+│    │          │                          │
+│ ⬤  │ ┌──────┐│    Chat Area             │
+│ W1 │ │ Phuc ││                          │
+│    │ │●online││                          │
+│ ⬤  │ └──────┘│                          │
+│ W2 │          │                          │
+│    │ DMs      │                          │
+│ ┄┄ │ Alice   │                          │
+│ +  │ GPT-4   │                          │
+│    │          │                          │
+│    │ GROUPS   │                          │
+│    │ # test-a │                          │
+│    │          │                          │
+└────┴──────────┴──────────────────────────┘
+```
+
+**Elements:**
+| Element | Details |
+|---------|---------|
+| Workspace avatar | 40px circle, color-coded letter or custom image. Active: ring-2 ring-primary-300 with ring-offset. Inactive: opacity-70, hover:opacity-100. |
+| Active indicator | 4px white bar left edge, vertically centered |
+| Unread badge | Red circle top-right of avatar, shows count (max "99+") |
+| Create button | "+" button (admin only) below separator. Opens create workspace dialog. |
+| Tooltip | Fixed-position tooltip on hover showing workspace name |
+
+**Mobile:** Horizontal strip at top of sidebar with smaller avatars (32px), scrollable.
+
+**Interactions:**
+- Click workspace → switch context, sidebar shows workspace conversations
+- Hover → tooltip with workspace name
+- Active workspace has white indicator bar + ring highlight
+
+---
+
 ## 4. Design Rationale
 
 | Decision | Rationale |
@@ -679,9 +754,9 @@
 
 | Breakpoint | Layout |
 |------------|--------|
-| `≥1024px` | Full layout: sidebar (260px) + chat + optional info panel (320px) |
-| `768px–1023px` | Sidebar collapses to 60px (icons only). Chat full width. Info panel overlays. |
-| `<768px` | Sidebar hidden (hamburger toggle). Chat full width. Info panel full-screen modal. |
+| `≥1024px` | Full layout: workspace rail (60px) + sidebar (260px) + chat + optional info panel (320px) |
+| `768px–1023px` | Rail hidden. Sidebar collapses to 60px (icons only). Chat full width. Info panel overlays. |
+| `<768px` | Rail hidden. Sidebar hidden (hamburger toggle) with workspace strip at top. Chat full width. Info panel full-screen modal. |
 
 ---
 

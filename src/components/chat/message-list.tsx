@@ -39,6 +39,8 @@ function estimateMessageHeight(message: MessageWithSender): number {
   if (message.content_type === "image") return 260;
   if (message.content_type === "file") return 80;
   if (message.content_type === "url") return 120;
+  const meta = message.metadata as Record<string, unknown> | null;
+  if (meta?.is_snippet) return 200;
   const lineCount = Math.ceil(message.content.length / 60);
   return Math.max(60, lineCount * 24 + 48);
 }
@@ -194,7 +196,7 @@ export function MessageList({
       {showScrollDown && (
         <button
           onClick={() => scrollToBottom()}
-          className="fixed bottom-20 right-4 md:bottom-24 md:right-8 w-10 h-10 bg-white border border-neutral-200 rounded-full shadow-md flex items-center justify-center hover:bg-neutral-50 transition cursor-pointer z-30"
+          className="fixed bottom-20 right-4 md:bottom-24 md:right-8 w-9 h-9 bg-white/90 backdrop-blur-sm border border-neutral-200 rounded-full shadow-lg flex items-center justify-center hover:bg-white hover:scale-105 active:scale-95 transition-all cursor-pointer z-30"
         >
           <ArrowDown className="w-4 h-4 text-neutral-600" />
         </button>

@@ -5,12 +5,12 @@ interface TypingIndicatorProps {
   agentThinking?: boolean;
 }
 
-function BouncingDots() {
+function PulsingDots() {
   return (
-    <div className="flex gap-[3px]">
-      <span className="w-1.5 h-1.5 bg-neutral-400 rounded-full animate-bounce [animation-delay:0s]" />
-      <span className="w-1.5 h-1.5 bg-neutral-400 rounded-full animate-bounce [animation-delay:0.2s]" />
-      <span className="w-1.5 h-1.5 bg-neutral-400 rounded-full animate-bounce [animation-delay:0.4s]" />
+    <div className="flex items-center gap-[3px] px-3 py-2 bg-neutral-100 rounded-2xl rounded-bl-sm w-fit">
+      <span className="w-[6px] h-[6px] bg-neutral-400 rounded-full animate-[pulse-dot_1.4s_ease-in-out_infinite]" />
+      <span className="w-[6px] h-[6px] bg-neutral-400 rounded-full animate-[pulse-dot_1.4s_ease-in-out_0.2s_infinite]" />
+      <span className="w-[6px] h-[6px] bg-neutral-400 rounded-full animate-[pulse-dot_1.4s_ease-in-out_0.4s_infinite]" />
     </div>
   );
 }
@@ -32,9 +32,9 @@ export function TypingIndicator({ typingUsers, agentThinking }: TypingIndicatorP
   }
 
   return (
-    <div className="flex items-center gap-2 px-2 py-1.5 text-xs text-neutral-500">
-      <BouncingDots />
-      {text}...
+    <div className="flex items-center gap-2.5 px-2 py-1.5">
+      <PulsingDots />
+      <span className="text-xs text-neutral-400">{text}</span>
     </div>
   );
 }

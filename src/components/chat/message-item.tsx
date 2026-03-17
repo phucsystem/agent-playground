@@ -5,6 +5,7 @@ import { MarkdownContent } from "./markdown-content";
 import { FileCard } from "./file-card";
 import { ImagePreview } from "./image-preview";
 import { UrlPreview } from "./url-preview";
+import { SnippetCard } from "./snippet-card";
 import { MessageReactions } from "./message-reactions";
 import type { MessageWithSender } from "@/types/database";
 import { Heart } from "lucide-react";
@@ -103,6 +104,15 @@ function MessageContent({ message, memberNames }: { message: MessageWithSender; 
         />
       );
     default:
+      if (meta?.is_snippet) {
+        return (
+          <SnippetCard
+            title={(meta.snippet_title as string) || "Untitled snippet"}
+            content={message.content}
+            lineCount={(meta.line_count as number) || message.content.split("\n").length}
+          />
+        );
+      }
       if (message.sender?.is_agent) {
         return <AgentTextContent message={message} memberNames={memberNames} />;
       }
@@ -149,8 +159,10 @@ function HeartButton({
   );
 }
 
-function isImageMessage(message: MessageWithSender): boolean {
-  return message.content_type === "image";
+function isBubblelessMessage(message: MessageWithSender): boolean {
+  if (message.content_type === "image" || message.content_type === "file" || message.content_type === "url") return true;
+  const meta = message.metadata as Record<string, unknown> | null;
+  return !!meta?.is_snippet;
 }
 
 export function MessageItem({
@@ -162,7 +174,7 @@ export function MessageItem({
   onToggleReaction,
   memberNames,
 }: MessageItemProps) {
-  const isImage = isImageMessage(message);
+  const skipBubble = isBubblelessMessage(message);
 
   if (isCurrentUser) {
     return (
@@ -181,7 +193,7 @@ export function MessageItem({
               {formatTimestamp(message.created_at)}
             </p>
           )}
-          {isImage ? (
+          {skipBubble ? (
             <div className="flex justify-end">
               <MessageContent message={message} memberNames={memberNames} />
             </div>
@@ -237,7 +249,7 @@ export function MessageItem({
             </span>
           </div>
         )}
-        {isImage ? (
+        {skipBubble ? (
           <MessageContent message={message} memberNames={memberNames} />
         ) : (
           <div className="bg-neutral-100 rounded-2xl rounded-bl-sm px-4 py-2.5">

@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { toast, Toaster } from "sonner";
 import { PresenceToast } from "@/components/ui/presence-toast";
 import { formatRelativeTime } from "@/lib/session-utils";
 import type { KickedSession, User } from "@/types/database";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Sidebar } from "@/components/sidebar/sidebar";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { useSupabasePresence } from "@/hooks/use-supabase-presence";
@@ -26,6 +26,7 @@ import { useWorkspaceUnread } from "@/hooks/use-workspace-unread";
 
 function ChatLayoutContent({ children, currentUser, onRefreshUser }: { children: React.ReactNode; currentUser: User; onRefreshUser: () => void }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { workspaces, activeWorkspace, switchWorkspace, loading: workspaceLoading } = useWorkspaceContext();
   const { onlineUsers, newlyOnlineUsers, clearNewlyOnline, markUserOnline } = useSupabasePresence(currentUser, activeWorkspace?.id ?? null);
   const { conversations } = useConversations(activeWorkspace?.id ?? null);
@@ -33,10 +34,36 @@ function ChatLayoutContent({ children, currentUser, onRefreshUser }: { children:
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const { isOpen, close } = useMobileSidebar();
   const { unreadByWorkspace } = useWorkspaceUnread(activeWorkspace?.id ?? null);
+  const previousWorkspaceId = useRef<string | null>(activeWorkspace?.id ?? null);
+  const pendingWorkspaceSwitch = useRef(false);
 
   const { triggerTestNotification } = useNotificationSound(currentUser, conversations);
 
   const activeConversationId = pathname.split("/chat/")[1];
+
+  // Detect workspace switch
+  useEffect(() => {
+    if (activeWorkspace?.id && activeWorkspace.id !== previousWorkspaceId.current) {
+      if (previousWorkspaceId.current !== null) {
+        pendingWorkspaceSwitch.current = true;
+      }
+      previousWorkspaceId.current = activeWorkspace.id;
+    }
+  }, [activeWorkspace?.id]);
+
+  // Navigate to most recent conversation after workspace switch
+  useEffect(() => {
+    if (!pendingWorkspaceSwitch.current || conversations.length === 0) return;
+    pendingWorkspaceSwitch.current = false;
+
+    const mostRecent = conversations.reduce((latest, conv) => {
+      const latestTime = latest.last_message?.created_at ?? latest.updated_at;
+      const convTime = conv.last_message?.created_at ?? conv.updated_at;
+      return convTime > latestTime ? conv : latest;
+    }, conversations[0]);
+
+    router.push(`/chat/${mostRecent.id}`);
+  }, [conversations, router]);
 
   useEffect(() => {
     const kickedRaw = sessionStorage.getItem("kicked_session");
@@ -132,7 +159,7 @@ function ChatLayoutContent({ children, currentUser, onRefreshUser }: { children:
       )}
 
       {/* Workspace Rail - always visible on desktop */}
-      <div className="hidden md:flex w-[60px] shrink-0 bg-neutral-800">
+      <div className="hidden md:flex w-[60px] shrink-0 bg-gradient-to-b from-primary-950 via-primary-900 to-primary-950">
         <WorkspaceRail
           workspaces={workspaces}
           activeWorkspaceId={activeWorkspace?.id ?? null}
@@ -153,7 +180,7 @@ function ChatLayoutContent({ children, currentUser, onRefreshUser }: { children:
         `}
       >
         {/* Mobile workspace strip */}
-        <div className="md:hidden flex items-center gap-1 px-2 py-1.5 bg-neutral-800 overflow-x-auto">
+        <div className="md:hidden flex items-center gap-1 px-2 py-1.5 bg-gradient-to-r from-[#1e1b4b] to-[#4c1d95] overflow-x-auto">
           {workspaces.map((workspace) => {
             const unreadCount = unreadByWorkspace[workspace.id] ?? 0;
             return (
@@ -212,7 +239,20 @@ function ChatLayoutContent({ children, currentUser, onRefreshUser }: { children:
       <Toaster
         position="top-right"
         visibleToasts={3}
-        toastOptions={{ duration: 3000, unstyled: true }}
+        toastOptions={{
+          duration: 3000,
+          unstyled: true,
+          classNames: {
+            toast: "flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg border backdrop-blur-sm w-[360px] pointer-events-auto",
+            title: "text-sm font-medium",
+            description: "text-xs opacity-80",
+            error: "bg-red-50 border-red-200 text-red-800",
+            success: "bg-emerald-50 border-emerald-200 text-emerald-800",
+            info: "bg-sky-50 border-sky-200 text-sky-800",
+            warning: "bg-amber-50 border-amber-200 text-amber-800",
+            default: "bg-white border-neutral-200 text-neutral-800",
+          },
+        }}
       />
     </div>
   );
@@ -223,7 +263,7 @@ function ChatLayoutInner({ children }: { children: React.ReactNode }) {
   const [splashDone, setSplashDone] = useState(false);
 
   useEffect(() => {
-    const timer = setTimeout(() => setSplashDone(true), 3000);
+    const timer = setTimeout(() => setSplashDone(true), 2000);
     return () => clearTimeout(timer);
   }, []);
 

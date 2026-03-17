@@ -3,17 +3,27 @@
 import { useState } from "react";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
-const ALLOWED_TYPES = [
-  "image/jpeg",
-  "image/png",
-  "image/gif",
-  "image/webp",
-  "application/pdf",
-  "text/plain",
-  "text/markdown",
-  "text/csv",
+export const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
+
+const BLOCKED_EXTENSIONS = [
+  ".exe", ".bat", ".cmd", ".com", ".msi", ".scr", ".pif",
+  ".sh", ".bash", ".csh", ".ksh", ".zsh",
+  ".app", ".action", ".command",
+  ".ps1", ".psm1", ".psd1",
+  ".vbs", ".vbe", ".js", ".jse", ".wsf", ".wsh",
+  ".dll", ".sys", ".drv",
+  ".bin", ".elf", ".deb", ".rpm", ".dmg", ".iso",
 ];
+
+export function isFileBlocked(file: File): string | null {
+  const fileName = file.name.toLowerCase();
+  const blocked = BLOCKED_EXTENSIONS.find((ext) => fileName.endsWith(ext));
+  if (blocked) return `Executable files (${blocked}) are not allowed`;
+  if (file.type.startsWith("application/x-msdownload") || file.type.startsWith("application/x-executable")) {
+    return "Executable files are not allowed";
+  }
+  return null;
+}
 
 interface UploadResult {
   fileUrl: string;
@@ -33,11 +43,12 @@ export function useFileUpload() {
     messageId: string
   ): Promise<UploadResult> {
     if (file.size > MAX_FILE_SIZE) {
-      throw new Error("File size exceeds 5MB limit");
+      throw new Error("File size exceeds 20MB limit");
     }
 
-    if (!ALLOWED_TYPES.includes(file.type)) {
-      throw new Error(`File type ${file.type} is not supported`);
+    const blockedReason = isFileBlocked(file);
+    if (blockedReason) {
+      throw new Error(blockedReason);
     }
 
     setUploading(true);
