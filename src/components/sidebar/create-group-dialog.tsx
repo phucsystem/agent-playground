@@ -11,12 +11,14 @@ interface CreateGroupDialogProps {
   currentUserId: string;
   workspaceId: string;
   onClose: () => void;
+  onGroupCreated?: () => void;
 }
 
 export function CreateGroupDialog({
   currentUserId,
   workspaceId,
   onClose,
+  onGroupCreated,
 }: CreateGroupDialogProps) {
   const router = useRouter();
   const [groupName, setGroupName] = useState("");
@@ -68,6 +70,7 @@ export function CreateGroupDialog({
       return;
     }
 
+    onGroupCreated?.();
     onClose();
     router.push(`/chat/${conversationId}`);
   }

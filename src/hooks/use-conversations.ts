@@ -41,26 +41,37 @@ export function useConversations(workspaceId: string | null) {
       )
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: "conversations" },
+        { event: "INSERT", schema: "public", table: "conversations", filter: `workspace_id=eq.${workspaceId}` },
         () => {
           fetchConversations();
         }
       )
       .on(
         "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "conversations" },
+        { event: "UPDATE", schema: "public", table: "conversations", filter: `workspace_id=eq.${workspaceId}` },
         () => {
           fetchConversations();
         }
       )
       .on(
         "postgres_changes",
-        { event: "DELETE", schema: "public", table: "conversations" },
+        { event: "DELETE", schema: "public", table: "conversations", filter: `workspace_id=eq.${workspaceId}` },
         () => {
           fetchConversations();
         }
       )
-      .subscribe();
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "conversation_members" },
+        () => {
+          fetchConversations();
+        }
+      )
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") {
+          fetchConversations();
+        }
+      });
 
     return () => {
       channel.unsubscribe();

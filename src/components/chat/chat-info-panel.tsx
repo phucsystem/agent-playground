@@ -44,6 +44,7 @@ export function ChatInfoPanel({
   const [adding, setAdding] = useState<string | null>(null);
 
   const [deleting, setDeleting] = useState(false);
+  const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
   const [editedName, setEditedName] = useState(conversation.name || "");
   const [sharedFiles, setSharedFiles] = useState<SharedFile[]>([]);
@@ -137,10 +138,18 @@ export function ChatInfoPanel({
   }
 
   async function handleToggleArchive() {
+    if (!conversation.is_archived) {
+      setShowArchiveConfirm(true);
+      return;
+    }
+    await doArchive(false);
+  }
+
+  async function doArchive(archive: boolean) {
     const supabase = createBrowserSupabaseClient();
     await supabase
       .from("conversations")
-      .update({ is_archived: !conversation.is_archived })
+      .update({ is_archived: archive })
       .eq("id", conversation.id);
     onConversationUpdate?.();
   }
@@ -193,6 +202,34 @@ export function ChatInfoPanel({
 
   return (
     <>
+      {showArchiveConfirm && (
+        <div className="fixed inset-0 z-[200] bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 flex flex-col gap-4">
+            <h2 className="text-base font-semibold text-neutral-800">Archive group?</h2>
+            <p className="text-sm text-neutral-500">
+              Members won&apos;t be able to send new messages. The group will be moved to the archived section.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setShowArchiveConfirm(false)}
+                className="px-4 py-2 text-sm font-medium text-neutral-600 hover:bg-neutral-100 rounded-lg transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  setShowArchiveConfirm(false);
+                  await doArchive(true);
+                }}
+                className="px-4 py-2 text-sm font-semibold text-white bg-amber-500 hover:bg-amber-600 rounded-lg transition"
+              >
+                Archive
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Mobile backdrop */}
       <div
         className="fixed inset-0 bg-black/40 z-40 md:hidden"
@@ -393,7 +430,7 @@ export function ChatInfoPanel({
         </div>
       )}
 
-      {isSystemAdmin && (
+      {isSystemAdmin && !isGroup && (
         <div className="px-5 py-4 border-t border-neutral-100">
           <button
             onClick={handleDeleteConversation}

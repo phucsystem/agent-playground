@@ -41,8 +41,18 @@ function estimateMessageHeight(message: MessageWithSender): number {
   if (message.content_type === "url") return 120;
   const meta = message.metadata as Record<string, unknown> | null;
   if (meta?.is_snippet) return 200;
-  const lineCount = Math.ceil(message.content.length / 60);
-  return Math.max(60, lineCount * 24 + 48);
+
+  const content = message.content;
+  const codeBlocks = content.match(/```[\s\S]*?```/g) ?? [];
+  let codeHeight = 0;
+  for (const block of codeBlocks) {
+    codeHeight += Math.max(60, block.split("\n").length * 20 + 40);
+  }
+  const textOnly = content.replace(/```[\s\S]*?```/g, "");
+  const wrappedLines = textOnly.split("\n").reduce((sum, line) => {
+    return sum + Math.max(1, Math.ceil(line.length / 50));
+  }, 0);
+  return Math.max(60, codeHeight + wrappedLines * 22 + 48);
 }
 
 export function MessageList({
@@ -64,6 +74,8 @@ export function MessageList({
   const isAtBottomRef = useRef(true);
   const prevMessageCount = useRef(0);
   const prevConversationId = useRef(conversationId);
+  const prevTotalSize = useRef(0);
+  const isInitialLoad = useRef(true);
 
   const virtualizer = useVirtualizer({
     count: messages.length,
@@ -112,6 +124,22 @@ export function MessageList({
     }
     prevMessageCount.current = messages.length;
   }, [messages.length, virtualizer]);
+
+  // Re-scroll to bottom when measurement updates change total size during initial load
+  useEffect(() => {
+    const totalSize = virtualizer.getTotalSize();
+    if (
+      isInitialLoad.current &&
+      prevTotalSize.current > 0 &&
+      prevTotalSize.current !== totalSize &&
+      isAtBottomRef.current &&
+      messages.length > 0
+    ) {
+      virtualizer.scrollToIndex(messages.length - 1, { align: "end", behavior: "auto" });
+    }
+    prevTotalSize.current = totalSize;
+    if (visible) isInitialLoad.current = false;
+  }, [virtualizer.getTotalSize(), visible, messages.length, virtualizer]);
 
   function handleScroll() {
     const container = parentRef.current;
