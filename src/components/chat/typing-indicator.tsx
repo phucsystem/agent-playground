@@ -15,11 +15,23 @@ function BouncingDots() {
   );
 }
 
+function AgentThinkingDots() {
+  return (
+    <div className="flex gap-[3px]">
+      <span className="w-1.5 h-1.5 bg-primary-400 rounded-full animate-bounce [animation-delay:0s]" />
+      <span className="w-1.5 h-1.5 bg-violet-400 rounded-full animate-bounce [animation-delay:0.2s]" />
+      <span className="w-1.5 h-1.5 bg-primary-400 rounded-full animate-bounce [animation-delay:0.4s]" />
+    </div>
+  );
+}
+
 export function TypingIndicator({ typingUsers, agentThinking }: TypingIndicatorProps) {
   if (typingUsers.length === 0 && !agentThinking) return null;
 
+  const isAgentOnly = agentThinking && typingUsers.length === 0;
+
   let text: string;
-  if (agentThinking && typingUsers.length === 0) {
+  if (isAgentOnly) {
     text = "Agent is thinking";
   } else if (typingUsers.length === 1) {
     text = `${typingUsers[0].displayName} is typing`;
@@ -32,8 +44,8 @@ export function TypingIndicator({ typingUsers, agentThinking }: TypingIndicatorP
   }
 
   return (
-    <div className="flex items-center gap-2 px-2 py-1.5 text-xs text-neutral-500">
-      <BouncingDots />
+    <div className={`flex items-center gap-2 px-2 py-1.5 text-xs ${isAgentOnly ? "text-primary-500" : "text-neutral-500"}`}>
+      {isAgentOnly ? <AgentThinkingDots /> : <BouncingDots />}
       {text}...
     </div>
   );

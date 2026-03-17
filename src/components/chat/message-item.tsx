@@ -7,7 +7,7 @@ import { ImagePreview } from "./image-preview";
 import { UrlPreview } from "./url-preview";
 import { MessageReactions } from "./message-reactions";
 import type { MessageWithSender } from "@/types/database";
-import { Heart } from "lucide-react";
+import { Heart, Sparkles } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import type { ReactionGroup } from "@/hooks/use-reactions";
 import { useTypewriter } from "@/hooks/use-typewriter";
@@ -229,7 +229,10 @@ export function MessageItem({
             >
               {message.sender.display_name}
               {message.sender.is_agent && (
-                <span className="ml-1 text-[10px] font-semibold text-primary-400 uppercase">[agent]</span>
+                <span className="ml-1.5 inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-primary-50 text-primary-600 text-[10px] font-semibold uppercase rounded-full border border-primary-200">
+                  <Sparkles className="w-2.5 h-2.5" />
+                  AI
+                </span>
               )}
             </span>
             <span className="text-[11px] text-neutral-400">
@@ -240,8 +243,16 @@ export function MessageItem({
         {isImage ? (
           <MessageContent message={message} memberNames={memberNames} />
         ) : (
-          <div className="bg-neutral-100 rounded-2xl rounded-bl-sm px-4 py-2.5">
-            <div className="text-[15px] leading-relaxed text-neutral-700 [&_.mention-tag]:bg-primary-100 [&_.mention-tag]:text-primary-700">
+          <div className={`rounded-2xl rounded-bl-sm px-4 py-2.5 ${
+            message.sender?.is_agent
+              ? "bg-gradient-to-br from-primary-50 via-white to-violet-50 border border-primary-100 border-l-[3px] border-l-primary-400 shadow-sm shadow-primary-100/50"
+              : "bg-neutral-100"
+          }`}>
+            <div className={`text-[15px] leading-relaxed ${
+              message.sender?.is_agent
+                ? "text-neutral-700 [&_.mention-tag]:bg-primary-100 [&_.mention-tag]:text-primary-700 [&_pre]:bg-neutral-900 [&_pre]:border-primary-400 [&_pre_code]:text-primary-200 [&_a]:text-primary-600 [&_a]:font-medium"
+                : "text-neutral-700 [&_.mention-tag]:bg-primary-100 [&_.mention-tag]:text-primary-700"
+            }`}>
               <MessageContent message={message} memberNames={memberNames} />
             </div>
           </div>
