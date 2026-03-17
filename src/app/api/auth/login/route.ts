@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const email = user.email;
+  const authEmail = `${user.id}@internal.local`;
   const serverSecret = process.env.SUPABASE_SERVICE_ROLE_KEY!;
   const password = createHash("sha256")
     .update(`${user.id}:${serverSecret}`)
@@ -117,7 +117,7 @@ export async function POST(request: NextRequest) {
     const { error: createError } =
       await getSupabaseAdmin().auth.admin.createUser({
         id: user.id,
-        email,
+        email: authEmail,
         password,
         email_confirm: true,
         user_metadata: {
@@ -137,11 +137,11 @@ export async function POST(request: NextRequest) {
     }
   } else {
     await getSupabaseAdmin().auth.admin.updateUserById(existingAuthUser.user.id, {
+      email: authEmail,
       password,
     });
   }
 
-  // Fix H1: Use ephemeral client for signInWithPassword to avoid polluting admin singleton
   const ephemeralClient = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -149,7 +149,7 @@ export async function POST(request: NextRequest) {
 
   const { data: signInData, error: signInError } =
     await ephemeralClient.auth.signInWithPassword({
-      email,
+      email: authEmail,
       password,
     });
 

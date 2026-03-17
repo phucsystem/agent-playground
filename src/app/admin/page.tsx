@@ -260,14 +260,14 @@ export default function AdminPage() {
     const isAgent = inviteType === "agent";
 
     const token = generateToken();
-    const shortId = token.slice(0, 8);
+    const safeId = crypto.randomUUID().slice(0, 8);
     const supabase = createBrowserSupabaseClient();
 
     const displayName = inviteName.trim() || (isAgent ? "New Agent" : "New User");
     const { error } = await supabase.from("users").insert({
-      email: `invite-${shortId}@placeholder.local`,
+      email: `invite-${safeId}@placeholder.local`,
       display_name: displayName,
-      avatar_url: isAgent ? `https://api.dicebear.com/9.x/${["bottts", "bottts-neutral", "shapes", "rings", "glass", "identicon"][Math.floor(Math.random() * 6)]}/svg?seed=${shortId}` : null,
+      avatar_url: isAgent ? `https://api.dicebear.com/9.x/${["bottts", "bottts-neutral", "shapes", "rings", "glass", "identicon"][Math.floor(Math.random() * 6)]}/svg?seed=${safeId}` : null,
       token,
       role: isAgent ? "agent" : "user",
       is_agent: isAgent,
