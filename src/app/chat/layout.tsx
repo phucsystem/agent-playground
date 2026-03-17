@@ -223,7 +223,7 @@ function ChatLayoutInner({ children }: { children: React.ReactNode }) {
   const [splashDone, setSplashDone] = useState(false);
 
   useEffect(() => {
-    const timer = setTimeout(() => setSplashDone(true), 3000);
+    const timer = setTimeout(() => setSplashDone(true), 2000);
     return () => clearTimeout(timer);
   }, []);
 
