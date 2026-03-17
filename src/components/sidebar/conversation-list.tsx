@@ -7,7 +7,8 @@ import { Hash, Archive, Pin, GripVertical } from "lucide-react";
 import {
   DndContext,
   closestCenter,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   useSensor,
   useSensors,
   type DragEndEvent,
@@ -103,7 +104,10 @@ function SortableSection({
   onReorder,
   getAgentHealthStatus,
 }: SortableSectionProps) {
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+  const sensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } })
+  );
 
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
@@ -118,11 +122,8 @@ function SortableSection({
 
   return (
     <>
-      {pinned.map((conv, index) => (
+      {pinned.map((conv) => (
         <div key={conv.id}>
-          {index === 0 && unpinned.length > 0 && (
-            <div className="mx-2 my-1 border-t border-neutral-200" role="separator" />
-          )}
           <ConversationItem
             conversation={conv}
             isActive={conv.id === activeConversationId}
@@ -367,7 +368,7 @@ function ConversationItem({
   const displayName = getDisplayName(conversation);
 
   return (
-    <div className="relative group/item flex items-center">
+    <div className="relative group/item flex items-center min-w-0 overflow-hidden">
       {isDraggable && (
         <div
           {...dragHandleProps}
@@ -378,7 +379,7 @@ function ConversationItem({
       )}
       <Link
         href={`/chat/${conversation.id}`}
-        className={`flex-1 flex items-center gap-2.5 px-2 py-1.5 rounded-lg transition cursor-pointer ${
+        className={`flex-1 min-w-0 flex items-center gap-2.5 px-2 py-1.5 rounded-lg transition cursor-pointer ${
           isDraggable ? "pl-4" : ""
         } ${
           isActive

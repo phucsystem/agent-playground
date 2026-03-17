@@ -9,7 +9,6 @@ import { usePathname, useRouter } from "next/navigation";
 import { Sidebar } from "@/components/sidebar/sidebar";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { useSupabasePresence } from "@/hooks/use-supabase-presence";
-import { useConversations } from "@/hooks/use-conversations";
 import { MobileSidebarProvider, useMobileSidebar } from "@/hooks/use-mobile-sidebar";
 import { useAgentHealth } from "@/hooks/use-agent-health";
 import { AgentHealthContext } from "@/hooks/use-agent-health-context";
@@ -18,18 +17,28 @@ import { CreateGroupDialog } from "@/components/sidebar/create-group-dialog";
 import { useNotificationSound } from "@/hooks/use-notification-sound";
 import { NotificationContext } from "@/hooks/use-notification-context";
 import { WorkspaceProvider, useWorkspaceContext } from "@/contexts/workspace-context";
+import { ConversationsProvider, useConversationsContext } from "@/contexts/conversations-context";
 import { PresenceProvider } from "@/contexts/presence-context";
 import { WorkspaceRail } from "@/components/sidebar/workspace-rail";
 import { WorkspaceAvatar } from "@/components/ui/workspace-avatar";
 import { FlipLoader } from "@/components/ui/flip-loader";
 import { useWorkspaceUnread } from "@/hooks/use-workspace-unread";
 
+function ConversationsProviderWrapper({ children }: { children: React.ReactNode }) {
+  const { activeWorkspace } = useWorkspaceContext();
+  return (
+    <ConversationsProvider key={activeWorkspace?.id ?? "none"} workspaceId={activeWorkspace?.id ?? null}>
+      {children}
+    </ConversationsProvider>
+  );
+}
+
 function ChatLayoutContent({ children, currentUser, onRefreshUser }: { children: React.ReactNode; currentUser: User; onRefreshUser: () => void }) {
   const pathname = usePathname();
   const router = useRouter();
   const { workspaces, activeWorkspace, switchWorkspace, loading: workspaceLoading } = useWorkspaceContext();
   const { onlineUsers, newlyOnlineUsers, clearNewlyOnline, markUserOnline } = useSupabasePresence(currentUser, activeWorkspace?.id ?? null);
-  const { conversations } = useConversations(activeWorkspace?.id ?? null);
+  const { conversations, refetch: refetchConversations } = useConversationsContext();
   const { getStatus: getAgentHealthStatus, transitions: healthTransitions, clearTransitions: clearHealthTransitions, markActive } = useAgentHealth();
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const { isOpen, close } = useMobileSidebar();
@@ -176,7 +185,7 @@ function ChatLayoutContent({ children, currentUser, onRefreshUser }: { children:
           w-[260px]
           transition-transform duration-300 ease-in-out
           ${isOpen ? "translate-x-0" : "-translate-x-full"}
-          md:translate-x-0 md:relative md:z-auto
+          md:translate-x-0 md:relative md:z-auto md:shrink-0
         `}
       >
         {/* Mobile workspace strip */}
@@ -233,6 +242,7 @@ function ChatLayoutContent({ children, currentUser, onRefreshUser }: { children:
           currentUserId={currentUser.id}
           workspaceId={activeWorkspace.id}
           onClose={() => setShowCreateGroup(false)}
+          onGroupCreated={refetchConversations}
         />
       )}
 
@@ -285,7 +295,9 @@ function ChatLayoutInner({ children }: { children: React.ReactNode }) {
 
   return (
     <WorkspaceProvider userId={currentUser.id}>
-      <ChatLayoutContent currentUser={currentUser} onRefreshUser={refreshUser}>{children}</ChatLayoutContent>
+      <ConversationsProviderWrapper>
+        <ChatLayoutContent currentUser={currentUser} onRefreshUser={refreshUser}>{children}</ChatLayoutContent>
+      </ConversationsProviderWrapper>
     </WorkspaceProvider>
   );
 }

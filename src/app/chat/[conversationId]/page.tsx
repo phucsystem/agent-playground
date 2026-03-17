@@ -8,13 +8,13 @@ import { ChatInput } from "@/components/chat/chat-input";
 import { ChatInfoPanel } from "@/components/chat/chat-info-panel";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { useRealtimeMessages } from "@/hooks/use-realtime-messages";
-import { useConversations } from "@/hooks/use-conversations";
+import { useConversationsContext } from "@/contexts/conversations-context";
 import { useTypingIndicator } from "@/hooks/use-typing-indicator";
 import { useReactions } from "@/hooks/use-reactions";
 import { useAgentThinking } from "@/hooks/use-agent-thinking";
 import { useConversationMembers } from "@/hooks/use-conversation-members";
 import { useAgentHealthContext } from "@/hooks/use-agent-health-context";
-import { useWorkspaceContext } from "@/contexts/workspace-context";
+
 import { usePresenceContext } from "@/contexts/presence-context";
 import { Loader2 } from "lucide-react";
 
@@ -23,11 +23,11 @@ export default function ConversationPage() {
   const conversationId = params.conversationId as string;
 
   const { currentUser } = useCurrentUser();
-  const { activeWorkspace } = useWorkspaceContext();
+
   const { onlineUsers, onlineUserIds } = usePresenceContext();
   const { messages, loading, hasMore, loadMore, markAsRead, addOptimisticMessage } =
     useRealtimeMessages(conversationId);
-  const { conversations, refetch: refetchConversations } = useConversations(activeWorkspace?.id ?? null);
+  const { conversations, refetch: refetchConversations } = useConversationsContext();
   const [showInfo, setShowInfo] = useState(false);
 
   const { typingUsers, sendTyping } = useTypingIndicator(
@@ -68,8 +68,11 @@ export default function ConversationPage() {
     : "Type a message...";
 
   useEffect(() => {
-    markAsRead();
-  }, [markAsRead, messages.length]);
+    const lastMessage = messages[messages.length - 1];
+    if (!lastMessage || lastMessage.sender_id !== currentUser?.id) {
+      markAsRead();
+    }
+  }, [markAsRead, messages.length, currentUser?.id]);
 
   useEffect(() => {
     const messageIds = messages.map((message) => message.id);

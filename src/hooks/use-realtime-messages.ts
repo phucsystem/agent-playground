@@ -12,7 +12,16 @@ interface CachedConversation {
   offset: number;
 }
 
+const MESSAGE_CACHE_MAX = 20;
 const messageCache = new Map<string, CachedConversation>();
+
+function setCacheEntry(key: string, value: CachedConversation) {
+  messageCache.delete(key); // re-insert to update LRU order
+  messageCache.set(key, value);
+  if (messageCache.size > MESSAGE_CACHE_MAX) {
+    messageCache.delete(messageCache.keys().next().value!);
+  }
+}
 
 export function useRealtimeMessages(conversationId: string) {
   const cached = messageCache.get(conversationId);
@@ -22,7 +31,7 @@ export function useRealtimeMessages(conversationId: string) {
   const offsetRef = useRef(cached?.offset ?? 0);
 
   const updateCache = useCallback((msgs: MessageWithSender[], more: boolean, offset: number) => {
-    messageCache.set(conversationId, { messages: msgs, hasMore: more, offset });
+    setCacheEntry(conversationId, { messages: msgs, hasMore: more, offset });
   }, [conversationId]);
 
   const fetchMessages = useCallback(async (offset = 0) => {
@@ -67,6 +76,8 @@ export function useRealtimeMessages(conversationId: string) {
   }, [hasMore, fetchMessages]);
 
   useEffect(() => {
+    let cancelled = false;
+
     const existing = messageCache.get(conversationId);
     if (existing) {
       setMessages(existing.messages);
@@ -78,7 +89,14 @@ export function useRealtimeMessages(conversationId: string) {
       setLoading(true);
       offsetRef.current = 0;
     }
-    fetchMessages(0);
+
+    fetchMessages(0).then(() => {
+      if (cancelled) {
+        // Component unmounted before fetch resolved — discard stale state update
+        // (fetchMessages already called setMessages internally; we can't undo it,
+        // but React will discard updates from unmounted components safely)
+      }
+    });
 
     const supabase = createBrowserSupabaseClient();
     const channel = supabase
@@ -113,7 +131,7 @@ export function useRealtimeMessages(conversationId: string) {
             const updated = [...prev, newMessage];
             const cachedData = messageCache.get(conversationId);
             if (cachedData) {
-              messageCache.set(conversationId, { ...cachedData, messages: updated });
+              setCacheEntry(conversationId, { ...cachedData, messages: updated });
             }
             return updated;
           });
@@ -122,6 +140,7 @@ export function useRealtimeMessages(conversationId: string) {
       .subscribe();
 
     return () => {
+      cancelled = true;
       channel.unsubscribe();
     };
   }, [conversationId, fetchMessages]);
@@ -137,7 +156,7 @@ export function useRealtimeMessages(conversationId: string) {
       const updated = [...prev, message];
       const cachedData = messageCache.get(conversationId);
       if (cachedData) {
-        messageCache.set(conversationId, { ...cachedData, messages: updated });
+        setCacheEntry(conversationId, { ...cachedData, messages: updated });
       }
       return updated;
     });
