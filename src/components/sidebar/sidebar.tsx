@@ -7,6 +7,7 @@ import { AllUsers } from "./all-users";
 import { ConversationList } from "./conversation-list";
 import { Settings, X } from "lucide-react";
 import Link from "next/link";
+import packageJson from "../../../package.json";
 import { useMobileSidebar } from "@/hooks/use-mobile-sidebar";
 import { useWorkspaceContext } from "@/contexts/workspace-context";
 import type { User, ConversationWithDetails } from "@/types/database";
@@ -107,6 +108,7 @@ export function Sidebar({
             Manage Users
           </Link>
         )}
+        <p className="text-[10px] text-neutral-400 text-center pt-1">v{packageJson.version}</p>
       </div>
     </aside>
   );
