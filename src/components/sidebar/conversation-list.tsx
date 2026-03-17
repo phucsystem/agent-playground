@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Avatar } from "@/components/ui/avatar";
 import { Hash, Archive, Pin } from "lucide-react";
@@ -66,6 +66,19 @@ export function ConversationList({
   const { pinnedIds, togglePin, cleanStalePins } =
     usePinnedConversations(currentUserId, activeWorkspace?.id);
 
+  const archivedStorageKey = `show-archived-${currentUserId}-${activeWorkspace?.id ?? "default"}`;
+  const [showArchived, setShowArchived] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem(archivedStorageKey) === "true";
+  });
+
+  const toggleShowArchived = (event: React.MouseEvent) => {
+    event.stopPropagation();
+    const next = !showArchived;
+    setShowArchived(next);
+    localStorage.setItem(archivedStorageKey, String(next));
+  };
+
   const dmConversations = conversations.filter((conv) => conv.type === "dm");
   const activeGroups = conversations.filter(
     (conv) => conv.type === "group" && !conv.is_archived
@@ -118,8 +131,27 @@ export function ConversationList({
         </CollapsibleSection>
       )}
 
-      {sortedGroups.length > 0 && (
-        <CollapsibleSection title="Groups" count={sortedGroups.length}>
+      {(sortedGroups.length > 0 || archivedGroups.length > 0) && (
+        <CollapsibleSection
+          title="Groups"
+          count={sortedGroups.length}
+          action={
+            archivedGroups.length > 0 ? (
+              <button
+                onClick={toggleShowArchived}
+                className={`mr-1 p-1 rounded-md transition-colors cursor-pointer ${
+                  showArchived
+                    ? "text-neutral-500 bg-neutral-100"
+                    : "text-neutral-300 hover:text-neutral-500 hover:bg-neutral-100"
+                }`}
+                aria-label={showArchived ? "Hide archived groups" : "Show archived groups"}
+                title={showArchived ? "Hide archived groups" : `Show archived groups (${archivedGroups.length})`}
+              >
+                <Archive className="w-3 h-3" />
+              </button>
+            ) : undefined
+          }
+        >
           {sortedGroups.map((conv, index) => {
             const isFirstUnpinned =
               !pinnedSet.has(conv.id) &&
@@ -140,26 +172,25 @@ export function ConversationList({
               </div>
             );
           })}
-        </CollapsibleSection>
-      )}
 
-      {archivedGroups.length > 0 && (
-        <CollapsibleSection
-          title="Archived"
-          count={archivedGroups.length}
-          defaultOpen={false}
-        >
-          {archivedGroups.map((conv) => (
-            <ConversationItem
-              key={conv.id}
-              conversation={conv}
-              isActive={conv.id === activeConversationId}
-              isOnline={false}
-              isPinned={false}
-              onTogglePin={() => {}}
-              hidePin
-            />
-          ))}
+          {showArchived && archivedGroups.length > 0 && (
+            <>
+              {sortedGroups.length > 0 && (
+                <div className="mx-2 my-1 border-t border-neutral-200" role="separator" />
+              )}
+              {archivedGroups.map((conv) => (
+                <ConversationItem
+                  key={conv.id}
+                  conversation={conv}
+                  isActive={conv.id === activeConversationId}
+                  isOnline={false}
+                  isPinned={false}
+                  onTogglePin={() => {}}
+                  hidePin
+                />
+              ))}
+            </>
+          )}
         </CollapsibleSection>
       )}
     </>
