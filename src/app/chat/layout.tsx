@@ -132,7 +132,7 @@ function ChatLayoutContent({ children, currentUser, onRefreshUser }: { children:
       )}
 
       {/* Workspace Rail - always visible on desktop */}
-      <div className="hidden md:flex w-[60px] shrink-0 bg-gradient-to-b from-[#1e1b4b] via-[#312e81] to-[#4c1d95]">
+      <div className="hidden md:flex w-[60px] shrink-0 bg-gradient-to-b from-primary-950 via-primary-900 to-primary-950">
         <WorkspaceRail
           workspaces={workspaces}
           activeWorkspaceId={activeWorkspace?.id ?? null}

@@ -40,7 +40,7 @@ export function WorkspaceRail({ workspaces, activeWorkspaceId, onSwitch, isAdmin
           <div className="w-6 border-t border-neutral-600 my-1" />
           <button
             onClick={() => setShowCreate(true)}
-            className="w-10 h-10 rounded-full bg-neutral-700 text-neutral-400 hover:bg-neutral-600 hover:text-white flex items-center justify-center transition"
+            className="w-10 h-10 rounded-full bg-white/10 text-primary-300 hover:bg-white/20 hover:text-white border border-white/10 flex items-center justify-center transition"
             title="Create workspace"
           >
             <Plus className="w-5 h-5" />
@@ -87,7 +87,7 @@ function WorkspaceRailItem({
         onMouseLeave={() => setShowTooltip(false)}
         className={`relative rounded-full transition-all duration-200 cursor-pointer ${
           isActive
-            ? "ring-2 ring-primary-300 ring-offset-2 ring-offset-neutral-800"
+            ? ""
             : "hover:rounded-2xl"
         }`}
       >
@@ -101,7 +101,7 @@ function WorkspaceRailItem({
 
       {/* Active indicator bar */}
       {isActive && (
-        <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-[2px] w-1 h-5 bg-white rounded-r-full" />
+        <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-[2px] w-1.5 h-6 bg-primary-400 rounded-r-full" />
       )}
 
       {/* Fixed-position tooltip (not clipped by parent overflow) */}
