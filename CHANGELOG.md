@@ -1,3 +1,10 @@
+# [1.1.0](https://github.com/phucsystem/agent-playground/compare/v1.0.0...v1.1.0) (2026-03-17)
+
+
+### Features
+
+* allow admin to rename group conversations and fix mention sync ([#4](https://github.com/phucsystem/agent-playground/issues/4)) ([c580dc0](https://github.com/phucsystem/agent-playground/commit/c580dc095105481177c454657a53272bb6c1babe))
+
 # 1.0.0 (2026-03-17)
 
 
