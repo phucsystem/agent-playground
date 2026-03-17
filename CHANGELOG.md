@@ -1,3 +1,10 @@
+## [1.2.1](https://github.com/phucsystem/agent-playground/compare/v1.2.0...v1.2.1) (2026-03-17)
+
+
+### Bug Fixes
+
+* align chat messages to bottom of viewport ([#8](https://github.com/phucsystem/agent-playground/issues/8)) ([9af2843](https://github.com/phucsystem/agent-playground/commit/9af28432bf4b1700b854ebd302f6e7cd59d103df))
+
 # [1.2.0](https://github.com/phucsystem/agent-playground/compare/v1.1.0...v1.2.0) (2026-03-17)
 
 
