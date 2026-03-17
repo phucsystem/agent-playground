@@ -1,3 +1,10 @@
+## [1.3.1](https://github.com/phucsystem/agent-playground/compare/v1.3.0...v1.3.1) (2026-03-17)
+
+
+### Bug Fixes
+
+* sidebar realtime sync and message read fixes ([#12](https://github.com/phucsystem/agent-playground/issues/12)) ([6ee80de](https://github.com/phucsystem/agent-playground/commit/6ee80dec20cff31813e5b41c1b3ea9d59f3bc368))
+
 # [1.3.0](https://github.com/phucsystem/agent-playground/compare/v1.2.1...v1.3.0) (2026-03-17)
 
 
