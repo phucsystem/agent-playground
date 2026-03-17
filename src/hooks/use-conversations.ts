@@ -41,6 +41,20 @@ export function useConversations(workspaceId: string | null) {
       )
       .on(
         "postgres_changes",
+        { event: "INSERT", schema: "public", table: "conversations" },
+        () => {
+          fetchConversations();
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "conversations" },
+        () => {
+          fetchConversations();
+        }
+      )
+      .on(
+        "postgres_changes",
         { event: "DELETE", schema: "public", table: "conversations" },
         () => {
           fetchConversations();
