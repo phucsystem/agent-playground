@@ -58,20 +58,17 @@ export function AllUsers({ currentUserId, onlineUserIds, onClickUser }: AllUsers
           <button
             key={appUser.id}
             onClick={() => onClickUser(appUser.id)}
-            className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-neutral-200/60 transition text-left"
+            className="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-neutral-50 transition text-left cursor-pointer"
           >
             <Avatar
               displayName={appUser.display_name}
               avatarUrl={appUser.avatar_url}
               isAgent={appUser.is_agent}
               size="sm"
+              showPresence
+              isOnline={isOnline}
             />
-            <span
-              className={`w-2.5 h-2.5 rounded-full shrink-0 ${
-                isOnline ? "bg-success" : "bg-neutral-300"
-              }`}
-            />
-            <span className="text-sm text-neutral-700 truncate">
+            <span className="text-[13px] text-neutral-600 truncate">
               {appUser.display_name}
             </span>
           </button>

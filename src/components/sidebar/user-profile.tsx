@@ -52,10 +52,10 @@ export function UserProfile({ currentUser, onLogout, onAvatarSaved }: UserProfil
   const BellIcon = notificationEnabled ? Bell : BellOff;
 
   return (
-    <div className="flex items-center gap-3 p-4 border-b border-neutral-200">
+    <div className="flex items-center gap-3 px-4 py-3 border-b border-neutral-200">
       <button
         onClick={() => setShowAvatarEditor(true)}
-        className="relative group cursor-pointer shrink-0 w-10 h-10 rounded-full"
+        className="relative group cursor-pointer shrink-0 w-9 h-9 rounded-full"
         title="Change avatar"
       >
         <Avatar
@@ -64,37 +64,39 @@ export function UserProfile({ currentUser, onLogout, onAvatarSaved }: UserProfil
           size="md"
         />
         <div className="absolute inset-0 rounded-full bg-black/0 group-hover:bg-black/30 transition flex items-center justify-center">
-          <Camera className="w-4 h-4 text-white opacity-0 group-hover:opacity-100 transition" />
+          <Camera className="w-3.5 h-3.5 text-white opacity-0 group-hover:opacity-100 transition" />
         </div>
       </button>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-bold text-neutral-800 truncate">
+        <p className="text-[13px] font-semibold text-neutral-800 truncate leading-tight">
           {currentUser.display_name}
         </p>
-        <p className="text-xs text-neutral-500 flex items-center gap-1">
-          <span className="w-2 h-2 rounded-full bg-success inline-block" />
+        <p className="text-[11px] text-neutral-400 flex items-center gap-1 mt-0.5">
+          <span className="w-1.5 h-1.5 rounded-full bg-success inline-block" />
           Online
         </p>
       </div>
-      <button
-        onClick={handleToggleNotification}
-        disabled={toggling}
-        className={`p-1.5 rounded-md transition ${
-          notificationEnabled
-            ? "text-primary-500 hover:text-primary-700 hover:bg-primary-50"
-            : "text-neutral-400 hover:text-neutral-700 hover:bg-neutral-200"
-        }`}
-        title={notificationEnabled ? "Notifications on" : "Notifications off"}
-      >
-        <BellIcon className="w-4 h-4" />
-      </button>
-      <button
-        onClick={onLogout}
-        className="p-1.5 rounded-md text-neutral-400 hover:text-neutral-700 hover:bg-neutral-200 transition"
-        title="Logout"
-      >
-        <LogOut className="w-4 h-4" />
-      </button>
+      <div className="flex items-center gap-0.5">
+        <button
+          onClick={handleToggleNotification}
+          disabled={toggling}
+          className={`p-1.5 rounded-md transition cursor-pointer ${
+            notificationEnabled
+              ? "text-primary-500 hover:text-primary-700 hover:bg-primary-50"
+              : "text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100"
+          }`}
+          title={notificationEnabled ? "Notifications on" : "Notifications off"}
+        >
+          <BellIcon className="w-4 h-4" />
+        </button>
+        <button
+          onClick={onLogout}
+          className="p-1.5 rounded-md text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 transition cursor-pointer"
+          title="Logout"
+        >
+          <LogOut className="w-4 h-4" />
+        </button>
+      </div>
       {showAvatarEditor && createPortal(
         <AvatarEditorDialog
           user={currentUser}
