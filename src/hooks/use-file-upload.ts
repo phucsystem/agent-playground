@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 
-export const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+export const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
 
 const BLOCKED_EXTENSIONS = [
   ".exe", ".bat", ".cmd", ".com", ".msi", ".scr", ".pif",
@@ -43,7 +43,7 @@ export function useFileUpload() {
     messageId: string
   ): Promise<UploadResult> {
     if (file.size > MAX_FILE_SIZE) {
-      throw new Error("File size exceeds 5MB limit");
+      throw new Error("File size exceeds 20MB limit");
     }
 
     const blockedReason = isFileBlocked(file);

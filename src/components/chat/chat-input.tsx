@@ -9,7 +9,7 @@ import { GifPicker } from "./gif-picker";
 import { SnippetModal } from "./snippet-modal";
 import { MentionPicker } from "./mention-picker";
 import type { MentionCandidate } from "./mention-picker";
-import { Send, Paperclip, Loader2, X, Smile, ImageIcon, FileCode } from "lucide-react";
+import { Send, Paperclip, Loader2, X, Smile, ImageIcon, FileCode, Upload } from "lucide-react";
 import { toast } from "sonner";
 import type { ContentType, MessageWithSender } from "@/types/database";
 
@@ -44,6 +44,8 @@ export function ChatInput({
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showGifPicker, setShowGifPicker] = useState(false);
   const [showSnippetModal, setShowSnippetModal] = useState(false);
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
+  const dragCounterRef = useRef(0);
   const [snippetInitialContent, setSnippetInitialContent] = useState("");
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const [mentionIndex, setMentionIndex] = useState(0);
@@ -119,7 +121,7 @@ export function ChatInput({
   function addFiles(files: File[]) {
     const validFiles = files.filter((file) => {
       if (file.size > MAX_FILE_SIZE) {
-        toast.error(`${file.name} exceeds 5MB limit`);
+        toast.error(`${file.name} exceeds 20MB limit`);
         return false;
       }
       return true;
@@ -275,7 +277,7 @@ export function ChatInput({
     }
   }
 
-  const MAX_FILE_SIZE = 5 * 1024 * 1024;
+  const MAX_FILE_SIZE = 20 * 1024 * 1024;
 
   function handleFileSelect(event: React.ChangeEvent<HTMLInputElement>) {
     const selectedFiles = event.target.files;
@@ -291,22 +293,20 @@ export function ChatInput({
   const SNIPPET_CHAR_THRESHOLD = 500;
 
   function handlePaste(event: React.ClipboardEvent) {
-    const items = event.clipboardData?.items;
-    if (!items) return;
-
-    const pastedFiles: File[] = [];
-    for (const item of items) {
-      if (item.type.startsWith("image/")) {
-        const blob = item.getAsFile();
-        if (!blob) continue;
-        const timestamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
-        const extension = blob.type.split("/")[1] || "png";
-        pastedFiles.push(new File([blob], `paste-${timestamp}.${extension}`, { type: blob.type }));
-      }
-    }
-    if (pastedFiles.length > 0) {
+    const clipboardFiles = event.clipboardData?.files;
+    if (clipboardFiles && clipboardFiles.length > 0) {
       event.preventDefault();
-      addFiles(pastedFiles);
+      const filesArray: File[] = [];
+      for (const file of clipboardFiles) {
+        if (file.type.startsWith("image/") && !file.name) {
+          const timestamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+          const extension = file.type.split("/")[1] || "png";
+          filesArray.push(new File([file], `paste-${timestamp}.${extension}`, { type: file.type }));
+        } else {
+          filesArray.push(file);
+        }
+      }
+      addFiles(filesArray);
       return;
     }
 
@@ -346,8 +346,57 @@ export function ChatInput({
     setSending(false);
   }
 
+  function handleDragEnter(event: React.DragEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+    dragCounterRef.current++;
+    if (event.dataTransfer.types.includes("Files")) {
+      setIsDraggingOver(true);
+    }
+  }
+
+  function handleDragLeave(event: React.DragEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+    dragCounterRef.current--;
+    if (dragCounterRef.current === 0) {
+      setIsDraggingOver(false);
+    }
+  }
+
+  function handleDragOver(event: React.DragEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
+  function handleDrop(event: React.DragEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+    dragCounterRef.current = 0;
+    setIsDraggingOver(false);
+    const droppedFiles = event.dataTransfer.files;
+    if (droppedFiles && droppedFiles.length > 0) {
+      addFiles(Array.from(droppedFiles));
+    }
+  }
+
   return (
-    <div className="mx-2 sm:mx-4 md:mx-6 mb-2 md:mb-4">
+    <div
+      className="mx-2 sm:mx-4 md:mx-6 mb-2 md:mb-4 relative"
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+    >
+      {isDraggingOver && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-primary-50/90 border-2 border-dashed border-primary-400 rounded-2xl backdrop-blur-sm">
+          <div className="flex flex-col items-center gap-1.5 text-primary-600">
+            <Upload className="w-6 h-6" />
+            <span className="text-sm font-medium">Drop files here</span>
+          </div>
+        </div>
+      )}
+
       {pendingFiles.length > 0 && (
         <div className="bg-neutral-100 rounded-2xl rounded-b-none px-3 pt-3 pb-2">
           <div className="flex gap-2 overflow-x-auto">
@@ -405,7 +454,7 @@ export function ChatInput({
           type="file"
           multiple
           onChange={handleFileSelect}
-          accept="image/jpeg,image/png,image/gif,image/webp,application/pdf,text/plain,text/markdown,text/csv"
+          accept="*/*"
           className="hidden"
         />
         <button

@@ -212,7 +212,20 @@ function ChatLayoutContent({ children, currentUser, onRefreshUser }: { children:
       <Toaster
         position="top-right"
         visibleToasts={3}
-        toastOptions={{ duration: 3000, unstyled: true }}
+        toastOptions={{
+          duration: 3000,
+          unstyled: true,
+          classNames: {
+            toast: "flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg border backdrop-blur-sm w-[360px] pointer-events-auto",
+            title: "text-sm font-medium",
+            description: "text-xs opacity-80",
+            error: "bg-red-50 border-red-200 text-red-800",
+            success: "bg-emerald-50 border-emerald-200 text-emerald-800",
+            info: "bg-sky-50 border-sky-200 text-sky-800",
+            warning: "bg-amber-50 border-amber-200 text-amber-800",
+            default: "bg-white border-neutral-200 text-neutral-800",
+          },
+        }}
       />
     </div>
   );
