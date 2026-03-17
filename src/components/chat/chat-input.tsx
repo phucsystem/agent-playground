@@ -6,9 +6,10 @@ import { useFileUpload } from "@/hooks/use-file-upload";
 import { useConversationMembers } from "@/hooks/use-conversation-members";
 import { EmojiPicker } from "./emoji-picker";
 import { GifPicker } from "./gif-picker";
+import { SnippetModal } from "./snippet-modal";
 import { MentionPicker } from "./mention-picker";
 import type { MentionCandidate } from "./mention-picker";
-import { Send, Paperclip, Loader2, X, Smile, ImageIcon } from "lucide-react";
+import { Send, Paperclip, Loader2, X, Smile, ImageIcon, FileCode } from "lucide-react";
 import { toast } from "sonner";
 import type { ContentType, MessageWithSender } from "@/types/database";
 
@@ -42,6 +43,8 @@ export function ChatInput({
   const previewUrlsRef = useRef<Map<File, string>>(new Map());
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showGifPicker, setShowGifPicker] = useState(false);
+  const [showSnippetModal, setShowSnippetModal] = useState(false);
+  const [snippetInitialContent, setSnippetInitialContent] = useState("");
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const [mentionIndex, setMentionIndex] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -284,6 +287,9 @@ export function ChatInput({
     }
   }
 
+  const SNIPPET_LINE_THRESHOLD = 10;
+  const SNIPPET_CHAR_THRESHOLD = 500;
+
   function handlePaste(event: React.ClipboardEvent) {
     const items = event.clipboardData?.items;
     if (!items) return;
@@ -301,12 +307,33 @@ export function ChatInput({
     if (pastedFiles.length > 0) {
       event.preventDefault();
       addFiles(pastedFiles);
+      return;
+    }
+
+    const pastedText = event.clipboardData?.getData("text/plain") || "";
+    const lineCount = pastedText.split("\n").length;
+    if (lineCount >= SNIPPET_LINE_THRESHOLD || pastedText.length >= SNIPPET_CHAR_THRESHOLD) {
+      event.preventDefault();
+      setSnippetInitialContent(pastedText);
+      setShowSnippetModal(true);
     }
   }
 
   function handleEmojiSelect(emoji: string) {
     setContent((prev) => prev + emoji);
     textareaRef.current?.focus();
+  }
+
+  async function handleSnippetSubmit(title: string, snippetContent: string) {
+    setShowSnippetModal(false);
+    setSending(true);
+    const lineCount = snippetContent.split("\n").length;
+    await sendMessage(snippetContent, "text", {
+      is_snippet: true,
+      snippet_title: title,
+      line_count: lineCount,
+    });
+    setSending(false);
   }
 
   async function handleGifSelect(gifUrl: string) {
@@ -426,6 +453,14 @@ export function ChatInput({
               />
             )}
           </div>
+
+          <button
+            onClick={() => { setSnippetInitialContent(""); setShowSnippetModal(true); }}
+            className="p-1 text-neutral-400 hover:text-neutral-600 transition cursor-pointer"
+            title="Text snippet"
+          >
+            <FileCode className="w-5 h-5" />
+          </button>
         </div>
 
         <textarea
@@ -460,6 +495,14 @@ export function ChatInput({
           )}
         </button>
       </div>
+
+      {showSnippetModal && (
+        <SnippetModal
+          onSubmit={handleSnippetSubmit}
+          onClose={() => { setShowSnippetModal(false); setSnippetInitialContent(""); }}
+          initialContent={snippetInitialContent}
+        />
+      )}
     </div>
   );
 }

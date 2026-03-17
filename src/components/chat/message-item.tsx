@@ -5,6 +5,7 @@ import { MarkdownContent } from "./markdown-content";
 import { FileCard } from "./file-card";
 import { ImagePreview } from "./image-preview";
 import { UrlPreview } from "./url-preview";
+import { SnippetCard } from "./snippet-card";
 import { MessageReactions } from "./message-reactions";
 import type { MessageWithSender } from "@/types/database";
 import { Heart } from "lucide-react";
@@ -103,6 +104,15 @@ function MessageContent({ message, memberNames }: { message: MessageWithSender; 
         />
       );
     default:
+      if (meta?.is_snippet) {
+        return (
+          <SnippetCard
+            title={(meta.snippet_title as string) || "Untitled snippet"}
+            content={message.content}
+            lineCount={(meta.line_count as number) || message.content.split("\n").length}
+          />
+        );
+      }
       if (message.sender?.is_agent) {
         return <AgentTextContent message={message} memberNames={memberNames} />;
       }
@@ -150,7 +160,9 @@ function HeartButton({
 }
 
 function isBubblelessMessage(message: MessageWithSender): boolean {
-  return message.content_type === "image" || message.content_type === "file" || message.content_type === "url";
+  if (message.content_type === "image" || message.content_type === "file" || message.content_type === "url") return true;
+  const meta = message.metadata as Record<string, unknown> | null;
+  return !!meta?.is_snippet;
 }
 
 export function MessageItem({

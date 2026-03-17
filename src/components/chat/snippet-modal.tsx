@@ -6,11 +6,12 @@ import { X, Send, FileCode } from "lucide-react";
 interface SnippetModalProps {
   onSubmit: (title: string, content: string) => void;
   onClose: () => void;
+  initialContent?: string;
 }
 
-export function SnippetModal({ onSubmit, onClose }: SnippetModalProps) {
+export function SnippetModal({ onSubmit, onClose, initialContent = "" }: SnippetModalProps) {
   const [title, setTitle] = useState("");
-  const [snippetContent, setSnippetContent] = useState("");
+  const [snippetContent, setSnippetContent] = useState(initialContent);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
