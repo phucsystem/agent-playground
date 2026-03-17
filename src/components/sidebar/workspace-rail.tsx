@@ -13,21 +13,24 @@ interface WorkspaceRailProps {
   activeWorkspaceId: string | null;
   onSwitch: (workspaceId: string) => void;
   isAdmin: boolean;
+  unreadByWorkspace?: Record<string, number>;
 }
 
-export function WorkspaceRail({ workspaces, activeWorkspaceId, onSwitch, isAdmin }: WorkspaceRailProps) {
+export function WorkspaceRail({ workspaces, activeWorkspaceId, onSwitch, isAdmin, unreadByWorkspace = {} }: WorkspaceRailProps) {
   const [showCreate, setShowCreate] = useState(false);
 
   return (
     <div className="flex flex-col items-center w-[60px] h-full py-3 gap-2 overflow-y-auto">
       {workspaces.map((workspace) => {
         const isActive = workspace.id === activeWorkspaceId;
+        const unreadCount = unreadByWorkspace[workspace.id] ?? 0;
         return (
           <WorkspaceRailItem
             key={workspace.id}
             workspace={workspace}
             isActive={isActive}
             onSwitch={onSwitch}
+            unreadCount={unreadCount}
           />
         );
       })}
@@ -56,10 +59,12 @@ function WorkspaceRailItem({
   workspace,
   isActive,
   onSwitch,
+  unreadCount = 0,
 }: {
   workspace: Workspace;
   isActive: boolean;
   onSwitch: (workspaceId: string) => void;
+  unreadCount?: number;
 }) {
   const [showTooltip, setShowTooltip] = useState(false);
   const [tooltipPos, setTooltipPos] = useState({ top: 0, left: 0 });
@@ -80,13 +85,18 @@ function WorkspaceRailItem({
         onClick={() => onSwitch(workspace.id)}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={() => setShowTooltip(false)}
-        className={`rounded-full transition-all duration-200 ${
+        className={`relative rounded-full transition-all duration-200 cursor-pointer ${
           isActive
             ? "ring-2 ring-primary-300 ring-offset-2 ring-offset-neutral-800"
             : "hover:rounded-2xl"
         }`}
       >
         <WorkspaceAvatar workspace={workspace} size="md" />
+        {unreadCount > 0 && (
+          <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center bg-error text-white text-[10px] font-bold rounded-full px-1 shadow-sm">
+            {unreadCount > 99 ? "99+" : unreadCount}
+          </span>
+        )}
       </button>
 
       {/* Active indicator bar */}

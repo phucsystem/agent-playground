@@ -189,10 +189,10 @@ function ConversationItem({
   return (
     <Link
       href={`/chat/${conversation.id}`}
-      className={`group flex items-center gap-2.5 px-2 py-2 rounded-lg transition ${
+      className={`group flex items-center gap-2.5 px-2 py-1.5 rounded-lg transition cursor-pointer ${
         isActive
-          ? "bg-neutral-200/70 text-primary-500"
-          : "hover:bg-neutral-200/50 text-neutral-700"
+          ? "bg-neutral-100 text-primary-600"
+          : "hover:bg-neutral-50 text-neutral-700"
       }`}
     >
       {isDM && conversation.other_user ? (
@@ -210,26 +210,33 @@ function ConversationItem({
           }
         />
       ) : (
-        <div className="w-8 h-8 rounded-full bg-neutral-200 flex items-center justify-center shrink-0">
+        <div className="w-8 h-8 rounded-full bg-neutral-100 flex items-center justify-center shrink-0">
           {conversation.is_archived ? (
-            <Archive className="w-4 h-4 text-neutral-400" />
+            <Archive className="w-3.5 h-3.5 text-neutral-400" />
           ) : (
-            <Hash className="w-4 h-4 text-neutral-500" />
+            <Hash className="w-3.5 h-3.5 text-neutral-400" />
           )}
         </div>
       )}
 
       <div className="flex-1 min-w-0">
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-medium truncate">{displayName}</span>
-          {conversation.last_message && (
-            <span className="text-[10px] text-neutral-400 shrink-0 ml-1">
-              {formatTime(conversation.last_message.created_at)}
-            </span>
-          )}
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-[13px] font-medium truncate leading-tight">{displayName}</span>
+          <div className="flex items-center gap-1.5 shrink-0">
+            {conversation.last_message && (
+              <span className="text-[10px] text-neutral-400">
+                {formatTime(conversation.last_message.created_at)}
+              </span>
+            )}
+            {conversation.unread_count > 0 && (
+              <span className="min-w-[18px] h-[18px] flex items-center justify-center bg-error text-white text-[10px] font-bold rounded-full px-1">
+                {conversation.unread_count}
+              </span>
+            )}
+          </div>
         </div>
         {conversation.last_message && (
-          <p className="text-xs text-neutral-400 truncate">
+          <p className="text-[11px] text-neutral-400 truncate mt-0.5 leading-tight">
             {truncate(conversation.last_message.content, 40)}
           </p>
         )}
@@ -242,27 +249,21 @@ function ConversationItem({
             event.stopPropagation();
             onTogglePin();
           }}
-          className={`shrink-0 w-7 h-7 flex items-center justify-center rounded-md transition-all duration-200 ease-out ${
+          className={`shrink-0 w-6 h-6 flex items-center justify-center rounded-md transition-all duration-200 ease-out cursor-pointer ${
             isPinned
               ? "text-primary-500 bg-primary-50 opacity-100"
-              : "text-neutral-400 opacity-0 group-hover:opacity-100 hover:bg-neutral-200/60"
+              : "text-neutral-400 opacity-0 group-hover:opacity-100 hover:bg-neutral-100"
           } hover:text-primary-500`}
           aria-label={isPinned ? "Unpin conversation" : "Pin conversation"}
           aria-pressed={isPinned}
         >
           <Pin
-            className={`w-3.5 h-3.5 transition-transform duration-200 ease-out ${
+            className={`w-3 h-3 transition-transform duration-200 ease-out ${
               isPinned ? "-rotate-45" : ""
             }`}
             fill={isPinned ? "currentColor" : "none"}
           />
         </button>
-      )}
-
-      {conversation.unread_count > 0 && (
-        <span className="shrink-0 min-w-[18px] h-[18px] flex items-center justify-center bg-error text-white text-[10px] font-bold rounded-full px-1">
-          {conversation.unread_count}
-        </span>
       )}
     </Link>
   );

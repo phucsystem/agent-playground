@@ -19,20 +19,20 @@ export function CollapsibleSection({
   const [open, setOpen] = useState(defaultOpen);
 
   return (
-    <div className="px-3 py-1">
+    <div className="px-3 pt-3 pb-1">
       <button
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center gap-1 px-2 py-1 text-[11px] font-semibold uppercase tracking-wider text-neutral-500 hover:text-neutral-700 transition"
+        className="w-full flex items-center gap-1.5 px-1 py-1 text-[11px] font-medium uppercase tracking-wide text-neutral-400 hover:text-neutral-600 transition cursor-pointer"
       >
         <ChevronDown
-          className={`w-3 h-3 transition-transform ${open ? "" : "-rotate-90"}`}
+          className={`w-3 h-3 transition-transform duration-150 ${open ? "" : "-rotate-90"}`}
         />
         {title}
         {count !== undefined && (
-          <span className="text-neutral-400 ml-0.5">({count})</span>
+          <span className="text-neutral-300 ml-0.5 font-normal">({count})</span>
         )}
       </button>
-      {open && <div className="mt-0.5">{children}</div>}
+      {open && <div className="mt-1">{children}</div>}
     </div>
   );
 }

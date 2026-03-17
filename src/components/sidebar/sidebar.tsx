@@ -58,7 +58,7 @@ export function Sidebar({
   }
 
   return (
-    <aside className="w-full h-full bg-neutral-100 border-r border-neutral-200 flex flex-col z-50 overflow-hidden">
+    <aside className="w-full h-full bg-white border-r border-neutral-200 flex flex-col z-50 overflow-hidden">
       <div className="flex items-center">
         <div className="flex-1">
           <UserProfile currentUser={currentUser} onLogout={handleLogout} onAvatarSaved={onAvatarSaved} />
@@ -88,13 +88,13 @@ export function Sidebar({
         />
       </div>
 
-      <div className="p-3 border-t border-neutral-200 space-y-2" style={{ marginTop: "auto" }}>
+      <div className="p-3 border-t border-neutral-200 space-y-1.5">
         {currentUser.role === "admin" && (
           <button
             onClick={onCreateGroup}
-            className="w-full flex items-center justify-center gap-2 py-2 px-4 bg-primary-100 text-primary-500 text-sm font-medium rounded-lg hover:bg-primary-200 transition cursor-pointer min-h-[44px]"
+            className="w-full flex items-center justify-center gap-2 py-2 px-4 bg-primary-50 text-primary-600 text-sm font-medium rounded-lg hover:bg-primary-100 transition cursor-pointer min-h-[44px]"
           >
-            <span className="text-lg">+</span>
+            <span className="text-base leading-none">+</span>
             New Conversation
           </button>
         )}
@@ -102,7 +102,7 @@ export function Sidebar({
         {currentUser.role === "admin" && (
           <Link
             href="/admin"
-            className="w-full flex items-center justify-center gap-2 py-2 px-4 text-neutral-500 text-sm font-medium rounded-lg hover:bg-neutral-200 transition min-h-[44px]"
+            className="w-full flex items-center justify-center gap-2 py-2 px-4 text-neutral-500 text-sm font-medium rounded-lg hover:bg-neutral-100 transition min-h-[44px]"
           >
             <Settings className="w-4 h-4" />
             Manage Users

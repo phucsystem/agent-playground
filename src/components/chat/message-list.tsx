@@ -4,7 +4,8 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { MessageItem } from "./message-item";
 import { TypingIndicator } from "./typing-indicator";
-import { Loader2, ArrowDown } from "lucide-react";
+import { ArrowDown } from "lucide-react";
+import { FlipLoader } from "@/components/ui/flip-loader";
 import type { MessageWithSender } from "@/types/database";
 import type { ReactionGroup } from "@/hooks/use-reactions";
 
@@ -127,7 +128,7 @@ export function MessageList({
   if (loading && messages.length === 0) {
     return (
       <div className="flex-1 flex items-center justify-center">
-        <Loader2 className="w-6 h-6 animate-spin text-neutral-400" />
+        <FlipLoader size="lg" label="Loading messages..." />
       </div>
     );
   }

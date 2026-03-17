@@ -21,7 +21,8 @@ import { WorkspaceProvider, useWorkspaceContext } from "@/contexts/workspace-con
 import { PresenceProvider } from "@/contexts/presence-context";
 import { WorkspaceRail } from "@/components/sidebar/workspace-rail";
 import { WorkspaceAvatar } from "@/components/ui/workspace-avatar";
-import { Loader2 } from "lucide-react";
+import { FlipLoader } from "@/components/ui/flip-loader";
+import { useWorkspaceUnread } from "@/hooks/use-workspace-unread";
 
 function ChatLayoutContent({ children, currentUser, onRefreshUser }: { children: React.ReactNode; currentUser: User; onRefreshUser: () => void }) {
   const pathname = usePathname();
@@ -31,6 +32,7 @@ function ChatLayoutContent({ children, currentUser, onRefreshUser }: { children:
   const { getStatus: getAgentHealthStatus, transitions: healthTransitions, clearTransitions: clearHealthTransitions, markActive } = useAgentHealth();
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const { isOpen, close } = useMobileSidebar();
+  const { unreadByWorkspace } = useWorkspaceUnread(activeWorkspace?.id ?? null);
 
   const { triggerTestNotification } = useNotificationSound(currentUser, conversations);
 
@@ -114,7 +116,7 @@ function ChatLayoutContent({ children, currentUser, onRefreshUser }: { children:
   if (workspaceLoading) {
     return (
       <div className="min-h-dvh flex items-center justify-center">
-        <Loader2 className="w-6 h-6 animate-spin text-neutral-400" />
+        <FlipLoader size="lg" label="Loading..." />
       </div>
     );
   }
@@ -136,6 +138,7 @@ function ChatLayoutContent({ children, currentUser, onRefreshUser }: { children:
           activeWorkspaceId={activeWorkspace?.id ?? null}
           onSwitch={switchWorkspace}
           isAdmin={currentUser?.role === "admin"}
+          unreadByWorkspace={unreadByWorkspace}
         />
       </div>
 
@@ -151,20 +154,28 @@ function ChatLayoutContent({ children, currentUser, onRefreshUser }: { children:
       >
         {/* Mobile workspace strip */}
         <div className="md:hidden flex items-center gap-1 px-2 py-1.5 bg-neutral-800 overflow-x-auto">
-          {workspaces.map((workspace) => (
-            <button
-              key={workspace.id}
-              onClick={() => switchWorkspace(workspace.id)}
-              className={`shrink-0 rounded-full transition ${
-                workspace.id === activeWorkspace?.id
-                  ? "ring-2 ring-primary-300"
-                  : ""
-              }`}
-              title={workspace.name}
-            >
-              <WorkspaceAvatar workspace={workspace} size="sm" />
-            </button>
-          ))}
+          {workspaces.map((workspace) => {
+            const unreadCount = unreadByWorkspace[workspace.id] ?? 0;
+            return (
+              <button
+                key={workspace.id}
+                onClick={() => switchWorkspace(workspace.id)}
+                className={`relative shrink-0 rounded-full transition cursor-pointer ${
+                  workspace.id === activeWorkspace?.id
+                    ? "ring-2 ring-primary-300"
+                    : ""
+                }`}
+                title={workspace.name}
+              >
+                <WorkspaceAvatar workspace={workspace} size="sm" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 min-w-[14px] h-[14px] flex items-center justify-center bg-error text-white text-[8px] font-bold rounded-full px-0.5">
+                    {unreadCount > 99 ? "99+" : unreadCount}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
 
         <Sidebar
@@ -209,11 +220,17 @@ function ChatLayoutContent({ children, currentUser, onRefreshUser }: { children:
 
 function ChatLayoutInner({ children }: { children: React.ReactNode }) {
   const { currentUser, loading: userLoading, refreshUser } = useCurrentUser();
+  const [splashDone, setSplashDone] = useState(false);
 
-  if (userLoading) {
+  useEffect(() => {
+    const timer = setTimeout(() => setSplashDone(true), 3000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (userLoading || !splashDone) {
     return (
       <div className="min-h-dvh flex items-center justify-center">
-        <Loader2 className="w-6 h-6 animate-spin text-neutral-400" />
+        <FlipLoader size="lg" label="Loading..." />
       </div>
     );
   }
