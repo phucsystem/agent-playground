@@ -189,7 +189,7 @@ function ConversationItem({
   return (
     <Link
       href={`/chat/${conversation.id}`}
-      className={`group flex items-center gap-2 px-2 py-[7px] mx-1 rounded-lg transition cursor-pointer ${
+      className={`group flex items-center gap-2.5 px-2.5 py-2 rounded-lg transition cursor-pointer ${
         isActive
           ? "bg-primary-50/70 text-primary-700"
           : "hover:bg-neutral-50 text-neutral-700"
@@ -210,26 +210,26 @@ function ConversationItem({
           }
         />
       ) : (
-        <div className="w-7 h-7 rounded-full bg-neutral-100 flex items-center justify-center shrink-0">
+        <div className="w-8 h-8 rounded-full bg-neutral-100 flex items-center justify-center shrink-0">
           {conversation.is_archived ? (
-            <Archive className="w-3 h-3 text-neutral-400" />
+            <Archive className="w-3.5 h-3.5 text-neutral-400" />
           ) : (
-            <Hash className="w-3 h-3 text-neutral-400" />
+            <Hash className="w-3.5 h-3.5 text-neutral-400" />
           )}
         </div>
       )}
 
       <div className="flex-1 min-w-0">
-        <div className="flex items-center justify-between gap-1.5">
-          <span className="text-[12.5px] font-medium truncate leading-tight">{displayName}</span>
-          <div className="flex items-center gap-1 shrink-0">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-[13px] font-medium truncate leading-tight">{displayName}</span>
+          <div className="flex items-center gap-1.5 shrink-0">
             {conversation.last_message && (
               <span className="text-[10px] text-neutral-400">
                 {formatTime(conversation.last_message.created_at)}
               </span>
             )}
             {conversation.unread_count > 0 && (
-              <span className="min-w-[16px] h-[16px] flex items-center justify-center bg-primary-500 text-white text-[9px] font-bold rounded-full px-0.5">
+              <span className="min-w-[18px] h-[18px] flex items-center justify-center bg-primary-500 text-white text-[10px] font-bold rounded-full px-1">
                 {conversation.unread_count}
               </span>
             )}
@@ -249,7 +249,7 @@ function ConversationItem({
             event.stopPropagation();
             onTogglePin();
           }}
-          className={`shrink-0 w-5 h-5 flex items-center justify-center rounded transition-all duration-200 ease-out cursor-pointer ${
+          className={`shrink-0 w-6 h-6 flex items-center justify-center rounded-md transition-all duration-200 ease-out cursor-pointer ${
             isPinned
               ? "text-primary-500 bg-primary-50 opacity-100"
               : "text-neutral-400 opacity-0 group-hover:opacity-100 hover:bg-neutral-100"
@@ -258,7 +258,7 @@ function ConversationItem({
           aria-pressed={isPinned}
         >
           <Pin
-            className={`w-2.5 h-2.5 transition-transform duration-200 ease-out ${
+            className={`w-3 h-3 transition-transform duration-200 ease-out ${
               isPinned ? "-rotate-45" : ""
             }`}
             fill={isPinned ? "currentColor" : "none"}

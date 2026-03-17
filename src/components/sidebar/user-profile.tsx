@@ -61,7 +61,7 @@ export function UserProfile({ currentUser, onLogout, onAvatarSaved }: UserProfil
         <Avatar
           displayName={currentUser.display_name}
           avatarUrl={currentUser.avatar_url}
-          size="sm"
+          size="md"
         />
         <div className="absolute inset-0 rounded-full bg-black/0 group-hover:bg-black/30 transition flex items-center justify-center">
           <Camera className="w-3 h-3 text-white opacity-0 group-hover:opacity-100 transition" />
@@ -71,7 +71,7 @@ export function UserProfile({ currentUser, onLogout, onAvatarSaved }: UserProfil
         <p className="text-[13px] font-semibold text-neutral-800 truncate leading-tight">
           {currentUser.display_name}
         </p>
-        <p className="text-[10px] text-neutral-400 flex items-center gap-1 mt-0.5">
+        <p className="text-[11px] text-neutral-400 flex items-center gap-1 mt-0.5">
           <span className="w-1.5 h-1.5 rounded-full bg-success inline-block" />
           Online
         </p>
@@ -87,14 +87,14 @@ export function UserProfile({ currentUser, onLogout, onAvatarSaved }: UserProfil
           }`}
           title={notificationEnabled ? "Notifications on" : "Notifications off"}
         >
-          <BellIcon className="w-[15px] h-[15px]" />
+          <BellIcon className="w-4 h-4" />
         </button>
         <button
           onClick={onLogout}
           className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 transition cursor-pointer"
           title="Logout"
         >
-          <LogOut className="w-[15px] h-[15px]" />
+          <LogOut className="w-4 h-4" />
         </button>
       </div>
       {showAvatarEditor && createPortal(

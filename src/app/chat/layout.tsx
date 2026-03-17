@@ -132,7 +132,7 @@ function ChatLayoutContent({ children, currentUser, onRefreshUser }: { children:
       )}
 
       {/* Workspace Rail - always visible on desktop */}
-      <div className="hidden md:flex w-[52px] shrink-0 bg-neutral-800">
+      <div className="hidden md:flex w-[60px] shrink-0 bg-neutral-800">
         <WorkspaceRail
           workspaces={workspaces}
           activeWorkspaceId={activeWorkspace?.id ?? null}

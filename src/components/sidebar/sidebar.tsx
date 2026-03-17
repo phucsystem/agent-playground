@@ -1,10 +1,12 @@
 "use client";
 
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { UserProfile } from "./user-profile";
 import { AllUsers } from "./all-users";
 import { ConversationList } from "./conversation-list";
+import { SearchInput } from "./search-input";
 import { Settings, X } from "lucide-react";
 import Link from "next/link";
 import packageJson from "../../../package.json";
@@ -88,13 +90,13 @@ export function Sidebar({
         />
       </div>
 
-      <div className="p-2.5 border-t border-neutral-100 space-y-1">
+      <div className="p-3 border-t border-neutral-100 space-y-1.5">
         {currentUser.role === "admin" && (
           <button
             onClick={onCreateGroup}
-            className="w-full flex items-center justify-center gap-1.5 py-2 px-3 bg-primary-50 text-primary-600 text-[12px] font-medium rounded-lg hover:bg-primary-100 transition cursor-pointer"
+            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-primary-50 text-primary-600 text-sm font-medium rounded-lg hover:bg-primary-100 transition cursor-pointer"
           >
-            <span className="text-sm leading-none">+</span>
+            <span className="text-base leading-none">+</span>
             New Conversation
           </button>
         )}
@@ -102,13 +104,13 @@ export function Sidebar({
         {currentUser.role === "admin" && (
           <Link
             href="/admin"
-            className="w-full flex items-center justify-center gap-1.5 py-1.5 px-3 text-neutral-400 text-[12px] font-medium rounded-lg hover:bg-neutral-50 hover:text-neutral-600 transition"
+            className="w-full flex items-center justify-center gap-2 py-2 px-4 text-neutral-500 text-sm font-medium rounded-lg hover:bg-neutral-100 transition"
           >
-            <Settings className="w-3.5 h-3.5" />
+            <Settings className="w-4 h-4" />
             Manage Users
           </Link>
         )}
-        <p className="text-[9px] text-neutral-300 text-center pt-0.5">v{packageJson.version}</p>
+        <p className="text-[10px] text-neutral-400 text-center pt-1">v{packageJson.version}</p>
       </div>
     </aside>
   );

@@ -58,7 +58,7 @@ export function AllUsers({ currentUserId, onlineUserIds, onClickUser }: AllUsers
           <button
             key={appUser.id}
             onClick={() => onClickUser(appUser.id)}
-            className="w-full flex items-center gap-2 px-2 py-[6px] mx-1 rounded-lg hover:bg-neutral-50 transition text-left cursor-pointer"
+            className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-neutral-50 transition text-left cursor-pointer"
           >
             <Avatar
               displayName={appUser.display_name}
@@ -68,7 +68,7 @@ export function AllUsers({ currentUserId, onlineUserIds, onClickUser }: AllUsers
               showPresence
               isOnline={isOnline}
             />
-            <span className="text-[12.5px] text-neutral-600 truncate">
+            <span className="text-[13px] text-neutral-600 truncate">
               {appUser.display_name}
             </span>
           </button>
