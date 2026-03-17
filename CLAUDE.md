@@ -172,6 +172,7 @@ plans/{date}-{slug}/
 
 - **NO auto-commit**: Never commit code automatically. Always let the user commit manually.
 - **NO supabase migrations**: Never run `supabase migration` or `supabase db push` commands. The user handles all database migrations.
+- **PR title convention**: PRs are created by Claude Code. Always prefix PR titles with Angular commit convention (`feat:`, `fix:`, `perf:`, `refactor:`, `docs:`, `chore:`, `test:`). This is required for semantic-release to detect changes and create version tags automatically.
 
 ---
 
