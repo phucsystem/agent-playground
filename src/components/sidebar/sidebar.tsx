@@ -40,6 +40,35 @@ export function Sidebar({
   const { close } = useMobileSidebar();
   const { activeWorkspace } = useWorkspaceContext();
 
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const handleSearchChange = useCallback((value: string) => {
+    setSearchQuery(value);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => setDebouncedQuery(value), 150);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      const isMod = event.metaKey || event.ctrlKey;
+      if (isMod && event.key === "k") {
+        event.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
   async function handleStartDM(otherUserId: string) {
     if (!activeWorkspace) return;
     const supabase = createBrowserSupabaseClient();
@@ -74,6 +103,13 @@ export function Sidebar({
         </button>
       </div>
 
+      <SearchInput
+        ref={searchInputRef}
+        value={searchQuery}
+        onChange={handleSearchChange}
+        placeholder="Search... (⌘K)"
+      />
+
       <div className="flex-1 overflow-y-auto">
         <ConversationList
           conversations={conversations}
@@ -81,12 +117,14 @@ export function Sidebar({
           onlineUserIds={onlineUserIds}
           currentUserId={currentUser.id}
           getAgentHealthStatus={getAgentHealthStatus}
+          searchQuery={debouncedQuery}
         />
 
         <AllUsers
           currentUserId={currentUser.id}
           onlineUserIds={onlineUserIds}
           onClickUser={handleStartDM}
+          searchQuery={debouncedQuery}
         />
       </div>
 

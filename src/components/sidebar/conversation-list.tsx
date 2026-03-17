@@ -16,6 +16,7 @@ interface ConversationListProps {
   onlineUserIds: string[];
   currentUserId: string;
   getAgentHealthStatus?: (agentId: string) => AgentHealthStatus;
+  searchQuery?: string;
 }
 
 function formatTime(dateString: string) {
@@ -61,16 +62,29 @@ export function ConversationList({
   onlineUserIds,
   currentUserId,
   getAgentHealthStatus,
+  searchQuery,
 }: ConversationListProps) {
   const { activeWorkspace } = useWorkspaceContext();
   const { pinnedIds, togglePin, cleanStalePins } =
     usePinnedConversations(currentUserId, activeWorkspace?.id);
 
-  const dmConversations = conversations.filter((conv) => conv.type === "dm");
-  const activeGroups = conversations.filter(
+  const filtered = conversations.filter((conv) => {
+    if (!searchQuery) return true;
+    const query = searchQuery.toLowerCase();
+    const name = conv.type === "dm"
+      ? conv.other_user?.display_name
+      : conv.name;
+    return (
+      name?.toLowerCase().includes(query) ||
+      conv.last_message?.content?.toLowerCase().includes(query)
+    );
+  });
+
+  const dmConversations = filtered.filter((conv) => conv.type === "dm");
+  const activeGroups = filtered.filter(
     (conv) => conv.type === "group" && !conv.is_archived
   );
-  const archivedGroups = conversations.filter(
+  const archivedGroups = filtered.filter(
     (conv) => conv.type === "group" && conv.is_archived
   );
 
@@ -86,8 +100,16 @@ export function ConversationList({
 
   const pinnedSet = new Set(pinnedIds);
 
+  const hasNoResults = searchQuery && filtered.length === 0;
+
   return (
     <>
+      {hasNoResults && (
+        <p className="px-4 py-6 text-xs text-neutral-400 text-center">
+          No conversations found
+        </p>
+      )}
+
       {sortedDMs.length > 0 && (
         <CollapsibleSection title="Direct Messages" count={sortedDMs.length}>
           {sortedDMs.map((conv, index) => {
