@@ -22,9 +22,9 @@ interface WorkspaceAvatarProps {
 }
 
 const SIZE_MAP = {
-  sm: "w-8 h-8 text-xs",
-  md: "w-10 h-10 text-sm",
-  lg: "w-12 h-12 text-base",
+  sm: "w-7 h-7 text-[10px]",
+  md: "w-9 h-9 text-xs",
+  lg: "w-11 h-11 text-sm",
 };
 
 export function WorkspaceAvatar({ workspace, size = "md", className = "" }: WorkspaceAvatarProps) {

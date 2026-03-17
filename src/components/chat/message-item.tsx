@@ -214,7 +214,7 @@ export function MessageItem({
           size="sm"
         />
       ) : (
-        <div className="w-8 shrink-0" />
+        <div className="w-7 shrink-0" />
       )}
 
       <div className="max-w-[85%] md:max-w-[70%] min-w-0">

@@ -58,7 +58,7 @@ export function Sidebar({
   }
 
   return (
-    <aside className="w-full h-full bg-white border-r border-neutral-200 flex flex-col z-50 overflow-hidden">
+    <aside className="w-full h-full bg-white border-r border-neutral-100 flex flex-col z-50 overflow-hidden">
       <div className="flex items-center">
         <div className="flex-1">
           <UserProfile currentUser={currentUser} onLogout={handleLogout} onAvatarSaved={onAvatarSaved} />
@@ -88,13 +88,13 @@ export function Sidebar({
         />
       </div>
 
-      <div className="p-3 border-t border-neutral-200 space-y-1.5">
+      <div className="p-2.5 border-t border-neutral-100 space-y-1">
         {currentUser.role === "admin" && (
           <button
             onClick={onCreateGroup}
-            className="w-full flex items-center justify-center gap-2 py-2 px-4 bg-primary-50 text-primary-600 text-sm font-medium rounded-lg hover:bg-primary-100 transition cursor-pointer min-h-[44px]"
+            className="w-full flex items-center justify-center gap-1.5 py-2 px-3 bg-primary-50 text-primary-600 text-[12px] font-medium rounded-lg hover:bg-primary-100 transition cursor-pointer"
           >
-            <span className="text-base leading-none">+</span>
+            <span className="text-sm leading-none">+</span>
             New Conversation
           </button>
         )}
@@ -102,13 +102,13 @@ export function Sidebar({
         {currentUser.role === "admin" && (
           <Link
             href="/admin"
-            className="w-full flex items-center justify-center gap-2 py-2 px-4 text-neutral-500 text-sm font-medium rounded-lg hover:bg-neutral-100 transition min-h-[44px]"
+            className="w-full flex items-center justify-center gap-1.5 py-1.5 px-3 text-neutral-400 text-[12px] font-medium rounded-lg hover:bg-neutral-50 hover:text-neutral-600 transition"
           >
-            <Settings className="w-4 h-4" />
+            <Settings className="w-3.5 h-3.5" />
             Manage Users
           </Link>
         )}
-        <p className="text-[10px] text-neutral-400 text-center pt-1">v{packageJson.version}</p>
+        <p className="text-[9px] text-neutral-300 text-center pt-0.5">v{packageJson.version}</p>
       </div>
     </aside>
   );
