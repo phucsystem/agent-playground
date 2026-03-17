@@ -24,6 +24,7 @@ erDiagram
         text avatar_url
         boolean is_agent
         boolean is_active
+        boolean notification_enabled
         text token UK
         timestamptz last_seen_at
         timestamptz created_at
@@ -33,6 +34,8 @@ erDiagram
         uuid id PK
         conversation_type type
         text name
+        boolean is_archived
+        uuid workspace_id FK
         uuid created_by FK
         timestamptz created_at
         timestamptz updated_at
@@ -79,6 +82,7 @@ erDiagram
         uuid user_id FK,UK
         text webhook_url
         text webhook_secret
+        text health_check_url
         boolean is_webhook_active
         timestamptz created_at
         timestamptz updated_at
@@ -99,6 +103,37 @@ erDiagram
     users ||--o| agent_configs : "has webhook"
     messages ||--o{ webhook_delivery_logs : "triggers"
     users ||--o{ webhook_delivery_logs : "receives"
+    workspaces ||--o{ workspace_members : "has"
+    users ||--o{ workspace_members : "belongs to"
+    workspaces ||--o{ conversations : "contains"
+    users ||--o{ user_sessions : "has"
+
+    workspaces {
+        uuid id PK
+        text name
+        text description
+        text avatar_url
+        text color
+        boolean is_default
+        uuid created_by FK
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    workspace_members {
+        uuid workspace_id PK,FK
+        uuid user_id PK,FK
+        timestamptz joined_at
+    }
+
+    user_sessions {
+        uuid id PK
+        uuid user_id FK
+        text device_name
+        text user_agent
+        timestamptz last_active_at
+        timestamptz created_at
+    }
 ```
 
 ## 2. Custom Types
@@ -136,6 +171,8 @@ Stores human users and AI agents. Admin generates tokens via UI (no name/email i
 | `is_mock` | `boolean` | NOT NULL | `false` | True = hidden from non-admin users. Used for testing. |
 | `is_active` | `boolean` | NOT NULL | `true` | Admin toggle. False = cannot log in |
 | `token` | `text` | UNIQUE, NOT NULL | — | Pre-provisioned auth token (64-char with charset: A-Za-z0-9!@#$%^&*()-_=+[]{}|;:<>?, generated via crypto.getRandomValues). Cached in localStorage. |
+| `notification_enabled` | `boolean` | NOT NULL | `true` | Whether push/in-app notifications are enabled for this user |
+| `is_agent` | `boolean` | NOT NULL | `false` | Derived convenience flag mirroring `role = 'agent'`. Kept for webhook trigger compatibility. |
 | `last_seen_at` | `timestamptz` | NULLABLE | `NULL` | Last activity timestamp (updated on disconnect) |
 | `created_at` | `timestamptz` | NOT NULL | `now()` | Account creation time |
 
@@ -155,6 +192,8 @@ Container for DM (2 participants) or group (3+) conversations.
 | `id` | `uuid` | PK | `gen_random_uuid()` | Conversation ID |
 | `type` | `conversation_type` | NOT NULL | — | `dm` or `group` |
 | `name` | `text` | NULLABLE | `NULL` | Group name. NULL for DMs. |
+| `is_archived` | `boolean` | NOT NULL | `false` | Soft-archive flag. Archived conversations hidden from sidebar by default. |
+| `workspace_id` | `uuid` | FK → workspaces(id), NULLABLE | `NULL` | Workspace this conversation belongs to. NULL = global/legacy. |
 | `created_by` | `uuid` | FK → users(id), NOT NULL | — | User who created the conversation |
 | `created_at` | `timestamptz` | NOT NULL | `now()` | Creation timestamp |
 | `updated_at` | `timestamptz` | NOT NULL | `now()` | Last message timestamp (for sort order) |
@@ -269,6 +308,7 @@ Webhook configuration per agent user. One-to-one with users (only agent users). 
 | `user_id` | `uuid` | FK → users(id) ON DELETE CASCADE, UNIQUE, NOT NULL | — | Agent user reference. One config per agent. |
 | `webhook_url` | `text` | NOT NULL | — | HTTPS URL where message payloads are POSTed. Validated as valid URL on insert. |
 | `webhook_secret` | `text` | NULLABLE | `NULL` | Shared secret for HMAC-SHA256 signature. If set, `X-Webhook-Signature` header included in requests. |
+| `health_check_url` | `text` | NULLABLE | `NULL` | Optional URL polled to check if the agent is reachable/healthy. |
 | `is_webhook_active` | `boolean` | NOT NULL | `true` | Admin toggle. False = agent stays in conversations but receives no webhooks. |
 | `created_at` | `timestamptz` | NOT NULL | `now()` | Config creation time |
 | `updated_at` | `timestamptz` | NOT NULL | `now()` | Last modification time |
@@ -310,6 +350,66 @@ Tracks each webhook delivery attempt per message per agent. Used for admin debug
 
 ---
 
+### E-09: workspaces
+
+Multi-workspace support. Each workspace is an isolated group of conversations and members.
+
+| Column | Type | Constraints | Default | Description |
+|--------|------|-------------|---------|-------------|
+| `id` | `uuid` | PK | `gen_random_uuid()` | Workspace ID |
+| `name` | `text` | NOT NULL | — | Workspace name |
+| `description` | `text` | NULLABLE | `NULL` | Workspace description |
+| `avatar_url` | `text` | NULLABLE | `NULL` | Custom workspace avatar |
+| `color` | `text` | NULLABLE | `NULL` | Hex color for workspace avatar fallback |
+| `is_default` | `boolean` | NOT NULL | `false` | Default workspace (auto-joined) |
+| `created_by` | `uuid` | FK → users(id), NOT NULL | — | Creator |
+| `created_at` | `timestamptz` | NOT NULL | `now()` | Creation time |
+| `updated_at` | `timestamptz` | NOT NULL | `now()` | Last update |
+
+**Indexes:**
+- `idx_workspaces_created_by` — on `created_by`
+- `idx_workspaces_is_default` — on `is_default` (fast default workspace lookup)
+
+---
+
+### E-10: workspace_members
+
+Join table linking users to workspaces.
+
+| Column | Type | Constraints | Default | Description |
+|--------|------|-------------|---------|-------------|
+| `workspace_id` | `uuid` | PK, FK → workspaces(id) ON DELETE CASCADE | — | Workspace reference |
+| `user_id` | `uuid` | PK, FK → users(id) ON DELETE CASCADE | — | User reference |
+| `joined_at` | `timestamptz` | NOT NULL | `now()` | When user joined |
+
+**Indexes:**
+- PK: `(workspace_id, user_id)`
+- `idx_workspace_members_user_id` — on `user_id` (find user's workspaces)
+
+---
+
+### E-11: user_sessions
+
+Tracks multi-device login sessions. Max 3 active sessions per user.
+
+| Column | Type | Constraints | Default | Description |
+|--------|------|-------------|---------|-------------|
+| `id` | `uuid` | PK | `gen_random_uuid()` | Session ID |
+| `user_id` | `uuid` | FK → users(id) ON DELETE CASCADE, NOT NULL | — | User reference |
+| `device_name` | `text` | NULLABLE | `NULL` | Detected device name from user agent |
+| `user_agent` | `text` | NULLABLE | `NULL` | Raw user agent string |
+| `last_active_at` | `timestamptz` | NOT NULL | `now()` | Last activity timestamp |
+| `created_at` | `timestamptz` | NOT NULL | `now()` | Session creation time |
+
+**Indexes:**
+- `idx_user_sessions_user_id` — on `user_id`
+- `idx_user_sessions_last_active` — on `(user_id, last_active_at DESC)` (enforce max-session eviction)
+
+**Constraints:**
+- Max 3 active sessions per user enforced at application layer (evict oldest on 4th login).
+
+---
+
 ## 4. Helper Views & Functions
 
 ### users_public view
@@ -318,7 +418,8 @@ Exposes user data without sensitive `token` column:
 
 ```sql
 CREATE VIEW users_public AS
-SELECT id, email, display_name, avatar_url, role, is_mock, is_active, last_seen_at, created_at
+SELECT id, email, display_name, avatar_url, role, is_mock, is_active,
+       notification_enabled, is_agent, last_seen_at, created_at
 FROM users;
 ```
 
@@ -372,6 +473,122 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 ```
 
 **Why SECURITY DEFINER:** RLS policies cannot directly query conversation_members (would cause circular dependency). DEFINER functions execute as schema owner, bypassing RLS.
+
+### Workspace RPC Helper Functions
+
+```sql
+-- Check if current user is member of a workspace
+CREATE OR REPLACE FUNCTION is_workspace_member(ws_id uuid)
+RETURNS boolean AS $$
+BEGIN
+  RETURN EXISTS(
+    SELECT 1 FROM workspace_members
+    WHERE workspace_id = ws_id AND user_id = auth.uid()
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Return workspace IDs for current user
+CREATE OR REPLACE FUNCTION my_workspace_ids()
+RETURNS TABLE(workspace_id uuid) AS $$
+BEGIN
+  RETURN QUERY
+  SELECT workspace_members.workspace_id
+  FROM workspace_members
+  WHERE workspace_members.user_id = auth.uid();
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Return member user IDs for a workspace
+CREATE OR REPLACE FUNCTION workspace_member_ids(ws_id uuid)
+RETURNS TABLE(user_id uuid) AS $$
+BEGIN
+  RETURN QUERY
+  SELECT workspace_members.user_id
+  FROM workspace_members
+  WHERE workspace_members.workspace_id = ws_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Find or create a DM within a workspace
+CREATE OR REPLACE FUNCTION find_or_create_dm(other_user_id uuid, ws_id uuid DEFAULT NULL)
+RETURNS uuid AS $$
+DECLARE
+  existing_id uuid;
+  new_id uuid;
+BEGIN
+  SELECT cm1.conversation_id INTO existing_id
+  FROM conversation_members cm1
+  JOIN conversation_members cm2 ON cm1.conversation_id = cm2.conversation_id
+  JOIN conversations c ON c.id = cm1.conversation_id
+  WHERE cm1.user_id = auth.uid()
+    AND cm2.user_id = other_user_id
+    AND c.type = 'dm'
+    AND (ws_id IS NULL OR c.workspace_id = ws_id);
+
+  IF existing_id IS NOT NULL THEN
+    RETURN existing_id;
+  END IF;
+
+  INSERT INTO conversations (type, created_by, workspace_id)
+  VALUES ('dm', auth.uid(), ws_id)
+  RETURNING id INTO new_id;
+
+  INSERT INTO conversation_members (conversation_id, user_id, role)
+  VALUES
+    (new_id, auth.uid(), 'admin'),
+    (new_id, other_user_id, 'member');
+
+  RETURN new_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Create a group conversation within a workspace
+CREATE OR REPLACE FUNCTION create_group(group_name text, member_ids uuid[], ws_id uuid DEFAULT NULL)
+RETURNS uuid AS $$
+DECLARE
+  new_id uuid;
+  member_id uuid;
+BEGIN
+  INSERT INTO conversations (type, name, created_by, workspace_id)
+  VALUES ('group', group_name, auth.uid(), ws_id)
+  RETURNING id INTO new_id;
+
+  INSERT INTO conversation_members (conversation_id, user_id, role)
+  VALUES (new_id, auth.uid(), 'admin');
+
+  FOREACH member_id IN ARRAY member_ids LOOP
+    IF member_id != auth.uid() THEN
+      INSERT INTO conversation_members (conversation_id, user_id, role)
+      VALUES (new_id, member_id, 'member');
+    END IF;
+  END LOOP;
+
+  RETURN new_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Get conversations for current user filtered by workspace
+CREATE OR REPLACE FUNCTION get_my_conversations(ws_id uuid DEFAULT NULL)
+RETURNS TABLE(conversation_id uuid) AS $$
+BEGIN
+  RETURN QUERY
+  SELECT cm.conversation_id
+  FROM conversation_members cm
+  JOIN conversations c ON c.id = cm.conversation_id
+  WHERE cm.user_id = auth.uid()
+    AND (ws_id IS NULL OR c.workspace_id = ws_id)
+    AND c.is_archived = false;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+```
+
+### Storage Buckets
+
+| Bucket | Access | Max Size | Types | Purpose |
+|--------|--------|----------|-------|---------|
+| `attachments` | Private (signed URLs) | 5MB | All except executables | Message file attachments |
+| `avatars` | Public | 5MB | WebP, JPEG, PNG | User profile avatars |
 
 ---
 
@@ -731,3 +948,6 @@ supabase.channel('typing:{conversation_id}')
 | reactions | E-06 | FR-18 |
 | agent_configs | E-07 | FR-22, FR-26 |
 | webhook_delivery_logs | E-08 | FR-23, FR-25, FR-27 |
+| workspaces | E-09 | — |
+| workspace_members | E-10 | — |
+| user_sessions | E-11 | — |

@@ -2,27 +2,28 @@
 
 **Generated:** 2026-03-17
 **Repomix output:** `./repomix-output.xml`
-**Status:** ✅ Phases 1-5 complete. All core features + webhook agent integration + agent thinking indicator implemented.
+**Status:** ✅ Phases 1-6 complete. All core features + workspace support + agent health + notifications + mobile responsiveness implemented.
 
 ## Overview
 
-Agent Playground is a ~6,080 LOC Next.js chat application with Supabase backend + webhook agent integration + client-side agent thinking indicator + mobile responsiveness. Organized into 55+ source files across app pages, components, hooks, utilities, 11 database migrations, and 1 Supabase Edge Function.
+Agent Playground is a ~7,500 LOC Next.js chat application with Supabase backend + webhook agent integration + workspace support + notifications + multi-device sessions. Organized into 75+ source files across app pages, components, hooks, contexts, utilities, 20 database migrations, and 1 Supabase Edge Function.
 
 ## File Counts & Distribution
 
 | Category | Count | Files |
 |----------|-------|-------|
-| **App Pages** | 8 | login/page.tsx, chat/layout.tsx, chat/page.tsx, [conversationId]/page.tsx, setup/page.tsx, admin/page.tsx, admin/webhooks/page.tsx, api/auth/login/route.ts, middleware.ts |
-| **Components** | 25 | chat (10: messages, message-list, input, header, markdown, file, image, url, info, typing-indicator, reactions), sidebar (5: nav, users, conversations, create-group, user-profile), admin (3: webhook-config-form, agent-webhook-actions, webhook-log-row), profile (1: avatar-editor-dialog), ui (1: avatar) |
-| **Hooks** | 13 | use-current-user, use-conversations, use-realtime-messages, use-supabase-presence, use-file-upload, use-conversation-members, use-typing-indicator, use-agent-thinking, use-reactions, use-agent-configs, use-webhook-logs, use-pinned-conversations, use-mobile-sidebar, use-avatar-upload |
+| **App Pages** | 12 | login/page.tsx, chat/layout.tsx, chat/page.tsx, [conversationId]/page.tsx, setup/page.tsx, admin/page.tsx, admin/webhooks/page.tsx, api/auth/login/route.ts, api/auth/logout/route.ts, api/agents/health/route.ts, api/conversations/[conversationId]/route.ts, global-error.tsx, middleware.ts |
+| **Components** | 33 | chat (14: message-list, message-item, chat-input, chat-header, markdown-content, file-card, image-preview, url-preview, chat-info-panel, message-reactions, typing-indicator, emoji-picker, gif-picker, mention-picker), sidebar (8: sidebar, user-profile, online-users, conversation-list, create-group-dialog, workspace-rail, collapsible-section, all-users), admin (5: webhook-config-form, agent-webhook-actions, workspace-settings, workspace-members, edit-user-dialog), profile (1: avatar-editor-dialog), ui (5: avatar, workspace-avatar, agent-health-toast, presence-toast, flip-loader) |
+| **Hooks** | 20 | use-current-user, use-conversations, use-realtime-messages, use-supabase-presence, use-file-upload, use-conversation-members, use-typing-indicator, use-agent-thinking, use-reactions, use-agent-configs, use-webhook-logs, use-avatar-upload, use-pinned-conversations, use-mobile-sidebar, use-workspace-unread, use-notification-sound, use-notification-context, use-agent-health, use-agent-health-context, use-typewriter |
+| **Contexts** | 2 | workspace-context.tsx, presence-context.tsx |
 | **Library/Utils** | 5 | auth.ts, crop-image.ts, supabase/client.ts, supabase/server.ts, middleware.ts |
 | **Types** | 1 | database.ts (generated from schema) |
-| **Migrations** | 12 | 001_initial, 002_add_user_role, 003_admin_user_management, 004_add_mock_flag, 005_security_fixes, 006_fix_rls_recursion, 007_agent_webhooks, 008_webhook_debug_columns, 009_create_group_function, 010_archive_group, 011_get_conversation_members_fn, 020_avatar_storage |
+| **Migrations** | 20 | 001_initial, 002_user_role, 003_admin_management, 004_mock_flag, 005_security_fixes, 006_fix_rls_recursion, 007_agent_webhooks, 008_webhook_debug_columns, 009_create_group_function, 010_archive_group, 011_get_conversation_members_fn, 012_admin_only_create_group, 013_user_sessions, 014_agent_health_check_url, 015_notification_preferences, 016_admin_delete_conversation, 017_conversations_realtime, 018_workspaces, 019_workspace_color, 020_avatar_storage |
 | **Edge Functions** | 1 | webhook-dispatch/index.ts |
 | **Seed Data** | 1 | seed.sql (6 users, 2 conversations, 10 messages, 2 webhook configs) |
 | **Config** | 4 | tsconfig.json, package.json, next.config.ts, postcss.config.mjs |
-| **Docs** | 6 | SRD.md, UI_SPEC.md, DB_DESIGN.md, API_SPEC.md, system-architecture.md, codebase-summary.md |
-| **Total** | 55+ | Source files + config |
+| **Docs** | 8 | SRD.md, UI_SPEC.md, DB_DESIGN.md, API_SPEC.md, system-architecture.md, codebase-summary.md, project-overview-pdr.md, project-roadmap.md |
+| **Total** | 75+ | Source files + config |
 
 ## Directory Structure
 
@@ -40,6 +41,9 @@ agent-playground/
 │   │   │   ├── page.tsx                 # Empty chat state
 │   │   │   └── [conversationId]/page.tsx # DM or group chat
 │   │   ├── api/auth/login/route.ts      # POST /api/auth/login
+│   │   ├── api/auth/logout/route.ts     # POST /api/auth/logout
+│   │   ├── api/agents/health/route.ts   # GET /api/agents/health
+│   │   ├── api/conversations/[conversationId]/route.ts  # DELETE conversation (admin)
 │   │   ├── layout.tsx                   # Root layout
 │   │   ├── page.tsx                     # Redirect to /chat
 │   │   ├── middleware.ts                # Auth guard
@@ -55,21 +59,37 @@ agent-playground/
 │   │   │   ├── image-preview.tsx        # Thumbnail + lightbox
 │   │   │   ├── url-preview.tsx          # Open Graph metadata card
 │   │   │   ├── chat-info-panel.tsx      # Members + files slide-over
-│   │   │   ├── reactions-display.tsx    # Heart button + reaction counts
+│   │   │   ├── message-reactions.tsx    # Emoji reaction counts + add button
+│   │   │   ├── typing-indicator.tsx     # Animated typing dots
+│   │   │   ├── emoji-picker.tsx         # Emoji selection popover
+│   │   │   ├── gif-picker.tsx           # GIF search + selection popover
+│   │   │   └── mention-picker.tsx       # @mention autocomplete dropdown
+│   │   ├── admin/
 │   │   │   ├── webhook-config-form.tsx  # Webhook URL + secret inline form
 │   │   │   ├── agent-webhook-actions.tsx # Toggle, edit, view logs for agent rows
-│   │   │   └── webhook-log-row.tsx      # Expandable log entry with details
+│   │   │   ├── workspace-settings.tsx   # Workspace name/color settings panel
+│   │   │   ├── workspace-members.tsx    # Manage workspace members
+│   │   │   └── edit-user-dialog.tsx     # Admin edit user modal
 │   │   ├── sidebar/
 │   │   │   ├── sidebar.tsx              # Main container
 │   │   │   ├── user-profile.tsx         # Current user + logout
 │   │   │   ├── online-users.tsx         # Presence list (filtered by mock flag)
 │   │   │   ├── conversation-list.tsx    # Sorted by updated_at
-│   │   │   └── create-group-dialog.tsx  # Modal to create group
+│   │   │   ├── create-group-dialog.tsx  # Modal to create group
+│   │   │   ├── workspace-rail.tsx       # Left workspace switcher rail
+│   │   │   ├── collapsible-section.tsx  # Expandable sidebar section wrapper
+│   │   │   └── all-users.tsx            # Full user directory listing
 │   │   ├── profile/
 │   │   │   └── avatar-editor-dialog.tsx # Image crop (react-easy-crop) + DiceBear generation
 │   │   └── ui/
 │   │       ├── avatar.tsx               # Reusable avatar component
-│   │       └── presence-toast.tsx       # Online/offline presence notifications
+│   │       ├── workspace-avatar.tsx     # Workspace icon with color/initials
+│   │       ├── agent-health-toast.tsx   # Agent health status toast notification
+│   │       ├── presence-toast.tsx       # Online/offline presence notifications
+│   │       └── flip-loader.tsx          # Animated flip loader spinner
+│   ├── contexts/
+│   │   ├── workspace-context.tsx        # Active workspace state + switcher
+│   │   └── presence-context.tsx         # Online presence state provider
 │   ├── hooks/
 │   │   ├── use-current-user.ts          # Fetch & cache user profile (+ refreshUser)
 │   │   ├── use-conversations.ts         # Fetch all conversations
@@ -82,7 +102,15 @@ agent-playground/
 │   │   ├── use-reactions.ts             # Add/remove emoji reactions
 │   │   ├── use-agent-configs.ts         # CRUD agent webhook configs
 │   │   ├── use-webhook-logs.ts          # Fetch + filter webhook delivery logs
-│   │   └── use-avatar-upload.ts         # Upload avatar to storage bucket + update user
+│   │   ├── use-avatar-upload.ts         # Upload avatar to storage bucket + update user
+│   │   ├── use-pinned-conversations.ts  # localStorage-based conversation pinning
+│   │   ├── use-mobile-sidebar.tsx       # Mobile sidebar visibility context provider
+│   │   ├── use-workspace-unread.ts      # Unread count aggregated per workspace
+│   │   ├── use-notification-sound.ts    # Play/mute notification sound on new messages
+│   │   ├── use-notification-context.tsx # Notification preferences context provider
+│   │   ├── use-agent-health.ts          # Poll agent health check endpoint
+│   │   ├── use-agent-health-context.tsx # Agent health state context provider
+│   │   └── use-typewriter.ts            # Typewriter animation for streaming text
 │   ├── lib/
 │   │   ├── auth.ts                      # getCurrentUser() helper
 │   │   ├── crop-image.ts                # getCroppedImage() canvas utility
@@ -97,12 +125,25 @@ agent-playground/
 ├── supabase/
 │   ├── migrations/
 │   │   ├── 001_initial_schema.sql       # All tables, enums, RLS, functions
-│   │   ├── 002_user_role.sql            # Add role column
-│   │   ├── 003_admin_management.sql     # Admin functions
-│   │   ├── 004_mock_flag.sql            # Add is_mock, update RLS
+│   │   ├── 002_add_user_role.sql        # Add role column
+│   │   ├── 003_admin_user_management.sql # Admin functions
+│   │   ├── 004_add_mock_flag.sql        # Add is_mock, update RLS
 │   │   ├── 005_security_fixes.sql       # DEFINER helpers, users_public view, signed URLs
 │   │   ├── 006_fix_rls_recursion.sql    # Replace recursive policies with helpers
-│   │   └── 007_agent_webhooks.sql       # agent_configs, webhook_delivery_logs, trigger
+│   │   ├── 007_agent_webhooks.sql       # agent_configs, webhook_delivery_logs, trigger
+│   │   ├── 008_webhook_debug_columns.sql # Debug/retry columns
+│   │   ├── 009_create_group_function.sql # Group creation RPC
+│   │   ├── 010_archive_group.sql        # Group archive support
+│   │   ├── 011_get_conversation_members_fn.sql # Members RPC
+│   │   ├── 012_admin_only_create_group.sql # Restrict group creation to admins
+│   │   ├── 013_user_sessions.sql        # Multi-device session tracking
+│   │   ├── 014_agent_health_check_url.sql # Agent health check URL
+│   │   ├── 015_notification_preferences.sql # Per-user notification settings
+│   │   ├── 016_admin_delete_conversation.sql # Admin delete conversation
+│   │   ├── 017_conversations_realtime.sql # Realtime on conversations
+│   │   ├── 018_workspaces.sql           # Workspaces + workspace_members
+│   │   ├── 019_workspace_color.sql      # Workspace color column
+│   │   └── 020_avatar_storage.sql       # Public avatars bucket + RLS
 │   ├── functions/
 │   │   └── webhook-dispatch/index.ts    # Webhook dispatch Edge Function (Deno)
 │   └── seed.sql                         # Test data (6 users, 2 conversations, webhook configs)
@@ -115,6 +156,8 @@ agent-playground/
 │   ├── DB_DESIGN.md                     # Schema, RLS, DEFINER helpers, migrations
 │   ├── API_SPEC.md                      # REST + Realtime endpoints
 │   ├── system-architecture.md           # Architecture diagrams + flows
+│   ├── project-overview-pdr.md          # Product design requirements + project overview
+│   ├── project-roadmap.md               # Development phases + milestone tracking
 │   └── codebase-summary.md              # This file
 ├── package.json                         # Next.js 16, React 19, Supabase 2.99
 ├── next.config.ts                       # Next.js config
@@ -142,6 +185,12 @@ All data fetching and realtime subscriptions in custom hooks:
 - **use-pinned-conversations** — Manage localStorage-based conversation pinning
 - **use-mobile-sidebar** — Control mobile sidebar visibility via context provider
 - **use-avatar-upload** — Upload avatar blob to storage bucket + update user profile
+- **use-workspace-unread** — Aggregate unread counts per workspace
+- **use-notification-sound** — Play/mute audio on new message
+- **use-notification-context** — Notification preferences context
+- **use-agent-health** — Poll /api/agents/health for agent status
+- **use-agent-health-context** — Agent health state distributed via context
+- **use-typewriter** — Typewriter text animation for streaming responses
 
 Components receive clean data/callbacks. No fetch logic in components.
 
@@ -288,12 +337,24 @@ const { addReaction } = useReactions();
 | File | Changes |
 |------|---------|
 | 001_initial_schema | Create tables, enums, indexes, RLS, functions |
-| 002_user_role | Add `role` (user_role enum) column |
-| 003_admin_management | Admin-only functions for user management |
-| 004_mock_flag | Add `is_mock` boolean, update presence RLS |
+| 002_add_user_role | Add `role` (user_role enum) column |
+| 003_admin_user_management | Admin-only functions for user management |
+| 004_add_mock_flag | Add `is_mock` boolean, update presence RLS |
 | 005_security_fixes | Add SECURITY DEFINER helpers, users_public view, signed URLs |
 | 006_fix_rls_recursion | Replace recursive policies with DEFINER helpers |
 | 007_agent_webhooks | Create agent_configs, webhook_delivery_logs tables, notify trigger |
+| 008_webhook_debug_columns | Add debug/retry columns to webhook_delivery_logs |
+| 009_create_group_function | Add RPC function for group creation |
+| 010_archive_group | Add group archive/unarchive support |
+| 011_get_conversation_members_fn | Add RPC to fetch conversation members |
+| 012_admin_only_create_group | Restrict group creation to admin role |
+| 013_user_sessions | Add multi-device session tracking table |
+| 014_agent_health_check_url | Add health_check_url to agent_configs |
+| 015_notification_preferences | Add per-user notification preference settings |
+| 016_admin_delete_conversation | Add admin-only delete conversation function |
+| 017_conversations_realtime | Enable realtime on conversations table |
+| 018_workspaces | Create workspaces + workspace_members tables |
+| 019_workspace_color | Add color column to workspaces |
 | 020_avatar_storage | Create public avatars bucket with per-user RLS policies |
 
 ## Code Standards
@@ -360,6 +421,7 @@ See `docs/API_SPEC.md` for complete reference.
 | **P3: Polish** | ✅ Complete | Typing, read receipts, reactions | use-typing-indicator, use-reactions, reactions-display |
 | **P4: Admin** | ✅ Complete | User management, setup wizard, mock flag | src/app/setup, src/app/admin, use-current-user |
 | **P5: Webhooks** | ✅ Complete | Agent webhook config, dispatch, delivery logs | src/app/admin/webhooks, src/hooks/use-agent-configs, src/hooks/use-webhook-logs, supabase/functions/webhook-dispatch |
+| **P6: Workspace + Polish** | ✅ Complete | Workspace support, agent health, notifications, mobile UX | workspace-rail, workspace-avatar, workspace-settings, workspace-members, all-users, collapsible-section, use-workspace-unread, use-pinned-conversations, use-mobile-sidebar, use-notification-sound, use-agent-health, flip-loader, presence-toast, agent-health-toast |
 
 ## Important Notes
 
