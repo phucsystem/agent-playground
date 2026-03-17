@@ -58,17 +58,19 @@ export default function LoginPage() {
 
   if (autoLogging) {
     return (
-      <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
-        <Loader2 className="w-6 h-6 animate-spin text-neutral-400" />
+      <div className="min-h-screen bg-gradient-to-br from-primary-500 via-accent-500 to-warm-500 flex items-center justify-center">
+        <Loader2 className="w-6 h-6 animate-spin text-white/70" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-neutral-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-sm text-center">
+    <div className="min-h-screen bg-gradient-to-br from-primary-500 via-accent-500 to-warm-500 flex items-center justify-center p-4">
+      <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl p-8 w-full max-w-sm text-center">
         <div className="flex items-center justify-center gap-2 mb-6">
-          <Bot className="w-7 h-7 text-primary-500" />
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center">
+            <Bot className="w-5 h-5 text-white" />
+          </div>
           <h1 className="text-2xl font-bold text-neutral-900">
             Agent Playground
           </h1>
@@ -84,7 +86,7 @@ export default function LoginPage() {
             onChange={(event) => setToken(event.target.value)}
             placeholder="Paste your access token"
             autoFocus
-            className="w-full px-4 py-3 border border-neutral-200 rounded-lg text-base text-neutral-800 placeholder:text-neutral-400 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/15 transition"
+            className="w-full px-4 py-3 border border-neutral-200 rounded-lg text-base text-neutral-800 placeholder:text-neutral-400 focus:outline-none focus:border-accent-400 focus:ring-2 focus:ring-accent-400/20 transition"
           />
 
           {error && (
@@ -94,7 +96,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={!token.trim() || loading}
-            className="w-full mt-4 py-3 bg-primary-600 hover:bg-primary-700 disabled:bg-neutral-300 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition flex items-center justify-center gap-2"
+            className="w-full mt-4 py-3 bg-gradient-to-r from-primary-600 to-accent-600 hover:from-primary-700 hover:to-accent-700 disabled:from-neutral-300 disabled:to-neutral-300 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary-500/20"
           >
             {loading ? (
               <Loader2 className="w-5 h-5 animate-spin" />

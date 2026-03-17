@@ -42,6 +42,8 @@ export function Sidebar({
 
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [messageMatchConvIds, setMessageMatchConvIds] = useState<Set<string>>(new Set());
+  const [isSearchingMessages, setIsSearchingMessages] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -56,6 +58,37 @@ export function Sidebar({
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
   }, []);
+
+  useEffect(() => {
+    if (!debouncedQuery || debouncedQuery.length < 2) {
+      setMessageMatchConvIds(new Set());
+      setIsSearchingMessages(false);
+      return;
+    }
+
+    let cancelled = false;
+    setIsSearchingMessages(true);
+
+    async function searchMessages() {
+      const supabase = createBrowserSupabaseClient();
+      const { data } = await supabase
+        .from("messages")
+        .select("conversation_id")
+        .ilike("content", `%${debouncedQuery}%`)
+        .limit(50);
+
+      if (cancelled) return;
+
+      if (data) {
+        const convIds = new Set(data.map((row) => row.conversation_id));
+        setMessageMatchConvIds(convIds);
+      }
+      setIsSearchingMessages(false);
+    }
+
+    searchMessages();
+    return () => { cancelled = true; };
+  }, [debouncedQuery]);
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
@@ -118,6 +151,8 @@ export function Sidebar({
           currentUserId={currentUser.id}
           getAgentHealthStatus={getAgentHealthStatus}
           searchQuery={debouncedQuery}
+          messageMatchConvIds={messageMatchConvIds}
+          isSearchingMessages={isSearchingMessages}
         />
 
         <AllUsers
@@ -132,7 +167,7 @@ export function Sidebar({
         {currentUser.role === "admin" && (
           <button
             onClick={onCreateGroup}
-            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-primary-50 text-primary-600 text-sm font-medium rounded-lg hover:bg-primary-100 transition cursor-pointer"
+            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-gradient-to-r from-primary-50 to-accent-50 text-accent-600 text-sm font-medium rounded-lg hover:from-primary-100 hover:to-accent-100 transition cursor-pointer"
           >
             <span className="text-base leading-none">+</span>
             New Conversation

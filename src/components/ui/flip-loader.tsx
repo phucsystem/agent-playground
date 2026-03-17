@@ -18,7 +18,7 @@ export function FlipLoader({ size = "lg", label }: FlipLoaderProps) {
     <div className="flex flex-col items-center gap-3">
       <div className={`${box} [perspective:600px]`}>
         <div className="w-full h-full animate-flip [transform-style:preserve-3d]">
-          <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-primary-500 shadow-lg shadow-primary-500/20 [backface-visibility:hidden]">
+          <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-gradient-to-br from-primary-500 to-accent-500 shadow-lg shadow-accent-500/20 [backface-visibility:hidden]">
             <svg
               className={`${icon} text-white`}
               viewBox="0 0 24 24"
@@ -36,7 +36,7 @@ export function FlipLoader({ size = "lg", label }: FlipLoaderProps) {
               <path d="M9 13v2" />
             </svg>
           </div>
-          <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-primary-600 shadow-lg shadow-primary-600/20 [backface-visibility:hidden] [transform:rotateY(180deg)]">
+          <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-gradient-to-br from-accent-500 to-warm-500 shadow-lg shadow-warm-500/20 [backface-visibility:hidden] [transform:rotateY(180deg)]">
             <svg
               className={`${icon} text-white`}
               viewBox="0 0 24 24"

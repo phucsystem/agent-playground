@@ -2,6 +2,7 @@
 
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import remarkBreaks from "remark-breaks";
 import rehypeHighlight from "rehype-highlight";
 import { Copy, Check } from "lucide-react";
 import { useState } from "react";
@@ -73,7 +74,7 @@ export function MarkdownContent({ content, memberNames = [] }: MarkdownContentPr
   return (
     <div className="prose prose-sm prose-neutral max-w-none [&_pre]:bg-neutral-50 [&_pre]:border [&_pre]:border-neutral-200 [&_pre]:border-b-[3px] [&_pre]:border-b-primary-400 [&_pre]:rounded-lg [&_pre]:relative [&_pre]:group [&_code]:font-mono [&_code]:text-[13px] [&_a]:text-primary-500 [&_a]:no-underline hover:[&_a]:underline [&_table]:text-sm [&_p]:leading-relaxed [&_p]:my-1.5 [&_ul]:my-1.5 [&_ol]:my-1.5 [&_h1]:text-lg [&_h2]:text-base [&_h3]:text-sm [&_h1]:font-bold [&_h2]:font-semibold [&_h3]:font-semibold [&_blockquote]:border-l-primary-300 [&_blockquote]:text-neutral-500">
       <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
+        remarkPlugins={[remarkGfm, remarkBreaks]}
         rehypePlugins={[rehypeHighlight]}
         components={{
           p({ children }) {

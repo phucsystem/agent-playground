@@ -201,8 +201,8 @@ export function MessageItem({
               <MessageContent message={message} memberNames={memberNames} />
             </div>
           ) : (
-            <div className={`bg-primary-500 text-white ${ownBubbleRadius} px-4 py-2.5 shadow-sm`}>
-              <div className="text-[15px] leading-relaxed [&_a]:text-white [&_a]:underline [&_pre]:bg-primary-600 [&_pre]:border-primary-400 [&_code]:text-primary-100 [&_.mention-tag]:bg-white/20 [&_.mention-tag]:text-white">
+            <div className={`bg-gradient-to-br from-primary-500 to-accent-500 text-white ${ownBubbleRadius} px-4 py-2.5 shadow-sm`}>
+              <div className="text-[15px] leading-relaxed [&_a]:text-white [&_a]:underline [&_pre]:bg-black/15 [&_pre]:border-white/20 [&_code]:text-white/90 [&_.mention-tag]:bg-white/20 [&_.mention-tag]:text-white">
                 <MessageContent message={message} memberNames={memberNames} />
               </div>
             </div>
@@ -238,13 +238,13 @@ export function MessageItem({
             <span
               className={`text-sm font-bold ${
                 message.sender.is_agent
-                  ? "text-primary-600"
+                  ? "text-accent-600"
                   : "text-neutral-800"
               }`}
             >
               {message.sender.display_name}
               {message.sender.is_agent && (
-                <span className="ml-1 text-[10px] font-semibold text-primary-400 uppercase tracking-wide">[agent]</span>
+                <span className="ml-1 text-[10px] font-semibold text-accent-400 uppercase tracking-wide">[agent]</span>
               )}
             </span>
             <span className="text-[11px] text-neutral-400">

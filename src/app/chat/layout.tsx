@@ -132,7 +132,7 @@ function ChatLayoutContent({ children, currentUser, onRefreshUser }: { children:
       )}
 
       {/* Workspace Rail - always visible on desktop */}
-      <div className="hidden md:flex w-[60px] shrink-0 bg-neutral-800">
+      <div className="hidden md:flex w-[60px] shrink-0 bg-gradient-to-b from-[#1e1b4b] via-[#312e81] to-[#4c1d95]">
         <WorkspaceRail
           workspaces={workspaces}
           activeWorkspaceId={activeWorkspace?.id ?? null}
@@ -153,7 +153,7 @@ function ChatLayoutContent({ children, currentUser, onRefreshUser }: { children:
         `}
       >
         {/* Mobile workspace strip */}
-        <div className="md:hidden flex items-center gap-1 px-2 py-1.5 bg-neutral-800 overflow-x-auto">
+        <div className="md:hidden flex items-center gap-1 px-2 py-1.5 bg-gradient-to-r from-[#1e1b4b] to-[#4c1d95] overflow-x-auto">
           {workspaces.map((workspace) => {
             const unreadCount = unreadByWorkspace[workspace.id] ?? 0;
             return (

@@ -52,7 +52,7 @@ export function UserProfile({ currentUser, onLogout, onAvatarSaved }: UserProfil
   const BellIcon = notificationEnabled ? Bell : BellOff;
 
   return (
-    <div className="flex items-center gap-2.5 px-3 py-3 border-b border-neutral-100 bg-neutral-50/60">
+    <div className="flex items-center gap-2.5 px-3 py-3 border-b border-accent-100/50 bg-gradient-to-r from-accent-50/60 to-primary-50/60">
       <button
         onClick={() => setShowAvatarEditor(true)}
         className="relative group cursor-pointer shrink-0 rounded-full"
@@ -82,7 +82,7 @@ export function UserProfile({ currentUser, onLogout, onAvatarSaved }: UserProfil
           disabled={toggling}
           className={`p-1.5 rounded-lg transition cursor-pointer ${
             notificationEnabled
-              ? "text-primary-500 hover:text-primary-700 hover:bg-primary-50"
+              ? "text-warm-500 hover:text-warm-600 hover:bg-warm-50"
               : "text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100"
           }`}
           title={notificationEnabled ? "Notifications on" : "Notifications off"}

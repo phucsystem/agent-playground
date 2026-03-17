@@ -37,10 +37,10 @@ export function WorkspaceRail({ workspaces, activeWorkspaceId, onSwitch, isAdmin
 
       {isAdmin && (
         <>
-          <div className="w-6 border-t border-neutral-600 my-1" />
+          <div className="w-6 border-t border-white/20 my-1" />
           <button
             onClick={() => setShowCreate(true)}
-            className="w-10 h-10 rounded-full bg-neutral-700 text-neutral-400 hover:bg-neutral-600 hover:text-white flex items-center justify-center transition"
+            className="w-10 h-10 rounded-full bg-white/10 text-white/60 hover:bg-white/20 hover:text-white flex items-center justify-center transition"
             title="Create workspace"
           >
             <Plus className="w-5 h-5" />
@@ -87,7 +87,7 @@ function WorkspaceRailItem({
         onMouseLeave={() => setShowTooltip(false)}
         className={`relative rounded-full transition-all duration-200 cursor-pointer ${
           isActive
-            ? "ring-2 ring-primary-300 ring-offset-2 ring-offset-neutral-800"
+            ? "ring-2 ring-accent-300 ring-offset-2 ring-offset-[#312e81]"
             : "opacity-70 hover:opacity-100 hover:rounded-2xl"
         }`}
       >
@@ -200,7 +200,7 @@ function CreateWorkspaceDialog({ onClose }: { onClose: () => void }) {
           <button
             onClick={handleCreate}
             disabled={!name.trim() || creating}
-            className="w-full py-2.5 bg-primary-600 hover:bg-primary-700 disabled:bg-neutral-300 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-lg transition"
+            className="w-full py-2.5 bg-gradient-to-r from-primary-600 to-accent-600 hover:from-primary-700 hover:to-accent-700 disabled:from-neutral-300 disabled:to-neutral-300 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-lg transition-all"
           >
             {creating ? "Creating..." : "Create Workspace"}
           </button>

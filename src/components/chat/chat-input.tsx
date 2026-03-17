@@ -162,7 +162,7 @@ export function ChatInput({
     const textarea = textareaRef.current;
     if (textarea) {
       textarea.style.height = "auto";
-      textarea.style.height = `${Math.min(textarea.scrollHeight, 120)}px`;
+      textarea.style.height = `${Math.min(textarea.scrollHeight, 200)}px`;
     }
   }, []);
 
@@ -264,7 +264,7 @@ export function ChatInput({
         return;
       }
     }
-    if (event.key === "Enter" && !event.shiftKey) {
+    if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
       event.preventDefault();
       handleSend();
     }
@@ -449,7 +449,7 @@ export function ChatInput({
           onKeyDown={handleKeyDown}
           placeholder={pendingFiles.length > 0 ? `${pendingFiles.length} file${pendingFiles.length > 1 ? "s" : ""} ready — press Send` : placeholder}
           rows={1}
-          className="flex-1 bg-transparent resize-none outline-none text-neutral-700 placeholder:text-neutral-400 text-[15px] leading-relaxed max-h-[120px] px-4 pt-3 pb-1"
+          className="flex-1 bg-transparent resize-none outline-none text-neutral-700 placeholder:text-neutral-400 text-[15px] leading-relaxed max-h-[200px] px-4 pt-3 pb-1"
         />
 
         <div className="flex items-center justify-between px-2 pb-2">
@@ -509,21 +509,26 @@ export function ChatInput({
             </button>
           </div>
 
-          <button
-            onClick={handleSend}
-            disabled={!isSendable || sending || uploading}
-            className={`p-2 rounded-xl transition shrink-0 cursor-pointer ${
-              isSendable && !sending && !uploading
-                ? "bg-primary-500 hover:bg-primary-600 text-white shadow-sm"
-                : "bg-neutral-200 text-neutral-400 cursor-not-allowed"
-            }`}
-          >
-            {sending || uploading ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Send className="w-4 h-4" />
-            )}
-          </button>
+          <div className="flex items-center gap-1.5">
+            <span className="text-[11px] text-neutral-400 hidden sm:inline">
+              {navigator.platform?.includes("Mac") ? "⌘" : "Ctrl"}+Enter
+            </span>
+            <button
+              onClick={handleSend}
+              disabled={!isSendable || sending || uploading}
+              className={`p-2 rounded-xl transition-all shrink-0 cursor-pointer ${
+                isSendable && !sending && !uploading
+                  ? "bg-gradient-to-br from-primary-500 to-accent-500 hover:from-primary-600 hover:to-accent-600 text-white shadow-md shadow-primary-500/25"
+                  : "bg-neutral-200 text-neutral-400 cursor-not-allowed"
+              }`}
+            >
+              {sending || uploading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Send className="w-4 h-4" />
+              )}
+            </button>
+          </div>
         </div>
       </div>
 

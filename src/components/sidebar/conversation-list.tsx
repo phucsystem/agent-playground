@@ -17,6 +17,8 @@ interface ConversationListProps {
   currentUserId: string;
   getAgentHealthStatus?: (agentId: string) => AgentHealthStatus;
   searchQuery?: string;
+  messageMatchConvIds?: Set<string>;
+  isSearchingMessages?: boolean;
 }
 
 function formatTime(dateString: string) {
@@ -63,6 +65,8 @@ export function ConversationList({
   currentUserId,
   getAgentHealthStatus,
   searchQuery,
+  messageMatchConvIds,
+  isSearchingMessages,
 }: ConversationListProps) {
   const { activeWorkspace } = useWorkspaceContext();
   const { pinnedIds, togglePin, cleanStalePins } =
@@ -74,10 +78,11 @@ export function ConversationList({
     const name = conv.type === "dm"
       ? conv.other_user?.display_name
       : conv.name;
-    return (
+    const matchesLocal =
       name?.toLowerCase().includes(query) ||
-      conv.last_message?.content?.toLowerCase().includes(query)
-    );
+      conv.last_message?.content?.toLowerCase().includes(query);
+    const matchesMessage = messageMatchConvIds?.has(conv.id);
+    return matchesLocal || matchesMessage;
   });
 
   const dmConversations = filtered.filter((conv) => conv.type === "dm");
@@ -100,10 +105,16 @@ export function ConversationList({
 
   const pinnedSet = new Set(pinnedIds);
 
-  const hasNoResults = searchQuery && filtered.length === 0;
+  const hasNoResults = searchQuery && filtered.length === 0 && !isSearchingMessages;
 
   return (
     <>
+      {isSearchingMessages && filtered.length === 0 && (
+        <p className="px-4 py-4 text-xs text-neutral-400 text-center">
+          Searching messages...
+        </p>
+      )}
+
       {hasNoResults && (
         <p className="px-4 py-6 text-xs text-neutral-400 text-center">
           No conversations found
@@ -133,6 +144,7 @@ export function ConversationList({
                   isPinned={pinnedSet.has(conv.id)}
                   onTogglePin={() => togglePin(conv.id)}
                   getAgentHealthStatus={getAgentHealthStatus}
+                  matchedByMessage={!!searchQuery && !!messageMatchConvIds?.has(conv.id)}
                 />
               </div>
             );
@@ -158,6 +170,7 @@ export function ConversationList({
                   isOnline={false}
                   isPinned={pinnedSet.has(conv.id)}
                   onTogglePin={() => togglePin(conv.id)}
+                  matchedByMessage={!!searchQuery && !!messageMatchConvIds?.has(conv.id)}
                 />
               </div>
             );
@@ -196,6 +209,7 @@ function ConversationItem({
   onTogglePin,
   hidePin = false,
   getAgentHealthStatus,
+  matchedByMessage = false,
 }: {
   conversation: ConversationWithDetails;
   isActive: boolean;
@@ -204,6 +218,7 @@ function ConversationItem({
   onTogglePin: () => void;
   hidePin?: boolean;
   getAgentHealthStatus?: (agentId: string) => AgentHealthStatus;
+  matchedByMessage?: boolean;
 }) {
   const isDM = conversation.type === "dm";
   const displayName = getDisplayName(conversation);
@@ -213,7 +228,7 @@ function ConversationItem({
       href={`/chat/${conversation.id}`}
       className={`group flex items-center gap-2.5 px-2.5 py-2 rounded-lg transition cursor-pointer ${
         isActive
-          ? "bg-primary-50/70 text-primary-700"
+          ? "bg-gradient-to-r from-primary-50/70 to-accent-50/50 text-accent-700"
           : "hover:bg-neutral-50 text-neutral-700"
       }`}
     >
@@ -232,11 +247,13 @@ function ConversationItem({
           }
         />
       ) : (
-        <div className="w-8 h-8 rounded-full bg-neutral-100 flex items-center justify-center shrink-0">
+        <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+          conversation.is_archived ? "bg-neutral-100" : "bg-teal-50"
+        }`}>
           {conversation.is_archived ? (
             <Archive className="w-3.5 h-3.5 text-neutral-400" />
           ) : (
-            <Hash className="w-3.5 h-3.5 text-neutral-400" />
+            <Hash className="w-3.5 h-3.5 text-teal-500" />
           )}
         </div>
       )}
@@ -251,17 +268,21 @@ function ConversationItem({
               </span>
             )}
             {conversation.unread_count > 0 && (
-              <span className="min-w-[18px] h-[18px] flex items-center justify-center bg-primary-500 text-white text-[10px] font-bold rounded-full px-1">
+              <span className="min-w-[18px] h-[18px] flex items-center justify-center bg-gradient-to-r from-primary-500 to-accent-500 text-white text-[10px] font-bold rounded-full px-1">
                 {conversation.unread_count}
               </span>
             )}
           </div>
         </div>
-        {conversation.last_message && (
+        {matchedByMessage ? (
+          <p className="text-[11px] text-primary-400 truncate mt-0.5 leading-tight">
+            Matched in messages
+          </p>
+        ) : conversation.last_message ? (
           <p className="text-[11px] text-neutral-400 truncate mt-0.5 leading-tight">
             {truncate(conversation.last_message.content, 35)}
           </p>
-        )}
+        ) : null}
       </div>
 
       {!hidePin && (
@@ -273,9 +294,9 @@ function ConversationItem({
           }}
           className={`shrink-0 w-6 h-6 flex items-center justify-center rounded-md transition-all duration-200 ease-out cursor-pointer ${
             isPinned
-              ? "text-primary-500 bg-primary-50 opacity-100"
+              ? "text-warm-500 bg-warm-50 opacity-100"
               : "text-neutral-400 opacity-0 group-hover:opacity-100 hover:bg-neutral-100"
-          } hover:text-primary-500`}
+          } hover:text-warm-500`}
           aria-label={isPinned ? "Unpin conversation" : "Pin conversation"}
           aria-pressed={isPinned}
         >
