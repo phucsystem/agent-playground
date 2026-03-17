@@ -1,3 +1,10 @@
+# [1.2.0](https://github.com/phucsystem/agent-playground/compare/v1.1.0...v1.2.0) (2026-03-17)
+
+
+### Features
+
+* enhance sidebar UI, add flip loader, and workspace unread badges ([#6](https://github.com/phucsystem/agent-playground/issues/6)) ([4142000](https://github.com/phucsystem/agent-playground/commit/4142000c8cc9003c7a3c4caeb8c5ec23f40dddb8))
+
 # [1.1.0](https://github.com/phucsystem/agent-playground/compare/v1.0.0...v1.1.0) (2026-03-17)
 
 
