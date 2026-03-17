@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, LogOut, Archive, ArchiveRestore, UserPlus, Check, Search, Trash2 } from "lucide-react";
+import { X, LogOut, Archive, ArchiveRestore, UserPlus, Check, Search, Trash2, Pencil } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { useConversationMembers } from "@/hooks/use-conversation-members";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
@@ -34,6 +34,8 @@ export function ChatInfoPanel({
   const [adding, setAdding] = useState<string | null>(null);
 
   const [deleting, setDeleting] = useState(false);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editedName, setEditedName] = useState(conversation.name || "");
 
   const currentMember = members.find((member) => member.user_id === currentUserId);
   const isAdmin = currentMember?.role === "admin";
@@ -106,6 +108,22 @@ export function ChatInfoPanel({
     router.push("/chat");
   }
 
+  async function handleRenameGroup() {
+    const trimmed = editedName.trim();
+    if (!trimmed || trimmed === conversation.name) {
+      setIsEditingName(false);
+      setEditedName(conversation.name || "");
+      return;
+    }
+    const supabase = createBrowserSupabaseClient();
+    await supabase
+      .from("conversations")
+      .update({ name: trimmed })
+      .eq("id", conversation.id);
+    setIsEditingName(false);
+    onConversationUpdate?.();
+  }
+
   async function handleDeleteConversation() {
     const otherName = conversation.other_user?.display_name || "this user";
     if (!confirm(`Delete this conversation with ${otherName}? All messages and files will be permanently removed.`)) return;
@@ -147,6 +165,56 @@ export function ChatInfoPanel({
       {conversation.is_archived && (
         <div className="mx-5 mt-4 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg">
           <p className="text-xs text-amber-700 font-medium">This group is archived. Messages are read-only.</p>
+        </div>
+      )}
+
+      {isGroup && (
+        <div className="px-5 py-4 border-b border-neutral-100">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500 mb-2">
+            Group name
+          </p>
+          {isEditingName ? (
+            <div className="flex items-center gap-2">
+              <input
+                value={editedName}
+                onChange={(event) => setEditedName(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") handleRenameGroup();
+                  if (event.key === "Escape") {
+                    setIsEditingName(false);
+                    setEditedName(conversation.name || "");
+                  }
+                }}
+                autoFocus
+                maxLength={100}
+                className="flex-1 text-sm bg-white border border-neutral-300 rounded-md px-2 py-1 outline-none focus:border-primary-500 transition"
+              />
+              <button
+                onClick={handleRenameGroup}
+                className="text-xs text-primary-600 hover:text-primary-700 font-medium"
+              >
+                Save
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 group">
+              <span className="text-sm text-neutral-800 font-medium truncate flex-1">
+                # {conversation.name}
+              </span>
+              {isAdmin && !conversation.is_archived && (
+                <button
+                  onClick={() => {
+                    setEditedName(conversation.name || "");
+                    setIsEditingName(true);
+                  }}
+                  className="p-1 rounded text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 opacity-0 group-hover:opacity-100 transition"
+                  title="Rename group"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          )}
         </div>
       )}
 

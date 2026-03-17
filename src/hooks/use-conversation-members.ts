@@ -55,5 +55,30 @@ export function useConversationMembers(conversationId: string | null) {
     fetchMembers();
   }, [fetchMembers]);
 
+  useEffect(() => {
+    if (!conversationId) return;
+
+    const supabase = createBrowserSupabaseClient();
+    const channel = supabase
+      .channel(`members:${conversationId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "conversation_members",
+          filter: `conversation_id=eq.${conversationId}`,
+        },
+        () => {
+          fetchMembers();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [conversationId, fetchMembers]);
+
   return { members, loading, refetch: fetchMembers };
 }
