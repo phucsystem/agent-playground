@@ -8,7 +8,7 @@ interface ConversationUnread {
   unread_count: number;
 }
 
-export function useWorkspaceUnread(activeWorkspaceId: string | null) {
+export function useWorkspaceUnread(_activeWorkspaceId: string | null) {
   const [unreadByWorkspace, setUnreadByWorkspace] = useState<Record<string, number>>({});
 
   const fetchUnread = useCallback(async () => {
@@ -23,14 +23,14 @@ export function useWorkspaceUnread(activeWorkspaceId: string | null) {
 
     const counts: Record<string, number> = {};
     for (const conv of conversations) {
-      if (!conv.workspace_id || conv.workspace_id === activeWorkspaceId) continue;
+      if (!conv.workspace_id) continue;
       const unread = conv.unread_count ?? 0;
       if (unread > 0) {
         counts[conv.workspace_id] = (counts[conv.workspace_id] ?? 0) + unread;
       }
     }
     setUnreadByWorkspace(counts);
-  }, [activeWorkspaceId]);
+  }, []);
 
   useEffect(() => {
     fetchUnread();
