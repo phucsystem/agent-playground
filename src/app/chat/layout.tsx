@@ -27,7 +27,7 @@ import { useWorkspaceUnread } from "@/hooks/use-workspace-unread";
 function ConversationsProviderWrapper({ children }: { children: React.ReactNode }) {
   const { activeWorkspace } = useWorkspaceContext();
   return (
-    <ConversationsProvider workspaceId={activeWorkspace?.id ?? null}>
+    <ConversationsProvider key={activeWorkspace?.id ?? "none"} workspaceId={activeWorkspace?.id ?? null}>
       {children}
     </ConversationsProvider>
   );

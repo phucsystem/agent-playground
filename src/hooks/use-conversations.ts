@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import type { ConversationWithDetails } from "@/types/database";
 
 export function useConversations(workspaceId: string | null) {
   const [conversations, setConversations] = useState<ConversationWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
+  const initialFetchDone = useRef(false);
 
   const fetchConversations = useCallback(async () => {
     if (!workspaceId) return;
@@ -25,9 +26,16 @@ export function useConversations(workspaceId: string | null) {
   }, [workspaceId]);
 
   useEffect(() => {
-    fetchConversations();
+    // Reset state immediately on workspace change to prevent stale data
+    setConversations([]);
+    setLoading(true);
+    initialFetchDone.current = false;
 
     if (!workspaceId) return;
+
+    fetchConversations().then(() => {
+      initialFetchDone.current = true;
+    });
 
     const supabase = createBrowserSupabaseClient();
     const channel = supabase
@@ -67,8 +75,15 @@ export function useConversations(workspaceId: string | null) {
           fetchConversations();
         }
       )
+      .on(
+        "postgres_changes",
+        { event: "DELETE", schema: "public", table: "conversation_members" },
+        () => {
+          fetchConversations();
+        }
+      )
       .subscribe((status) => {
-        if (status === "SUBSCRIBED") {
+        if (status === "SUBSCRIBED" && initialFetchDone.current) {
           fetchConversations();
         }
       });
