@@ -11,9 +11,10 @@ interface AllUsersProps {
   currentUserId: string;
   onlineUserIds: string[];
   onClickUser: (userId: string) => void;
+  searchQuery?: string;
 }
 
-export function AllUsers({ currentUserId, onlineUserIds, onClickUser }: AllUsersProps) {
+export function AllUsers({ currentUserId, onlineUserIds, onClickUser, searchQuery }: AllUsersProps) {
   const [users, setUsers] = useState<User[]>([]);
   const { activeWorkspace } = useWorkspaceContext();
 
@@ -48,11 +49,16 @@ export function AllUsers({ currentUserId, onlineUserIds, onClickUser }: AllUsers
     fetchUsers();
   }, [currentUserId, activeWorkspace]);
 
-  if (users.length === 0) return null;
+  const filteredUsers = users.filter((appUser) => {
+    if (!searchQuery) return true;
+    return appUser.display_name.toLowerCase().includes(searchQuery.toLowerCase());
+  });
+
+  if (filteredUsers.length === 0) return null;
 
   return (
-    <CollapsibleSection title="Users" count={users.length} defaultOpen={false}>
-      {users.map((appUser) => {
+    <CollapsibleSection title="Users" count={filteredUsers.length} defaultOpen={false}>
+      {filteredUsers.map((appUser) => {
         const isOnline = onlineUserIds.includes(appUser.id);
         return (
           <button
