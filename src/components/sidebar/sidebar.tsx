@@ -20,6 +20,7 @@ interface SidebarProps {
   activeConversationId?: string;
   onCreateGroup: () => void;
   getAgentHealthStatus?: (agentId: string) => AgentHealthStatus;
+  onAvatarSaved?: () => void;
 }
 
 export function Sidebar({
@@ -30,6 +31,7 @@ export function Sidebar({
   activeConversationId,
   onCreateGroup,
   getAgentHealthStatus,
+  onAvatarSaved,
 }: SidebarProps) {
   const router = useRouter();
   const { close } = useMobileSidebar();
@@ -58,7 +60,7 @@ export function Sidebar({
     <aside className="w-full h-full bg-neutral-100 border-r border-neutral-200 flex flex-col z-50 overflow-hidden">
       <div className="flex items-center">
         <div className="flex-1">
-          <UserProfile currentUser={currentUser} onLogout={handleLogout} />
+          <UserProfile currentUser={currentUser} onLogout={handleLogout} onAvatarSaved={onAvatarSaved} />
         </div>
         <button
           onClick={close}

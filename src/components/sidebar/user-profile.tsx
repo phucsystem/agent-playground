@@ -2,16 +2,19 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { Avatar } from "@/components/ui/avatar";
-import { LogOut, Bell, BellOff } from "lucide-react";
+import { AvatarEditorDialog } from "@/components/profile/avatar-editor-dialog";
+import { LogOut, Bell, BellOff, Camera } from "lucide-react";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import type { User } from "@/types/database";
 
 interface UserProfileProps {
   currentUser: User;
   onLogout: () => void;
+  onAvatarSaved?: () => void;
 }
 
-export function UserProfile({ currentUser, onLogout }: UserProfileProps) {
+export function UserProfile({ currentUser, onLogout, onAvatarSaved }: UserProfileProps) {
+  const [showAvatarEditor, setShowAvatarEditor] = useState(false);
   const [notificationEnabled, setNotificationEnabled] = useState(
     currentUser.notification_enabled
   );
@@ -49,10 +52,19 @@ export function UserProfile({ currentUser, onLogout }: UserProfileProps) {
 
   return (
     <div className="flex items-center gap-3 p-4 border-b border-neutral-200">
-      <Avatar
-        displayName={currentUser.display_name}
-        avatarUrl={currentUser.avatar_url}
-      />
+      <button
+        onClick={() => setShowAvatarEditor(true)}
+        className="relative group cursor-pointer shrink-0"
+        title="Change avatar"
+      >
+        <Avatar
+          displayName={currentUser.display_name}
+          avatarUrl={currentUser.avatar_url}
+        />
+        <div className="absolute inset-0 rounded-full bg-black/0 group-hover:bg-black/20 transition flex items-center justify-center">
+          <Camera className="w-4 h-4 text-white opacity-0 group-hover:opacity-100 transition" />
+        </div>
+      </button>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-bold text-neutral-800 truncate">
           {currentUser.display_name}
@@ -81,6 +93,13 @@ export function UserProfile({ currentUser, onLogout }: UserProfileProps) {
       >
         <LogOut className="w-4 h-4" />
       </button>
+      {showAvatarEditor && (
+        <AvatarEditorDialog
+          user={currentUser}
+          onClose={() => setShowAvatarEditor(false)}
+          onSaved={() => onAvatarSaved?.()}
+        />
+      )}
     </div>
   );
 }

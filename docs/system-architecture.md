@@ -23,7 +23,7 @@ graph TB
         PostgREST["PostgREST API"]
         RealtimeWS["Realtime WebSocket"]
         PostgreSQL[("PostgreSQL<br/>8 Tables + RLS")]
-        Storage["Storage Bucket"]
+        Storage["Storage<br/>(attachments + avatars)"]
         Auth["Auth (JWT)"]
         DBWebhook["Database Webhook Trigger"]
         EdgeFn["Edge Function:<br/>webhook-dispatch"]
@@ -215,6 +215,46 @@ sequenceDiagram
 **Storage path:** `attachments/{conversationId}/{messageId}/{filename}`
 **Limits:** 10MB per file | Signed URLs (1h expiry) | RLS-enforced access
 
+## Avatar Upload Architecture
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Dialog as AvatarEditorDialog
+    participant Canvas as getCroppedImage
+    participant Hook as useAvatarUpload
+    participant Storage as Supabase Storage
+    participant DB as Supabase DB
+
+    User->>Dialog: Open avatar editor (Upload/Generate tabs)
+
+    rect rgb(100, 150, 200)
+    Note over Dialog,Canvas: Upload path: react-easy-crop + canvas
+    User->>Dialog: Select image file
+    Dialog->>Canvas: Crop + zoom params
+    Canvas->>Canvas: drawImage() → WebP blob (256x256)
+    end
+
+    rect rgb(100, 150, 200)
+    Note over Dialog,Hook: Or generate path: DiceBear API
+    User->>Dialog: Choose style + randomize
+    Dialog->>Dialog: Set avatar_url (DiceBear URL)
+    end
+
+    User->>Hook: Click Save
+    Hook->>Storage: Upload blob to avatars/{userId}/avatar.webp
+    Storage->>Storage: RLS check (folder matches auth.uid())
+    Hook->>DB: UPDATE users SET avatar_url = public_url
+    DB->>Dialog: onSaved() callback
+    Dialog->>Dialog: Trigger use-current-user.refreshUser()
+```
+
+**Storage path:** `avatars/{userId}/avatar.webp` (public bucket)
+**RLS Policies:** Users can upload/update own avatar only; all authenticated users can read
+**Image handling:** Upload mode → canvas crop to 256x256 WebP | Generate mode → DiceBear SVG URL
+**Cache-busting:** Public URL appended with `?t={timestamp}` to force fresh load
+**Styles available:** 17 DiceBear styles (adventurer, avataaars, bottts, glass, identicon, pixel-art, shapes, etc.)
+
 ## Database Schema
 
 ```mermaid
@@ -239,7 +279,7 @@ erDiagram
 
 | Table | Purpose |
 |-------|---------|
-| `users` | Humans + agents (role, token, avatar, is_mock, is_active) |
+| `users` | Humans + agents (role, token, avatar_url, is_mock, is_active) |
 | `conversations` | DMs and groups (type, name, is_archived) |
 | `conversation_members` | Membership + roles + last_read_at |
 | `messages` | Chat messages (content, content_type, metadata JSONB) |
@@ -248,7 +288,11 @@ erDiagram
 | `agent_configs` | Webhook URL + secret + active toggle (one per agent) |
 | `webhook_delivery_logs` | Dispatch history (status, attempts, request/response) |
 
-**11 migrations** applied sequentially from initial schema through conversation members function.
+**Storage buckets:**
+- `attachments` (private) — Message files, scoped by conversation
+- `avatars` (public) — User profile pictures, scoped by user ID
+
+**12 migrations** applied sequentially from initial schema through avatar storage setup.
 
 ## Mobile Responsive Architecture
 

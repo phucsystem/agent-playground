@@ -23,7 +23,7 @@ import { WorkspaceRail } from "@/components/sidebar/workspace-rail";
 import { WorkspaceAvatar } from "@/components/ui/workspace-avatar";
 import { Loader2 } from "lucide-react";
 
-function ChatLayoutContent({ children, currentUser }: { children: React.ReactNode; currentUser: User }) {
+function ChatLayoutContent({ children, currentUser, onRefreshUser }: { children: React.ReactNode; currentUser: User; onRefreshUser: () => void }) {
   const pathname = usePathname();
   const { workspaces, activeWorkspace, switchWorkspace, loading: workspaceLoading } = useWorkspaceContext();
   const { onlineUsers, newlyOnlineUsers, clearNewlyOnline, markUserOnline } = useSupabasePresence(currentUser, activeWorkspace?.id ?? null);
@@ -175,6 +175,7 @@ function ChatLayoutContent({ children, currentUser }: { children: React.ReactNod
           activeConversationId={activeConversationId}
           onCreateGroup={() => setShowCreateGroup(true)}
           getAgentHealthStatus={getAgentHealthStatus}
+          onAvatarSaved={onRefreshUser}
         />
       </div>
 
@@ -207,7 +208,7 @@ function ChatLayoutContent({ children, currentUser }: { children: React.ReactNod
 }
 
 function ChatLayoutInner({ children }: { children: React.ReactNode }) {
-  const { currentUser, loading: userLoading } = useCurrentUser();
+  const { currentUser, loading: userLoading, refreshUser } = useCurrentUser();
 
   if (userLoading) {
     return (
@@ -227,7 +228,7 @@ function ChatLayoutInner({ children }: { children: React.ReactNode }) {
 
   return (
     <WorkspaceProvider userId={currentUser.id}>
-      <ChatLayoutContent currentUser={currentUser}>{children}</ChatLayoutContent>
+      <ChatLayoutContent currentUser={currentUser} onRefreshUser={refreshUser}>{children}</ChatLayoutContent>
     </WorkspaceProvider>
   );
 }

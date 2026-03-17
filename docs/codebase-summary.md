@@ -13,11 +13,11 @@ Agent Playground is a ~6,080 LOC Next.js chat application with Supabase backend 
 | Category | Count | Files |
 |----------|-------|-------|
 | **App Pages** | 8 | login/page.tsx, chat/layout.tsx, chat/page.tsx, [conversationId]/page.tsx, setup/page.tsx, admin/page.tsx, admin/webhooks/page.tsx, api/auth/login/route.ts, middleware.ts |
-| **Components** | 24 | chat (10: messages, message-list, input, header, markdown, file, image, url, info, typing-indicator, reactions), sidebar (5: nav, users, conversations, create-group, user-profile), admin (3: webhook-config-form, agent-webhook-actions, webhook-log-row), ui (1: avatar) |
-| **Hooks** | 12 | use-current-user, use-conversations, use-realtime-messages, use-supabase-presence, use-file-upload, use-conversation-members, use-typing-indicator, use-agent-thinking, use-reactions, use-agent-configs, use-webhook-logs, use-pinned-conversations, use-mobile-sidebar |
-| **Library/Utils** | 4 | auth.ts, supabase/client.ts, supabase/server.ts, middleware.ts |
+| **Components** | 25 | chat (10: messages, message-list, input, header, markdown, file, image, url, info, typing-indicator, reactions), sidebar (5: nav, users, conversations, create-group, user-profile), admin (3: webhook-config-form, agent-webhook-actions, webhook-log-row), profile (1: avatar-editor-dialog), ui (1: avatar) |
+| **Hooks** | 13 | use-current-user, use-conversations, use-realtime-messages, use-supabase-presence, use-file-upload, use-conversation-members, use-typing-indicator, use-agent-thinking, use-reactions, use-agent-configs, use-webhook-logs, use-pinned-conversations, use-mobile-sidebar, use-avatar-upload |
+| **Library/Utils** | 5 | auth.ts, crop-image.ts, supabase/client.ts, supabase/server.ts, middleware.ts |
 | **Types** | 1 | database.ts (generated from schema) |
-| **Migrations** | 11 | 001_initial, 002_add_user_role, 003_admin_user_management, 004_add_mock_flag, 005_security_fixes, 006_fix_rls_recursion, 007_agent_webhooks, 008_webhook_debug_columns, 009_create_group_function, 010_archive_group, 011_get_conversation_members_fn |
+| **Migrations** | 12 | 001_initial, 002_add_user_role, 003_admin_user_management, 004_add_mock_flag, 005_security_fixes, 006_fix_rls_recursion, 007_agent_webhooks, 008_webhook_debug_columns, 009_create_group_function, 010_archive_group, 011_get_conversation_members_fn, 020_avatar_storage |
 | **Edge Functions** | 1 | webhook-dispatch/index.ts |
 | **Seed Data** | 1 | seed.sql (6 users, 2 conversations, 10 messages, 2 webhook configs) |
 | **Config** | 4 | tsconfig.json, package.json, next.config.ts, postcss.config.mjs |
@@ -65,11 +65,13 @@ agent-playground/
 │   │   │   ├── online-users.tsx         # Presence list (filtered by mock flag)
 │   │   │   ├── conversation-list.tsx    # Sorted by updated_at
 │   │   │   └── create-group-dialog.tsx  # Modal to create group
+│   │   ├── profile/
+│   │   │   └── avatar-editor-dialog.tsx # Image crop (react-easy-crop) + DiceBear generation
 │   │   └── ui/
 │   │       ├── avatar.tsx               # Reusable avatar component
 │   │       └── presence-toast.tsx       # Online/offline presence notifications
 │   ├── hooks/
-│   │   ├── use-current-user.ts          # Fetch & cache user profile
+│   │   ├── use-current-user.ts          # Fetch & cache user profile (+ refreshUser)
 │   │   ├── use-conversations.ts         # Fetch all conversations
 │   │   ├── use-realtime-messages.ts     # Subscribe to postgres_changes
 │   │   ├── use-supabase-presence.ts     # Track & listen to online status
@@ -79,9 +81,11 @@ agent-playground/
 │   │   ├── use-agent-thinking.ts        # Track agent thinking state (client-side heuristic)
 │   │   ├── use-reactions.ts             # Add/remove emoji reactions
 │   │   ├── use-agent-configs.ts         # CRUD agent webhook configs
-│   │   └── use-webhook-logs.ts          # Fetch + filter webhook delivery logs
+│   │   ├── use-webhook-logs.ts          # Fetch + filter webhook delivery logs
+│   │   └── use-avatar-upload.ts         # Upload avatar to storage bucket + update user
 │   ├── lib/
 │   │   ├── auth.ts                      # getCurrentUser() helper
+│   │   ├── crop-image.ts                # getCroppedImage() canvas utility
 │   │   ├── supabase/
 │   │   │   ├── client.ts                # Browser Supabase client
 │   │   │   ├── server.ts                # Server Supabase client
@@ -137,6 +141,7 @@ All data fetching and realtime subscriptions in custom hooks:
 - **use-reactions** — Add/remove emoji reactions
 - **use-pinned-conversations** — Manage localStorage-based conversation pinning
 - **use-mobile-sidebar** — Control mobile sidebar visibility via context provider
+- **use-avatar-upload** — Upload avatar blob to storage bucket + update user profile
 
 Components receive clean data/callbacks. No fetch logic in components.
 
@@ -201,6 +206,16 @@ const { addReaction } = useReactions();
 4. Realtime fires postgres_changes
 5. Component renders based on `content_type`
 
+### Avatar Upload Flow
+
+1. User clicks avatar in sidebar → opens `AvatarEditorDialog`
+2. Two tabs: **Upload** (crop with react-easy-crop) or **Generate** (DiceBear styles)
+3. Upload: `getCroppedImage()` creates canvas crop → WebP blob → `useAvatarUpload`
+4. Hook uploads to Storage: `avatars/{userId}/avatar.webp`
+5. Hook updates `users.avatar_url` with public URL + cache-bust query param
+6. `use-current-user` refreshUser() called via `onAvatarSaved` callback
+7. User profile reflects new avatar
+
 ### Mobile Responsive Architecture
 
 **MobileSidebarProvider** context (use-mobile-sidebar.tsx):
@@ -244,6 +259,7 @@ const { addReaction } = useReactions();
 | rehype-highlight | 7.0.2 | Code highlighting |
 | lucide-react | 0.577.0 | Icons |
 | sonner | — | Toast notifications |
+| react-easy-crop | — | Image cropping UI |
 
 ## Database Schema (8 Tables)
 
@@ -278,6 +294,7 @@ const { addReaction } = useReactions();
 | 005_security_fixes | Add SECURITY DEFINER helpers, users_public view, signed URLs |
 | 006_fix_rls_recursion | Replace recursive policies with DEFINER helpers |
 | 007_agent_webhooks | Create agent_configs, webhook_delivery_logs tables, notify trigger |
+| 020_avatar_storage | Create public avatars bucket with per-user RLS policies |
 
 ## Code Standards
 
@@ -358,6 +375,9 @@ See `docs/API_SPEC.md` for complete reference.
 10. **Simplified invite flow** — Admin generates token only; email (`invite-{shortId}@placeholder.local`) and display_name ("New User") auto-generated
 11. **Stronger tokens** — 64-char with full charset (A-Za-z0-9!@#$%^&*()-_=+[]{}|;:<>?) using crypto.getRandomValues
 12. **SVG favicon** — Blue bot icon at `src/app/icon.svg`, auto-detected by Next.js App Router
+13. **Avatar storage** — Public Supabase bucket (`avatars`) with per-user RLS (upload/update own only, all can read)
+14. **Avatar upload** — Two modes: upload photo (crop with react-easy-crop → WebP) or generate (17 DiceBear styles + randomize)
+15. **Avatar URLs** — Cache-busted with `?t={timestamp}` to force fresh load after update
 
 ## Next Steps
 
