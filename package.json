@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "seed": "npx tsx scripts/seed.ts"
+    "seed": "npx tsx scripts/seed.ts",
+    "prepare": "husky"
   },
   "dependencies": {
     "@sentry/nextjs": "^10.43.0",
@@ -33,7 +34,13 @@
     "ua-parser-js": "^2.0.9"
   },
   "devDependencies": {
+    "@commitlint/cli": "^20.5.0",
+    "@commitlint/config-conventional": "^20.5.0",
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/git": "^10.0.1",
     "@types/ua-parser-js": "^0.7.39",
+    "husky": "^9.1.7",
+    "semantic-release": "^25.0.3",
     "tsx": "^4.21.0"
   }
 }
