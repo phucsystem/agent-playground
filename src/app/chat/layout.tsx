@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { toast, Toaster } from "sonner";
 import { PresenceToast } from "@/components/ui/presence-toast";
 import { formatRelativeTime } from "@/lib/session-utils";
 import type { KickedSession, User } from "@/types/database";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Sidebar } from "@/components/sidebar/sidebar";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { useSupabasePresence } from "@/hooks/use-supabase-presence";
@@ -26,6 +26,7 @@ import { useWorkspaceUnread } from "@/hooks/use-workspace-unread";
 
 function ChatLayoutContent({ children, currentUser, onRefreshUser }: { children: React.ReactNode; currentUser: User; onRefreshUser: () => void }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { workspaces, activeWorkspace, switchWorkspace, loading: workspaceLoading } = useWorkspaceContext();
   const { onlineUsers, newlyOnlineUsers, clearNewlyOnline, markUserOnline } = useSupabasePresence(currentUser, activeWorkspace?.id ?? null);
   const { conversations } = useConversations(activeWorkspace?.id ?? null);
@@ -33,10 +34,36 @@ function ChatLayoutContent({ children, currentUser, onRefreshUser }: { children:
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const { isOpen, close } = useMobileSidebar();
   const { unreadByWorkspace } = useWorkspaceUnread(activeWorkspace?.id ?? null);
+  const previousWorkspaceId = useRef<string | null>(activeWorkspace?.id ?? null);
+  const pendingWorkspaceSwitch = useRef(false);
 
   const { triggerTestNotification } = useNotificationSound(currentUser, conversations);
 
   const activeConversationId = pathname.split("/chat/")[1];
+
+  // Detect workspace switch
+  useEffect(() => {
+    if (activeWorkspace?.id && activeWorkspace.id !== previousWorkspaceId.current) {
+      if (previousWorkspaceId.current !== null) {
+        pendingWorkspaceSwitch.current = true;
+      }
+      previousWorkspaceId.current = activeWorkspace.id;
+    }
+  }, [activeWorkspace?.id]);
+
+  // Navigate to most recent conversation after workspace switch
+  useEffect(() => {
+    if (!pendingWorkspaceSwitch.current || conversations.length === 0) return;
+    pendingWorkspaceSwitch.current = false;
+
+    const mostRecent = conversations.reduce((latest, conv) => {
+      const latestTime = latest.last_message?.created_at ?? latest.updated_at;
+      const convTime = conv.last_message?.created_at ?? conv.updated_at;
+      return convTime > latestTime ? conv : latest;
+    }, conversations[0]);
+
+    router.push(`/chat/${mostRecent.id}`);
+  }, [conversations, router]);
 
   useEffect(() => {
     const kickedRaw = sessionStorage.getItem("kicked_session");
