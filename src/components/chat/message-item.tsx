@@ -149,8 +149,8 @@ function HeartButton({
   );
 }
 
-function isImageMessage(message: MessageWithSender): boolean {
-  return message.content_type === "image";
+function isBubblelessMessage(message: MessageWithSender): boolean {
+  return message.content_type === "image" || message.content_type === "file";
 }
 
 export function MessageItem({
@@ -162,7 +162,7 @@ export function MessageItem({
   onToggleReaction,
   memberNames,
 }: MessageItemProps) {
-  const isImage = isImageMessage(message);
+  const skipBubble = isBubblelessMessage(message);
 
   if (isCurrentUser) {
     return (
@@ -181,7 +181,7 @@ export function MessageItem({
               {formatTimestamp(message.created_at)}
             </p>
           )}
-          {isImage ? (
+          {skipBubble ? (
             <div className="flex justify-end">
               <MessageContent message={message} memberNames={memberNames} />
             </div>
@@ -214,7 +214,7 @@ export function MessageItem({
           size="sm"
         />
       ) : (
-        <div className="w-7 shrink-0" />
+        <div className="w-8 shrink-0" />
       )}
 
       <div className="max-w-[85%] md:max-w-[70%] min-w-0">
@@ -237,7 +237,7 @@ export function MessageItem({
             </span>
           </div>
         )}
-        {isImage ? (
+        {skipBubble ? (
           <MessageContent message={message} memberNames={memberNames} />
         ) : (
           <div className="bg-neutral-100 rounded-2xl rounded-bl-sm px-4 py-2.5">
