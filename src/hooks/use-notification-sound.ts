@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useCallback } from "react";
+import { toast } from "sonner";
+import { createElement } from "react";
+import { MessageToast } from "@/components/ui/message-toast";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import type { User, ConversationWithDetails } from "@/types/database";
 
@@ -90,7 +93,12 @@ export function useNotificationSound(
           const message = payload.new as IncomingMessage;
 
           if (message.sender_id === currentUser.id) return;
-          if (!document.hidden) return;
+
+          // Skip if user is actively viewing this conversation
+          const isViewingConversation = window.location.pathname.endsWith(
+            `/chat/${message.conversation_id}`
+          );
+          if (isViewingConversation) return;
 
           if (handledMessageIds.current.has(message.id)) return;
 
@@ -121,17 +129,34 @@ export function useNotificationSound(
             }
           }
 
-          playSound();
+          const senderName = isDm
+            ? conversation.other_user?.display_name || "Someone"
+            : conversation.name || "Group";
+          const avatarUrl = isDm ? (conversation.other_user?.avatar_url ?? null) : null;
+          const preview = message.content?.slice(0, 80) || "New message";
 
-          const senderName =
-            isDm
-              ? conversation.other_user?.display_name || "Someone"
-              : conversation.name || "Group";
-          const title = isDm
-            ? `New message from ${senderName}`
-            : `Mentioned in ${senderName}`;
-          const body = message.content?.slice(0, 100) || "New message";
-          showNativeNotification(title, body);
+          if (document.hidden || !document.hasFocus()) {
+            // Tab not focused (hidden, minimized, or user in another app): play sound + desktop notification
+            playSound();
+            const title = isDm
+              ? `New message from ${senderName}`
+              : `Mentioned in ${senderName}`;
+            showNativeNotification(title, preview);
+          } else {
+            // Tab visible but different conversation: show in-app toast
+            toast.custom(
+              () =>
+                createElement(MessageToast, {
+                  senderName: isDm ? senderName : (conversation.other_user?.display_name || senderName),
+                  avatarUrl,
+                  preview,
+                  conversationName: isDm ? undefined : senderName,
+                  isGroup: !isDm,
+                }),
+              { id: `msg-${message.id}`, duration: 4000 }
+            );
+            playSound();
+          }
         }
       )
       .subscribe();
