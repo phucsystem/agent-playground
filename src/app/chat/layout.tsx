@@ -23,11 +23,13 @@ import { WorkspaceRail } from "@/components/sidebar/workspace-rail";
 import { WorkspaceAvatar } from "@/components/ui/workspace-avatar";
 import { FlipLoader } from "@/components/ui/flip-loader";
 import { useWorkspaceUnread } from "@/hooks/use-workspace-unread";
+import { ConversationListSkeleton } from "@/components/sidebar/conversation-list-skeleton";
+import { MessageListSkeleton } from "@/components/chat/message-list-skeleton";
 
 function ConversationsProviderWrapper({ children }: { children: React.ReactNode }) {
   const { activeWorkspace } = useWorkspaceContext();
   return (
-    <ConversationsProvider key={activeWorkspace?.id ?? "none"} workspaceId={activeWorkspace?.id ?? null}>
+    <ConversationsProvider workspaceId={activeWorkspace?.id ?? null}>
       {children}
     </ConversationsProvider>
   );
@@ -151,8 +153,14 @@ function ChatLayoutContent({ children, currentUser, onRefreshUser }: { children:
 
   if (workspaceLoading) {
     return (
-      <div className="min-h-dvh flex items-center justify-center">
-        <FlipLoader size="lg" label="Loading..." />
+      <div className="flex h-dvh">
+        <div className="hidden md:flex w-[60px] shrink-0 bg-gradient-to-b from-primary-950 via-primary-900 to-primary-950" />
+        <div className="w-[260px] shrink-0 border-r border-neutral-100 bg-white pt-4">
+          <ConversationListSkeleton />
+        </div>
+        <div className="flex-1 flex flex-col">
+          <MessageListSkeleton />
+        </div>
       </div>
     );
   }
@@ -270,14 +278,8 @@ function ChatLayoutContent({ children, currentUser, onRefreshUser }: { children:
 
 function ChatLayoutInner({ children }: { children: React.ReactNode }) {
   const { currentUser, loading: userLoading, refreshUser } = useCurrentUser();
-  const [splashDone, setSplashDone] = useState(false);
 
-  useEffect(() => {
-    const timer = setTimeout(() => setSplashDone(true), 2000);
-    return () => clearTimeout(timer);
-  }, []);
-
-  if (userLoading || !splashDone) {
+  if (userLoading) {
     return (
       <div className="min-h-dvh flex items-center justify-center">
         <FlipLoader size="lg" label="Loading..." />

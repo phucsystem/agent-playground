@@ -1,8 +1,8 @@
 # Codebase Summary
 
-**Generated:** 2026-03-17
+**Generated:** 2026-03-18
 **Repomix output:** `./repomix-output.xml`
-**Status:** ✅ Phases 1-6 complete. All core features + workspace support + agent health + notifications + mobile responsiveness implemented.
+**Status:** ✅ Phases 1-6 complete + React Query v5 performance migration. All core features + workspace support + agent health + notifications + mobile responsiveness + optimized data caching implemented.
 
 ## Overview
 
@@ -170,13 +170,23 @@ agent-playground/
 
 ## Key Patterns
 
-### Hooks-First Data Layer
+### React Query v5 Data Layer (TanStack Query)
 
-All data fetching and realtime subscriptions in custom hooks:
+All data fetching and realtime subscriptions via custom hooks built on TanStack Query v5. Persistent cache eliminates blank screens on navigation; realtime subscriptions write directly to cache without refetch.
 
+**Query Architecture:**
+- **QueryClient** singleton created per client instance via `createQueryClient()` factory in `src/lib/query-client.ts`
+- **Root Provider** — `<QueryClientProvider>` wraps entire app in `src/app/query-provider.tsx`
+- **Stale-Time Strategy** — Conversations: 30s (frequent updates), Messages: Infinity (realtime-driven)
+- **Cache Duration** — 30min garbage collection on all data (survival across workspace switches)
+- **DevTools** — ReactQueryDevtools available in dev mode for cache inspection
+
+**Query Hooks (TanStack Query v5):**
+- **use-conversations** — `useQuery(['conversations', workspaceId])` + realtime invalidation on INSERT/UPDATE/DELETE
+- **use-realtime-messages** — `useInfiniteQuery(['messages', conversationId])` + realtime setQueryData surgical cache appends
+
+**Subscription Hooks (custom, realtime-driven):**
 - **use-current-user** — Fetch user profile, cache in state
-- **use-conversations** — List user's conversations with unread counts
-- **use-realtime-messages** — Subscribe to postgres_changes for messages
 - **use-supabase-presence** — Manage online status broadcast
 - **use-file-upload** — Storage upload + metadata
 - **use-conversation-members** — List group members
@@ -191,6 +201,18 @@ All data fetching and realtime subscriptions in custom hooks:
 - **use-agent-health** — Poll /api/agents/health for agent status
 - **use-agent-health-context** — Agent health state distributed via context
 - **use-typewriter** — Typewriter text animation for streaming responses
+
+**Performance Improvements:**
+- Workspace switching: Stale conversations displayed immediately from cache, background refetch in progress
+- Conversation switching: Cached messages render at 0ms, no blank screen
+- Realtime updates: setQueryData surgical cache writes (append to pages) instead of full refetch
+- Deduplication: Both realtime handler and background fetch check `msg.id` to prevent duplicates
+- 2s splash timer removed from chat layout (cache eliminates need for forced delay)
+
+**Skeleton Screens:**
+- `src/components/ui/skeleton.tsx` — Base Tailwind animate-pulse component
+- `src/components/sidebar/conversation-list-skeleton.tsx` — 6-8 shimmer rows during initial load
+- `src/components/chat/message-list-skeleton.tsx` — 5-6 alternating message bubbles during initial load
 
 Components receive clean data/callbacks. No fetch logic in components.
 
@@ -300,6 +322,8 @@ const { addReaction } = useReactions();
 | next | 16.1.6 | Framework |
 | react | 19.2.4 | UI |
 | typescript | 5.9.3 | Type safety |
+| @tanstack/react-query | 5.x | Data fetching + cache management |
+| @tanstack/react-query-devtools | 5.x | Dev tools for cache inspection |
 | @supabase/supabase-js | 2.99.1 | Client SDK |
 | @supabase/ssr | 0.9.0 | Session management |
 | tailwindcss | 4.2.1 | Styling |

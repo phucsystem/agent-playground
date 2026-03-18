@@ -5,7 +5,7 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { MessageItem } from "./message-item";
 import { TypingIndicator } from "./typing-indicator";
 import { ArrowDown } from "lucide-react";
-import { FlipLoader } from "@/components/ui/flip-loader";
+import { MessageListSkeleton } from "./message-list-skeleton";
 import type { MessageWithSender } from "@/types/database";
 import type { ReactionGroup } from "@/hooks/use-reactions";
 
@@ -97,6 +97,7 @@ export function MessageList({
     if (prevConversationId.current !== conversationId) {
       prevConversationId.current = conversationId;
       prevMessageCount.current = 0;
+      isInitialLoad.current = true;
       setVisible(false);
     }
   }, [conversationId]);
@@ -156,11 +157,7 @@ export function MessageList({
   }
 
   if (loading && messages.length === 0) {
-    return (
-      <div className="flex-1 flex items-center justify-center">
-        <FlipLoader size="lg" label="Loading messages..." />
-      </div>
-    );
+    return <MessageListSkeleton />;
   }
 
   const virtualItems = virtualizer.getVirtualItems();
