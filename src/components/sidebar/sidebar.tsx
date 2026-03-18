@@ -108,7 +108,9 @@ export function Sidebar({
             Admin Panel
           </Link>
         )}
-        <p className="text-[10px] text-neutral-400 text-center pt-1">v{packageJson.version}</p>
+        <Link href="/changelog" className="text-[10px] text-neutral-400 hover:text-primary-500 text-center pt-1 block transition">
+          v{packageJson.version}
+        </Link>
       </div>
     </aside>
   );
