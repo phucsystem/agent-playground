@@ -26,6 +26,7 @@ export interface Workspace {
   color: string | null;
   description: string | null;
   is_default: boolean;
+  message_retention_days: number | null;
   created_by: string;
   created_at: string;
   updated_at: string;
@@ -63,6 +64,8 @@ export interface Message {
   content: string;
   content_type: ContentType;
   metadata: Record<string, unknown> | null;
+  edited_at: string | null;
+  is_deleted: boolean;
   created_at: string;
 }
 
@@ -168,6 +171,8 @@ export interface Database {
       mark_conversation_read: { Args: { conv_id: string }; Returns: void };
       get_my_conversations: { Args: { ws_id?: string }; Returns: ConversationWithDetails[] };
       create_group: { Args: { group_name: string; member_ids: string[]; ws_id: string }; Returns: string };
+      edit_message: { Args: { msg_id: string; new_content: string }; Returns: void };
+      delete_message: { Args: { msg_id: string }; Returns: void };
     };
   };
 }

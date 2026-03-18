@@ -20,6 +20,10 @@ interface MessageListProps {
   agentThinking?: boolean;
   getGroupedReactions: (messageId: string) => ReactionGroup[];
   onToggleReaction: (messageId: string, emoji: string) => void;
+  onStartEdit?: (messageId: string, content: string) => void;
+  onDeleteMessage?: (messageId: string) => void;
+  canDeleteOthers?: boolean;
+  isAdmin?: boolean;
   memberNames?: string[];
 }
 
@@ -66,6 +70,10 @@ export function MessageList({
   agentThinking,
   getGroupedReactions,
   onToggleReaction,
+  onStartEdit,
+  onDeleteMessage,
+  canDeleteOthers = false,
+  isAdmin = false,
   memberNames,
 }: MessageListProps) {
   const parentRef = useRef<HTMLDivElement>(null);
@@ -212,6 +220,10 @@ export function MessageList({
                   reactions={getGroupedReactions(message.id)}
                   currentUserId={currentUserId}
                   onToggleReaction={onToggleReaction}
+                  onStartEdit={onStartEdit}
+                  onDeleteMessage={onDeleteMessage}
+                  canDelete={canDeleteOthers}
+                  isAdmin={isAdmin}
                   memberNames={memberNames}
                 />
               </div>

@@ -115,6 +115,49 @@ export function useRealtimeMessages(conversationId: string) {
           );
         }
       )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "messages",
+          filter: `conversation_id=eq.${conversationId}`,
+        },
+        (payload) => {
+          const updated = payload.new as MessageWithSender;
+
+          queryClient.setQueryData<InfiniteData<MessagesPage>>(
+            ["messages", conversationId],
+            (old) => {
+              if (!old) return old;
+              return {
+                ...old,
+                pages: old.pages.map((page) => ({
+                  ...page,
+                  messages: page.messages.map((msg) => {
+                    if (msg.id !== updated.id) return msg;
+                    // Skip if already matches (optimistic update already applied)
+                    if (msg.content === updated.content && msg.edited_at === updated.edited_at && msg.is_deleted === updated.is_deleted) {
+                      return msg;
+                    }
+                    return {
+                      ...msg,
+                      content: updated.content,
+                      edited_at: updated.edited_at,
+                      is_deleted: updated.is_deleted,
+                      metadata: updated.metadata,
+                      sender: msg.sender, // Preserve sender (not in realtime payload)
+                    };
+                  }),
+                })),
+              };
+            }
+          );
+
+          // Refresh sidebar last message preview
+          queryClient.invalidateQueries({ queryKey: ["conversations"] });
+        }
+      )
       .subscribe();
 
     return () => {
@@ -160,6 +203,97 @@ export function useRealtimeMessages(conversationId: string) {
     [queryClient, conversationId]
   );
 
+  const updateMessageInCache = useCallback(
+    (messageId: string, updater: (msg: MessageWithSender) => MessageWithSender) => {
+      queryClient.setQueryData<InfiniteData<MessagesPage>>(
+        ["messages", conversationId],
+        (old) => {
+          if (!old) return old;
+          return {
+            ...old,
+            pages: old.pages.map((page) => ({
+              ...page,
+              messages: page.messages.map((msg) =>
+                msg.id === messageId ? updater(msg) : msg
+              ),
+            })),
+          };
+        }
+      );
+    },
+    [queryClient, conversationId]
+  );
+
+  const editMessage = useCallback(
+    async (messageId: string, newContent: string): Promise<{ success: boolean; error?: string }> => {
+      const supabase = createBrowserSupabaseClient();
+
+      // Snapshot for rollback
+      const previousData = queryClient.getQueryData<InfiniteData<MessagesPage>>(
+        ["messages", conversationId]
+      );
+
+      // Optimistic update
+      updateMessageInCache(messageId, (msg) => ({
+        ...msg,
+        content: newContent,
+        edited_at: new Date().toISOString(),
+      }));
+
+      const { error } = await supabase.rpc("edit_message", {
+        msg_id: messageId,
+        new_content: newContent,
+      });
+
+      if (error) {
+        // Rollback
+        if (previousData) {
+          queryClient.setQueryData(["messages", conversationId], previousData);
+        }
+        return { success: false, error: error.message };
+      }
+
+      // Refresh sidebar last message preview
+      queryClient.invalidateQueries({ queryKey: ["conversations"] });
+      return { success: true };
+    },
+    [queryClient, conversationId, updateMessageInCache]
+  );
+
+  const deleteMessage = useCallback(
+    async (messageId: string): Promise<{ success: boolean; error?: string }> => {
+      const supabase = createBrowserSupabaseClient();
+
+      const previousData = queryClient.getQueryData<InfiniteData<MessagesPage>>(
+        ["messages", conversationId]
+      );
+
+      // Optimistic update
+      updateMessageInCache(messageId, (msg) => ({
+        ...msg,
+        is_deleted: true,
+        content: "",
+        edited_at: new Date().toISOString(),
+      }));
+
+      const { error } = await supabase.rpc("delete_message", {
+        msg_id: messageId,
+      });
+
+      if (error) {
+        if (previousData) {
+          queryClient.setQueryData(["messages", conversationId], previousData);
+        }
+        return { success: false, error: error.message };
+      }
+
+      queryClient.invalidateQueries({ queryKey: ["conversations"] });
+      queryClient.invalidateQueries({ queryKey: WORKSPACE_UNREAD_KEY });
+      return { success: true };
+    },
+    [queryClient, conversationId, updateMessageInCache]
+  );
+
   return {
     messages,
     loading,
@@ -167,5 +301,7 @@ export function useRealtimeMessages(conversationId: string) {
     loadMore,
     markAsRead,
     addOptimisticMessage,
+    editMessage,
+    deleteMessage,
   };
 }
