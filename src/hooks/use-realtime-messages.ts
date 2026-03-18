@@ -8,6 +8,7 @@ import {
 } from "@tanstack/react-query";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import type { MessageWithSender } from "@/types/database";
+import { WORKSPACE_UNREAD_KEY } from "./use-workspace-unread";
 
 const PAGE_SIZE = 50;
 
@@ -18,7 +19,6 @@ interface MessagesPage {
 
 export function useRealtimeMessages(conversationId: string) {
   const queryClient = useQueryClient();
-  const queryKey = useMemo(() => ["messages", conversationId], [conversationId]);
 
   const {
     data,
@@ -27,7 +27,7 @@ export function useRealtimeMessages(conversationId: string) {
     fetchNextPage,
     isFetchingNextPage,
   } = useInfiniteQuery<MessagesPage>({
-    queryKey,
+    queryKey: ["messages", conversationId],
     queryFn: async ({ pageParam = 0 }) => {
       const offset = pageParam as number;
       const supabase = createBrowserSupabaseClient();
@@ -85,17 +85,17 @@ export function useRealtimeMessages(conversationId: string) {
             .eq("id", newMessage.sender_id)
             .single();
 
-          if (senderData) {
-            newMessage.sender = senderData;
-            window.dispatchEvent(
-              new CustomEvent("message-received", {
-                detail: { senderId: senderData.id, isAgent: senderData.is_agent },
-              })
-            );
-          }
+          if (!senderData) return;
+
+          newMessage.sender = senderData;
+          window.dispatchEvent(
+            new CustomEvent("message-received", {
+              detail: { senderId: senderData.id, isAgent: senderData.is_agent },
+            })
+          );
 
           queryClient.setQueryData<InfiniteData<MessagesPage>>(
-            queryKey,
+            ["messages", conversationId],
             (old) => {
               if (!old) return old;
 
@@ -120,7 +120,7 @@ export function useRealtimeMessages(conversationId: string) {
     return () => {
       channel.unsubscribe();
     };
-  }, [conversationId, queryClient, queryKey]);
+  }, [conversationId, queryClient]);
 
   const loadMore = useCallback(() => {
     if (hasMore && !isFetchingNextPage) {
@@ -131,12 +131,14 @@ export function useRealtimeMessages(conversationId: string) {
   const markAsRead = useCallback(async () => {
     const supabase = createBrowserSupabaseClient();
     await supabase.rpc("mark_conversation_read", { conv_id: conversationId });
-  }, [conversationId]);
+    queryClient.invalidateQueries({ queryKey: WORKSPACE_UNREAD_KEY });
+    queryClient.invalidateQueries({ queryKey: ["conversations"] });
+  }, [conversationId, queryClient]);
 
   const addOptimisticMessage = useCallback(
     (message: MessageWithSender) => {
       queryClient.setQueryData<InfiniteData<MessagesPage>>(
-        queryKey,
+        ["messages", conversationId],
         (old) => {
           if (!old) return old;
 
@@ -155,7 +157,7 @@ export function useRealtimeMessages(conversationId: string) {
         }
       );
     },
-    [queryClient, queryKey]
+    [queryClient, conversationId]
   );
 
   return {

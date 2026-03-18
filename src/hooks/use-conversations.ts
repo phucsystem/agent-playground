@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import type { ConversationWithDetails } from "@/types/database";
+import { WORKSPACE_UNREAD_KEY } from "./use-workspace-unread";
 
 export function useConversations(workspaceId: string | null) {
   const queryClient = useQueryClient();
@@ -32,11 +33,10 @@ export function useConversations(workspaceId: string | null) {
       .channel(`conversation-updates-${workspaceId}`)
       .on(
         "postgres_changes",
-        // No workspace_id filter available on messages table directly (it's on conversations join).
-        // Supabase RLS limits events to messages the user can access, so cross-workspace noise is minimal.
         { event: "INSERT", schema: "public", table: "messages" },
         () => {
           queryClient.invalidateQueries({ queryKey: ["conversations", workspaceId] });
+          queryClient.invalidateQueries({ queryKey: WORKSPACE_UNREAD_KEY });
         }
       )
       .on(
