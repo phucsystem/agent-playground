@@ -1,3 +1,10 @@
+# [1.6.0](https://github.com/phucsystem/agent-playground/compare/v1.5.0...v1.6.0) (2026-03-18)
+
+
+### Features
+
+* **changelog:** add release notes page with GitHub releases ([#17](https://github.com/phucsystem/agent-playground/issues/17)) ([67d4be0](https://github.com/phucsystem/agent-playground/commit/67d4be03bea528eb11e5710a9d0a2936cb1b72fe))
+
 # [1.5.0](https://github.com/phucsystem/agent-playground/compare/v1.4.1...v1.5.0) (2026-03-18)
 
 
