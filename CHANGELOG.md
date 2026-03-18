@@ -1,3 +1,10 @@
+## [1.4.1](https://github.com/phucsystem/agent-playground/compare/v1.4.0...v1.4.1) (2026-03-18)
+
+
+### Bug Fixes
+
+* **unread:** mark conversation read on navigation, not just on new messages ([#15](https://github.com/phucsystem/agent-playground/issues/15)) ([a7b8d5a](https://github.com/phucsystem/agent-playground/commit/a7b8d5a5e60946c21fc2c4a96210a2daafaef4f1))
+
 # [1.4.0](https://github.com/phucsystem/agent-playground/compare/v1.3.2...v1.4.0) (2026-03-18)
 
 
