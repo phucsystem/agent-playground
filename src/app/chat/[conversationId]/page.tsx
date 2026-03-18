@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ChatHeader } from "@/components/chat/chat-header";
 import { MessageList } from "@/components/chat/message-list";
 import { ChatInput } from "@/components/chat/chat-input";
@@ -17,6 +17,7 @@ import { useAgentHealthContext } from "@/hooks/use-agent-health-context";
 
 import { usePresenceContext } from "@/contexts/presence-context";
 import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 export default function ConversationPage() {
   const params = useParams();
@@ -25,10 +26,11 @@ export default function ConversationPage() {
   const { currentUser } = useCurrentUser();
 
   const { onlineUsers, onlineUserIds } = usePresenceContext();
-  const { messages, loading, hasMore, loadMore, markAsRead, addOptimisticMessage } =
+  const { messages, loading, hasMore, loadMore, markAsRead, addOptimisticMessage, editMessage, deleteMessage } =
     useRealtimeMessages(conversationId);
   const { conversations, refetch: refetchConversations } = useConversationsContext();
   const [showInfo, setShowInfo] = useState(false);
+  const [editingMessage, setEditingMessage] = useState<{ id: string; content: string } | null>(null);
 
   const { typingUsers, sendTyping } = useTypingIndicator(
     conversationId,
@@ -62,6 +64,47 @@ export default function ConversationPage() {
     if (!conversation?.other_user) return false;
     return onlineUserIds.includes(conversation.other_user.id);
   }, [conversation, onlineUserIds]);
+
+  const isConversationAdmin = useMemo(() => {
+    if (!currentUser) return false;
+    if (currentUser.role === "admin") return true;
+    const membership = members.find((member) => member.user_id === currentUser.id);
+    return membership?.role === "admin";
+  }, [currentUser, members]);
+
+  const handleStartEdit = useCallback((messageId: string, messageContent: string) => {
+    setEditingMessage({ id: messageId, content: messageContent });
+  }, []);
+
+  const handleCancelEdit = useCallback(() => {
+    setEditingMessage(null);
+  }, []);
+
+  const handleConfirmEdit = useCallback(async (messageId: string, newContent: string) => {
+    setEditingMessage(null);
+    const result = await editMessage(messageId, newContent);
+    if (!result.success) {
+      toast.error(`Failed to edit message: ${result.error}`);
+    }
+  }, [editMessage]);
+
+  const handleDeleteMessage = useCallback(async (messageId: string) => {
+    toast("Delete this message?", {
+      action: {
+        label: "Delete",
+        onClick: async () => {
+          const result = await deleteMessage(messageId);
+          if (!result.success) {
+            toast.error(`Failed to delete: ${result.error}`);
+          }
+        },
+      },
+      cancel: {
+        label: "Cancel",
+        onClick: () => {},
+      },
+    });
+  }, [deleteMessage]);
 
   const inputPlaceholder = conversation?.type === "group"
     ? `Message #${conversation?.name}...`
@@ -125,6 +168,10 @@ export default function ConversationPage() {
           agentThinking={agentThinking}
           getGroupedReactions={getGroupedReactions}
           onToggleReaction={toggleReaction}
+          onStartEdit={handleStartEdit}
+          onDeleteMessage={handleDeleteMessage}
+          canDeleteOthers={isConversationAdmin}
+          isAdmin={currentUser.role === "admin"}
           memberNames={memberNames}
         />
 
@@ -145,6 +192,9 @@ export default function ConversationPage() {
             placeholder={inputPlaceholder}
             onTyping={sendTyping}
             onOptimisticMessage={addOptimisticMessage}
+            editingMessage={editingMessage}
+            onCancelEdit={handleCancelEdit}
+            onConfirmEdit={handleConfirmEdit}
           />
         )}
       </div>

@@ -9,7 +9,7 @@ import { GifPicker } from "./gif-picker";
 import { SnippetModal } from "./snippet-modal";
 import { MentionPicker } from "./mention-picker";
 import type { MentionCandidate } from "./mention-picker";
-import { Send, Paperclip, Loader2, X, Smile, ImageIcon, FileCode, Upload } from "lucide-react";
+import { Send, Paperclip, Loader2, X, Smile, ImageIcon, FileCode, Upload, Check, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import type { ContentType, MessageWithSender } from "@/types/database";
 
@@ -20,6 +20,11 @@ interface SenderInfo {
   is_agent: boolean;
 }
 
+interface EditingMessage {
+  id: string;
+  content: string;
+}
+
 interface ChatInputProps {
   conversationId: string;
   senderId: string;
@@ -27,6 +32,9 @@ interface ChatInputProps {
   placeholder?: string;
   onTyping?: () => void;
   onOptimisticMessage?: (message: MessageWithSender) => void;
+  editingMessage?: EditingMessage | null;
+  onCancelEdit?: () => void;
+  onConfirmEdit?: (messageId: string, newContent: string) => void;
 }
 
 export function ChatInput({
@@ -36,6 +44,9 @@ export function ChatInput({
   placeholder = "Type a message...",
   onTyping,
   onOptimisticMessage,
+  editingMessage,
+  onCancelEdit,
+  onConfirmEdit,
 }: ChatInputProps) {
   const [content, setContent] = useState("");
   const [sending, setSending] = useState(false);
@@ -52,6 +63,7 @@ export function ChatInput({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pickerContainerRef = useRef<HTMLDivElement>(null);
+  const prevEditingIdRef = useRef<string | null>(null);
   const { uploadFile, uploading } = useFileUpload();
   const { members } = useConversationMembers(conversationId);
 
@@ -172,6 +184,20 @@ export function ChatInput({
     adjustHeight();
   }, [content, adjustHeight]);
 
+  useEffect(() => {
+    const currentEditId = editingMessage?.id ?? null;
+    if (currentEditId !== prevEditingIdRef.current) {
+      prevEditingIdRef.current = currentEditId;
+      if (editingMessage) {
+        setContent(editingMessage.content);
+        requestAnimationFrame(() => {
+          textareaRef.current?.focus();
+          adjustHeight();
+        });
+      }
+    }
+  }, [editingMessage, adjustHeight]);
+
   async function sendMessage(
     messageContent: string,
     contentType: ContentType,
@@ -192,6 +218,21 @@ export function ChatInput({
 
   async function handleSend() {
     if (sending || uploading) return;
+
+    if (editingMessage && onConfirmEdit) {
+      const trimmed = content.trim();
+      if (!trimmed || trimmed === editingMessage.content) {
+        onCancelEdit?.();
+        return;
+      }
+      onConfirmEdit(editingMessage.id, trimmed);
+      setContent("");
+      if (textareaRef.current) {
+        textareaRef.current.style.height = "auto";
+        textareaRef.current.style.overflowY = "hidden";
+      }
+      return;
+    }
 
     if (pendingFiles.length > 0) {
       setSending(true);
@@ -236,6 +277,8 @@ export function ChatInput({
         content: trimmed,
         content_type: "text",
         metadata: null,
+        edited_at: null,
+        is_deleted: false,
         created_at: new Date().toISOString(),
         sender: senderInfo,
       });
@@ -270,6 +313,12 @@ export function ChatInput({
         setMentionQuery(null);
         return;
       }
+    }
+    if (event.key === "Escape" && editingMessage) {
+      event.preventDefault();
+      onCancelEdit?.();
+      setContent("");
+      return;
     }
     if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
@@ -397,7 +446,20 @@ export function ChatInput({
         </div>
       )}
 
-      {pendingFiles.length > 0 && (
+      {editingMessage && (
+        <div className="flex items-center gap-2 bg-primary-50 border border-primary-200 rounded-2xl rounded-b-none px-3 py-2">
+          <Pencil className="w-3.5 h-3.5 text-primary-500 shrink-0" />
+          <span className="text-sm text-primary-700 font-medium flex-1">Editing message</span>
+          <button
+            onClick={() => { onCancelEdit?.(); setContent(""); }}
+            className="p-0.5 text-primary-400 hover:text-primary-600 cursor-pointer"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {!editingMessage && pendingFiles.length > 0 && (
         <div className="bg-neutral-100 rounded-2xl rounded-b-none px-3 pt-3 pb-2">
           <div className="flex gap-2 overflow-x-auto">
             {pendingFiles.map((file, fileIndex) => {
@@ -441,7 +503,7 @@ export function ChatInput({
         </div>
       )}
 
-      <div className={`relative flex items-end gap-1.5 bg-neutral-100 rounded-2xl px-3 py-2.5 ${pendingFiles.length > 0 ? "rounded-t-none" : ""}`}>
+      <div className={`relative flex items-end gap-1.5 bg-neutral-100 rounded-2xl px-3 py-2.5 ${(pendingFiles.length > 0 || editingMessage) ? "rounded-t-none" : ""}`}>
         {mentionCandidates.length > 0 && (
           <MentionPicker
             candidates={mentionCandidates}
@@ -449,21 +511,26 @@ export function ChatInput({
             onSelect={insertMention}
           />
         )}
-        <input
-          ref={fileInputRef}
-          type="file"
-          multiple
-          onChange={handleFileSelect}
-          accept="*/*"
-          className="hidden"
-        />
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          className="p-1.5 text-neutral-400 hover:text-neutral-600 transition shrink-0 cursor-pointer"
-        >
-          <Paperclip className="w-5 h-5" />
-        </button>
+        {!editingMessage && (
+          <>
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              onChange={handleFileSelect}
+              accept="*/*"
+              className="hidden"
+            />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="p-1.5 text-neutral-400 hover:text-neutral-600 transition shrink-0 cursor-pointer"
+            >
+              <Paperclip className="w-5 h-5" />
+            </button>
+          </>
+        )}
 
+        {!editingMessage && (
         <div ref={pickerContainerRef} className="flex items-center gap-0.5 shrink-0">
           <div className="relative">
             <button
@@ -511,6 +578,7 @@ export function ChatInput({
             <FileCode className="w-5 h-5" />
           </button>
         </div>
+        )}
 
         <textarea
           ref={textareaRef}
@@ -535,10 +603,12 @@ export function ChatInput({
         <button
           onClick={handleSend}
           disabled={(!content.trim() && pendingFiles.length === 0) || sending || uploading}
-          className="p-2 bg-neutral-900 hover:bg-neutral-800 disabled:bg-neutral-300 disabled:cursor-not-allowed text-white rounded-xl transition shrink-0 cursor-pointer"
+          className={`p-2 ${editingMessage ? "bg-primary-500 hover:bg-primary-600" : "bg-neutral-900 hover:bg-neutral-800"} disabled:bg-neutral-300 disabled:cursor-not-allowed text-white rounded-xl transition shrink-0 cursor-pointer`}
         >
           {sending || uploading ? (
             <Loader2 className="w-4 h-4 animate-spin" />
+          ) : editingMessage ? (
+            <Check className="w-4 h-4" />
           ) : (
             <Send className="w-4 h-4" />
           )}
