@@ -29,12 +29,14 @@ export function ReadReceipts({ readers, isDm, isCurrentUserMessage }: ReadReceip
     <div className="flex justify-end mt-0.5 mr-1" title={`Seen by ${tooltip}`}>
       <div className="flex -space-x-1.5">
         {visibleReaders.map((reader) => (
-          <div key={reader.userId} className="w-4 h-4 rounded-full ring-1 ring-white">
-            <Avatar
-              displayName={reader.displayName}
-              avatarUrl={reader.avatarUrl}
-              size="sm"
-            />
+          <div key={reader.userId} className="w-4 h-4 rounded-full ring-1 ring-white overflow-hidden">
+            <div className="w-4 h-4 scale-50 origin-top-left">
+              <Avatar
+                displayName={reader.displayName}
+                avatarUrl={reader.avatarUrl}
+                size="sm"
+              />
+            </div>
           </div>
         ))}
         {remaining > 0 && (

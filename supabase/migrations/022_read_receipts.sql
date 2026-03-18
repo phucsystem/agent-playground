@@ -37,3 +37,20 @@ ALTER PUBLICATION supabase_realtime ADD TABLE conversation_members;
 CREATE POLICY "members_update_own_read" ON conversation_members FOR UPDATE
   USING (user_id = auth.uid())
   WITH CHECK (user_id = auth.uid());
+
+-- Protect role/joined_at from direct UPDATE (only last_read_at allowed)
+CREATE OR REPLACE FUNCTION protect_member_columns()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.role := OLD.role;
+  NEW.joined_at := OLD.joined_at;
+  NEW.conversation_id := OLD.conversation_id;
+  NEW.user_id := OLD.user_id;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_protect_member_columns
+  BEFORE UPDATE ON conversation_members
+  FOR EACH ROW
+  EXECUTE FUNCTION protect_member_columns();

@@ -232,11 +232,11 @@ export function MessageList({
                   isAdmin={isAdmin}
                   memberNames={memberNames}
                 />
-                {readReceiptsByMessageId && (
+                {readReceiptsByMessageId?.has(message.id) && message.sender_id === currentUserId && (
                   <ReadReceipts
-                    readers={readReceiptsByMessageId.get(message.id) || []}
+                    readers={readReceiptsByMessageId.get(message.id)!}
                     isDm={isDm}
-                    isCurrentUserMessage={message.sender_id === currentUserId}
+                    isCurrentUserMessage
                   />
                 )}
               </div>
