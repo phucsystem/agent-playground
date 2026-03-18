@@ -105,7 +105,7 @@ export function Sidebar({
             className="w-full flex items-center justify-center gap-2 py-2 px-4 text-neutral-500 text-sm font-medium rounded-lg hover:bg-neutral-100 transition min-h-[44px]"
           >
             <Settings className="w-4 h-4" />
-            Manage Users
+            Admin Panel
           </Link>
         )}
         <p className="text-[10px] text-neutral-400 text-center pt-1">v{packageJson.version}</p>
