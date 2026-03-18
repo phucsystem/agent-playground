@@ -30,6 +30,11 @@
 
 **Post-Phase 6 Enhancements:**
 
+Release Management:
+- Changelog page at `/changelog` — GitHub release notes display with ISR revalidation
+- Version badge in sidebar footer links to changelog for easy release discovery
+- Build-time static fetch from GitHub API ensures no extra API calls at runtime
+
 Mobile & Presence:
 - Mobile responsive layout (sm/md/lg breakpoints)
 - Hamburger sidebar toggle for mobile
