@@ -3,7 +3,8 @@
 -- and enable realtime on conversation_members
 -- ============================================================
 
--- Update get_conversation_members to include last_read_at
+-- Drop and recreate: return type changed (added last_read_at column)
+DROP FUNCTION IF EXISTS get_conversation_members(uuid);
 CREATE OR REPLACE FUNCTION get_conversation_members(target_conversation_id uuid)
 RETURNS TABLE (
   conversation_id uuid,
