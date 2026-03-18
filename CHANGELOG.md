@@ -1,3 +1,17 @@
+# [1.7.0](https://github.com/phucsystem/agent-playground/compare/v1.6.0...v1.7.0) (2026-03-18)
+
+
+### Features
+
+* **chat:** add read receipts UI for messages ([#18](https://github.com/phucsystem/agent-playground/issues/18)) ([a3e1d0d](https://github.com/phucsystem/agent-playground/commit/a3e1d0d39bb8c3054be1dc36df489b0b18eef209))
+
+# [1.6.0](https://github.com/phucsystem/agent-playground/compare/v1.5.0...v1.6.0) (2026-03-18)
+
+
+### Features
+
+* **changelog:** add release notes page with GitHub releases ([#17](https://github.com/phucsystem/agent-playground/issues/17)) ([67d4be0](https://github.com/phucsystem/agent-playground/commit/67d4be03bea528eb11e5710a9d0a2936cb1b72fe))
+
 # [1.5.0](https://github.com/phucsystem/agent-playground/compare/v1.4.1...v1.5.0) (2026-03-18)
 
 
