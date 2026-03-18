@@ -68,8 +68,13 @@ export default function ConversationPage() {
     : "Type a message...";
 
   useEffect(() => {
+    markAsRead();
+  }, [markAsRead]);
+
+  useEffect(() => {
+    if (messages.length === 0) return;
     const lastMessage = messages[messages.length - 1];
-    if (!lastMessage || lastMessage.sender_id !== currentUser?.id) {
+    if (lastMessage.sender_id !== currentUser?.id) {
       markAsRead();
     }
   }, [markAsRead, messages.length, currentUser?.id]);
