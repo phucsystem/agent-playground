@@ -1,3 +1,10 @@
+# [1.4.0](https://github.com/phucsystem/agent-playground/compare/v1.3.2...v1.4.0) (2026-03-18)
+
+
+### Features
+
+* **notifications:** add debug panel and UI fixes ([#14](https://github.com/phucsystem/agent-playground/issues/14)) ([5cc7524](https://github.com/phucsystem/agent-playground/commit/5cc7524ef5a89bc279c90a67d0558b9bd9f733a9))
+
 ## [1.3.2](https://github.com/phucsystem/agent-playground/compare/v1.3.1...v1.3.2) (2026-03-18)
 
 
