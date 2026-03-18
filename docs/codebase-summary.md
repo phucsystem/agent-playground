@@ -13,8 +13,8 @@ Agent Playground is a ~7,500 LOC Next.js chat application with Supabase backend 
 
 | Category | Count | Files |
 |----------|-------|-------|
-| **App Pages** | 12 | login/page.tsx, chat/layout.tsx, chat/page.tsx, [conversationId]/page.tsx, setup/page.tsx, admin/page.tsx, admin/webhooks/page.tsx, api/auth/login/route.ts, api/auth/logout/route.ts, api/agents/health/route.ts, api/conversations/[conversationId]/route.ts, global-error.tsx, middleware.ts |
-| **Components** | 33 | chat (17: message-list, message-item, chat-input, chat-header, markdown-content, file-card, image-preview, url-preview, chat-info-panel, message-reactions, typing-indicator, emoji-picker, gif-picker, mention-picker, snippet-modal, message-list-skeleton, agent-thinking-indicator), sidebar (10: sidebar, user-profile, online-users, conversation-list, create-group-dialog, workspace-rail, collapsible-section, all-users, search-input, conversation-list-skeleton), admin (5: webhook-config-form, agent-webhook-actions, workspace-settings, workspace-members, edit-user-dialog), profile (1: avatar-editor-dialog), ui (6: avatar, workspace-avatar, agent-health-toast, presence-toast, flip-loader, skeleton) |
+| **App Pages** | 13 | login/page.tsx, chat/layout.tsx, chat/page.tsx, [conversationId]/page.tsx, setup/page.tsx, admin/page.tsx, admin/webhooks/page.tsx, changelog/layout.tsx, changelog/page.tsx, api/auth/login/route.ts, api/auth/logout/route.ts, api/agents/health/route.ts, api/conversations/[conversationId]/route.ts, global-error.tsx, middleware.ts |
+| **Components** | 34 | chat (18: message-list, message-item, chat-input, chat-header, markdown-content, file-card, image-preview, url-preview, chat-info-panel, message-reactions, typing-indicator, emoji-picker, gif-picker, mention-picker, snippet-modal, message-list-skeleton, agent-thinking-indicator, confirm-delete-dialog), sidebar (10: sidebar, user-profile, online-users, conversation-list, create-group-dialog, workspace-rail, collapsible-section, all-users, search-input, conversation-list-skeleton), admin (5: webhook-config-form, agent-webhook-actions, workspace-settings, workspace-members, edit-user-dialog), changelog (1: release-body), profile (1: avatar-editor-dialog), ui (6: avatar, workspace-avatar, agent-health-toast, presence-toast, flip-loader, skeleton) |
 | **Hooks** | 21+ | use-current-user, use-conversations, use-realtime-messages, use-supabase-presence, use-file-upload, use-conversation-members, use-typing-indicator, use-agent-thinking, use-reactions, use-agent-configs, use-webhook-logs, use-avatar-upload, use-pinned-conversations, use-mobile-sidebar, use-workspace-unread, use-notification-sound, use-notification-context, use-agent-health, use-agent-health-context, use-typewriter, use-conversation-order |
 | **Contexts** | 2 | workspace-context.tsx, presence-context.tsx |
 | **Library/Utils** | 5 | auth.ts, crop-image.ts, supabase/client.ts, supabase/server.ts, middleware.ts |
@@ -24,7 +24,7 @@ Agent Playground is a ~7,500 LOC Next.js chat application with Supabase backend 
 | **Seed Data** | 1 | seed.sql (6 users, 2 conversations, 10 messages, 2 webhook configs) |
 | **Config** | 4 | tsconfig.json, package.json, next.config.ts, postcss.config.mjs |
 | **Docs** | 8 | SRD.md, UI_SPEC.md, DB_DESIGN.md, API_SPEC.md, system-architecture.md, codebase-summary.md, project-overview-pdr.md, project-roadmap.md |
-| **Total** | 75+ | Source files + config |
+| **Total** | 78+ | Source files + config |
 
 ## Directory Structure
 
@@ -41,6 +41,9 @@ agent-playground/
 │   │   │   ├── layout.tsx               # Sidebar + main layout
 │   │   │   ├── page.tsx                 # Empty chat state
 │   │   │   └── [conversationId]/page.tsx # DM or group chat
+│   │   ├── changelog/
+│   │   │   ├── layout.tsx               # Changelog page layout
+│   │   │   └── page.tsx                 # GitHub release notes display
 │   │   ├── api/auth/login/route.ts      # POST /api/auth/login
 │   │   ├── api/auth/logout/route.ts     # POST /api/auth/logout
 │   │   ├── api/agents/health/route.ts   # GET /api/agents/health
@@ -64,7 +67,10 @@ agent-playground/
 │   │   │   ├── typing-indicator.tsx     # Animated typing dots
 │   │   │   ├── emoji-picker.tsx         # Emoji selection popover
 │   │   │   ├── gif-picker.tsx           # GIF search + selection popover
-│   │   │   └── mention-picker.tsx       # @mention autocomplete dropdown
+│   │   │   ├── mention-picker.tsx       # @mention autocomplete dropdown
+│   │   │   └── confirm-delete-dialog.tsx # Confirmation dialog for delete actions
+│   │   ├── changelog/
+│   │   │   └── release-body.tsx         # GitHub release markdown renderer
 │   │   ├── admin/
 │   │   │   ├── webhook-config-form.tsx  # Webhook URL + secret inline form
 │   │   │   ├── agent-webhook-actions.tsx # Toggle, edit, view logs for agent rows

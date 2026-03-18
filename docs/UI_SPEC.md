@@ -152,6 +152,7 @@
 | **Discovery** | S-02 (presence list), S-05 (info panel) | Find new agents/testers to interact with |
 | **Operations** | S-06 (admin), S-08 (webhook logs) | Monitor agent health, debug webhook delivery |
 | **Navigation** | S-09 Workspace Rail | Quick workspace switching, context scoping |
+| **Awareness** | S-10 Changelog | Stay informed of new features and improvements |
 
 ### Component Patterns
 
@@ -213,7 +214,8 @@
     │   ├── Online users (collapsible, filtered by mock flag)
     │   ├── DM conversations (collapsible)
     │   ├── Group conversations (collapsible)
-    │   └── New conversation button
+    │   ├── New conversation button
+    │   └── Version badge (links to S-10 Changelog)
     │
     ├── Chat Area (right, flexible)
     │   ├── [S-03: DM Chat] ← click DM conversation
@@ -222,10 +224,13 @@
     ├── [S-05: Chat Info Panel] ← click conversation header info icon
     │   (slide-over from right, 320px)
     │
-    └── [S-06: Admin Page] ← (admin only, from sidebar menu)
-        User list, token generation, manage users
-        ├── Agent webhook config (inline when creating agent token)
-        └── [S-08: Webhook Logs] ← click "View Logs" on agent row
+    ├── [S-06: Admin Page] ← (admin only, from sidebar menu)
+    │   User list, token generation, manage users
+    │   ├── Agent webhook config (inline when creating agent token)
+    │   └── [S-08: Webhook Logs] ← click "View Logs" on agent row
+    │
+    └── [S-10: Changelog] ← click version badge in sidebar footer
+        (GitHub release notes, read-only)
 ```
 
 **Desktop layout:** `[S-09: Workspace Rail (60px)] | [S-02: Sidebar (260px)] | [Chat Area]`
@@ -732,6 +737,60 @@
 - Click workspace → switch context, sidebar shows workspace conversations
 - Hover → tooltip with workspace name
 - Active workspace has white indicator bar + ring highlight
+
+---
+
+### S-10: Changelog
+
+**Phase:** P7
+**Layout:** Full page (no sidebar), centered container with markdown-rendered release notes
+**Access:** `/changelog` (all users)
+**CJX Stage:** Awareness
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ 🤖 Agent Playground — Changelog                             │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│ # v1.4.1                                   2026-03-19       │
+│                                                             │
+│ ## Fixed                                                    │
+│ - Message soft-delete functionality with audit trail        │
+│ - Edit message timestamp tracking                           │
+│ - Admin audit log visibility                                │
+│                                                             │
+│ ---                                                         │
+│                                                             │
+│ # v1.4.0                                   2026-03-17       │
+│ ## Added                                                    │
+│ - React Query v5 with localStorage persister                │
+│ - Sidebar realtime sync improvements                        │
+│ - Unread message marking on navigation                      │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Elements:**
+| Element | Type | Details |
+|---------|------|---------|
+| Title | Heading | "Agent Playground — Changelog" |
+| Release cards | Markdown | GitHub release notes fetched at build time (ISR revalidation for updates) |
+| Version | Text | Release version tag (e.g., "v1.4.1") |
+| Date | Text | Release publish date |
+| Content | Markdown | Full release body (features, fixes, breaking changes) rendered with react-markdown |
+| Scroll | Behavior | Infinite scroll or load more for historical releases |
+
+**Technical Details:**
+- Build-time static fetch from GitHub releases API
+- ISR revalidation every 24h to pick up new releases
+- Markdown rendering via react-markdown
+- Responsive layout (mobile-friendly)
+- Accessible via version badge in sidebar footer (links to `/changelog`)
+
+**Interactions:**
+- Click version badge in sidebar → navigate to changelog
+- Read release notes
+- Navigate back to chat or other sections
 
 ---
 
