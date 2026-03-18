@@ -1,3 +1,10 @@
+# [1.8.0](https://github.com/phucsystem/agent-playground/compare/v1.7.0...v1.8.0) (2026-03-18)
+
+
+### Features
+
+* add read receipts and version reload features ([#19](https://github.com/phucsystem/agent-playground/issues/19)) ([1ee30bc](https://github.com/phucsystem/agent-playground/commit/1ee30bc9fafe170812c944ea6550bd7f1cb5382b))
+
 # [1.7.0](https://github.com/phucsystem/agent-playground/compare/v1.6.0...v1.7.0) (2026-03-18)
 
 
