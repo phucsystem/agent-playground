@@ -1,3 +1,10 @@
+## [1.3.2](https://github.com/phucsystem/agent-playground/compare/v1.3.1...v1.3.2) (2026-03-18)
+
+
+### Performance Improvements
+
+* migrate to React Query for optimized data fetching ([#13](https://github.com/phucsystem/agent-playground/issues/13)) ([49136ec](https://github.com/phucsystem/agent-playground/commit/49136ec1d8becb26e0a9e448cabe7916c3c1e353))
+
 ## [1.3.1](https://github.com/phucsystem/agent-playground/compare/v1.3.0...v1.3.1) (2026-03-17)
 
 
