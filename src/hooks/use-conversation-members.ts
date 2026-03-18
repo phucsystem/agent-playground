@@ -8,6 +8,7 @@ interface MemberWithUser {
   user_id: string;
   role: string;
   joined_at: string;
+  last_read_at: string | null;
   user: { id: string; display_name: string; avatar_url: string | null; is_agent: boolean };
 }
 
@@ -16,6 +17,7 @@ interface RpcMemberRow {
   user_id: string;
   role: string;
   joined_at: string;
+  last_read_at: string | null;
   display_name: string;
   avatar_url: string | null;
   is_agent: boolean;
@@ -39,6 +41,7 @@ export function useConversationMembers(conversationId: string | null) {
         user_id: row.user_id,
         role: row.role,
         joined_at: row.joined_at,
+        last_read_at: row.last_read_at,
         user: {
           id: row.user_id,
           display_name: row.display_name,
