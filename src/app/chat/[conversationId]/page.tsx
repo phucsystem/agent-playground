@@ -14,6 +14,7 @@ import { useReactions } from "@/hooks/use-reactions";
 import { useAgentThinking } from "@/hooks/use-agent-thinking";
 import { useConversationMembers } from "@/hooks/use-conversation-members";
 import { useAgentHealthContext } from "@/hooks/use-agent-health-context";
+import { useReadReceipts } from "@/hooks/use-read-receipts";
 
 import { usePresenceContext } from "@/contexts/presence-context";
 import { Loader2 } from "lucide-react";
@@ -58,6 +59,24 @@ export default function ConversationPage() {
   const memberNames = useMemo(
     () => members.map((member) => member.user.display_name),
     [members]
+  );
+
+  const readReceiptMembers = useMemo(
+    () =>
+      members.map((member) => ({
+        userId: member.user_id,
+        displayName: member.user.display_name,
+        avatarUrl: member.user.avatar_url,
+        isAgent: member.user.is_agent,
+        lastReadAt: member.last_read_at,
+      })),
+    [members]
+  );
+
+  const { readReceiptsByMessageId } = useReadReceipts(
+    messages,
+    readReceiptMembers,
+    currentUser?.id || ""
   );
 
   const isOtherOnline = useMemo(() => {
@@ -173,6 +192,8 @@ export default function ConversationPage() {
           canDeleteOthers={isConversationAdmin}
           isAdmin={currentUser.role === "admin"}
           memberNames={memberNames}
+          readReceiptsByMessageId={readReceiptsByMessageId}
+          isDm={conversation.type === "dm"}
         />
 
         {conversation.is_archived ? (

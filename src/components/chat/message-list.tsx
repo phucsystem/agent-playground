@@ -3,11 +3,13 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { MessageItem } from "./message-item";
+import { ReadReceipts } from "./read-receipts";
 import { TypingIndicator } from "./typing-indicator";
 import { ArrowDown } from "lucide-react";
 import { MessageListSkeleton } from "./message-list-skeleton";
 import type { MessageWithSender } from "@/types/database";
 import type { ReactionGroup } from "@/hooks/use-reactions";
+import type { ReadReceiptUser } from "@/hooks/use-read-receipts";
 
 interface MessageListProps {
   messages: MessageWithSender[];
@@ -25,6 +27,8 @@ interface MessageListProps {
   canDeleteOthers?: boolean;
   isAdmin?: boolean;
   memberNames?: string[];
+  readReceiptsByMessageId?: Map<string, ReadReceiptUser[]>;
+  isDm?: boolean;
 }
 
 function shouldGroup(
@@ -75,6 +79,8 @@ export function MessageList({
   canDeleteOthers = false,
   isAdmin = false,
   memberNames,
+  readReceiptsByMessageId,
+  isDm = false,
 }: MessageListProps) {
   const parentRef = useRef<HTMLDivElement>(null);
   const [showScrollDown, setShowScrollDown] = useState(false);
@@ -226,6 +232,13 @@ export function MessageList({
                   isAdmin={isAdmin}
                   memberNames={memberNames}
                 />
+                {readReceiptsByMessageId && (
+                  <ReadReceipts
+                    readers={readReceiptsByMessageId.get(message.id) || []}
+                    isDm={isDm}
+                    isCurrentUserMessage={message.sender_id === currentUserId}
+                  />
+                )}
               </div>
             );
           })}
