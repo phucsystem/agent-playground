@@ -69,7 +69,7 @@ export function useNotificationSound(
 
     new Notification(title, {
       body,
-      tag: "agent-playground-notification",
+      tag: `agent-playground-${Date.now()}`,
     });
   }, []);
 
@@ -82,6 +82,9 @@ export function useNotificationSound(
   useEffect(() => {
     if (!currentUser?.id) return;
     if (!currentUser.notification_enabled) return;
+    if (typeof Notification !== "undefined" && Notification.permission === "default") {
+      Notification.requestPermission();
+    }
 
     const supabase = createBrowserSupabaseClient();
     const channel = supabase

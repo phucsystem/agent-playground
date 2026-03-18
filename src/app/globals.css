@@ -71,6 +71,17 @@ body {
   animation: reaction-pop 300ms ease-out;
 }
 
+/* Strip Sonner's built-in chrome so custom toasts render without a wrapper bubble */
+[data-sonner-toast] {
+  --normal-bg: transparent;
+  --normal-border: transparent;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-reaction-pop,
   .animate-flip {

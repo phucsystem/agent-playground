@@ -4,7 +4,8 @@ import { useState, useCallback, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { Avatar } from "@/components/ui/avatar";
 import { AvatarEditorDialog } from "@/components/profile/avatar-editor-dialog";
-import { LogOut, Bell, BellOff, Camera } from "lucide-react";
+import { NotificationDebugPanel } from "@/components/ui/notification-debug-panel";
+import { LogOut, Bell, BellOff, Camera, Bug } from "lucide-react";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import type { User } from "@/types/database";
 
@@ -20,6 +21,7 @@ export function UserProfile({ currentUser, onLogout, onAvatarSaved }: UserProfil
     currentUser.notification_enabled
   );
   const [toggling, setToggling] = useState(false);
+  const [showDebugPanel, setShowDebugPanel] = useState(false);
 
   useEffect(() => {
     setNotificationEnabled(currentUser.notification_enabled);
@@ -77,6 +79,15 @@ export function UserProfile({ currentUser, onLogout, onAvatarSaved }: UserProfil
         </p>
       </div>
       <div className="flex items-center gap-0.5">
+        {currentUser.role === "admin" && (
+          <button
+            onClick={() => setShowDebugPanel(true)}
+            className="p-1.5 rounded-md text-neutral-400 hover:text-amber-500 hover:bg-amber-50 transition cursor-pointer"
+            title="Debug notifications"
+          >
+            <Bug className="w-4 h-4" />
+          </button>
+        )}
         <button
           onClick={handleToggleNotification}
           disabled={toggling}
@@ -102,6 +113,13 @@ export function UserProfile({ currentUser, onLogout, onAvatarSaved }: UserProfil
           user={currentUser}
           onClose={() => setShowAvatarEditor(false)}
           onSaved={() => onAvatarSaved?.()}
+        />,
+        document.body,
+      )}
+      {showDebugPanel && createPortal(
+        <NotificationDebugPanel
+          onClose={() => setShowDebugPanel(false)}
+          notificationEnabled={notificationEnabled}
         />,
         document.body,
       )}
