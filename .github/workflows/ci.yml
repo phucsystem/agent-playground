@@ -78,6 +78,21 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       - name: Release
+        id: release
         env:
           GITHUB_TOKEN: ${{ secrets.SEMANTIC_RELEASE_TOKEN }}
-        run: pnpm exec semantic-release
+        run: |
+          BEFORE=$(node -p "require('./package.json').version")
+          pnpm exec semantic-release
+          AFTER=$(node -p "require('./package.json').version")
+          if [ "$BEFORE" != "$AFTER" ]; then
+            echo "version=$AFTER" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Notify app of new release
+        if: steps.release.outputs.version != ''
+        run: |
+          curl -sf -X POST "${{ secrets.APP_URL }}/api/release-notify" \
+            -H "Content-Type: application/json" \
+            -d "{\"secret\":\"${{ secrets.RELEASE_WEBHOOK_SECRET }}\",\"version\":\"${{ steps.release.outputs.version }}\"}" \
+            || echo "Release notification failed (non-fatal)"
