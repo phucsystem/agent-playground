@@ -146,12 +146,12 @@ function HeartButton({
     <button
       onClick={handleClick}
       className={`flex items-center gap-1 self-end -mb-2 px-1.5 py-1 rounded-full transition-all cursor-pointer ${
-        hasHearted
-          ? "text-red-500"
+        heartCount > 0
+          ? "text-red-500 !opacity-100"
           : "text-neutral-300 hover:text-red-400 opacity-0 group-hover:opacity-100"
-      } ${heartCount > 0 ? "!opacity-100" : ""}`}
+      }`}
     >
-      <Heart className={`w-5 h-5 ${hasHearted ? "fill-red-500" : ""} ${animating ? "animate-reaction-pop" : ""}`} />
+      <Heart className={`w-5 h-5 ${heartCount > 0 ? "fill-red-500" : ""} ${animating ? "animate-reaction-pop" : ""}`} />
       {heartCount > 0 && (
         <span className="text-sm font-medium">{heartCount}</span>
       )}
