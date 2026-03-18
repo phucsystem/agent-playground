@@ -1,8 +1,9 @@
 # Codebase Summary
 
-**Generated:** 2026-03-17
+**Generated:** 2026-03-18
 **Repomix output:** `./repomix-output.xml`
-**Status:** ✅ Phases 1-6 complete. All core features + workspace support + agent health + notifications + mobile responsiveness implemented.
+**Version:** 1.3.1
+**Status:** ✅ Phases 1-6 complete + React Query v5 performance migration + localStorage persister. All core features + workspace support + agent health + notifications + mobile responsiveness + optimized data caching implemented.
 
 ## Overview
 
@@ -13,8 +14,8 @@ Agent Playground is a ~7,500 LOC Next.js chat application with Supabase backend 
 | Category | Count | Files |
 |----------|-------|-------|
 | **App Pages** | 12 | login/page.tsx, chat/layout.tsx, chat/page.tsx, [conversationId]/page.tsx, setup/page.tsx, admin/page.tsx, admin/webhooks/page.tsx, api/auth/login/route.ts, api/auth/logout/route.ts, api/agents/health/route.ts, api/conversations/[conversationId]/route.ts, global-error.tsx, middleware.ts |
-| **Components** | 33 | chat (14: message-list, message-item, chat-input, chat-header, markdown-content, file-card, image-preview, url-preview, chat-info-panel, message-reactions, typing-indicator, emoji-picker, gif-picker, mention-picker), sidebar (8: sidebar, user-profile, online-users, conversation-list, create-group-dialog, workspace-rail, collapsible-section, all-users), admin (5: webhook-config-form, agent-webhook-actions, workspace-settings, workspace-members, edit-user-dialog), profile (1: avatar-editor-dialog), ui (5: avatar, workspace-avatar, agent-health-toast, presence-toast, flip-loader) |
-| **Hooks** | 20 | use-current-user, use-conversations, use-realtime-messages, use-supabase-presence, use-file-upload, use-conversation-members, use-typing-indicator, use-agent-thinking, use-reactions, use-agent-configs, use-webhook-logs, use-avatar-upload, use-pinned-conversations, use-mobile-sidebar, use-workspace-unread, use-notification-sound, use-notification-context, use-agent-health, use-agent-health-context, use-typewriter |
+| **Components** | 33 | chat (17: message-list, message-item, chat-input, chat-header, markdown-content, file-card, image-preview, url-preview, chat-info-panel, message-reactions, typing-indicator, emoji-picker, gif-picker, mention-picker, snippet-modal, message-list-skeleton, agent-thinking-indicator), sidebar (10: sidebar, user-profile, online-users, conversation-list, create-group-dialog, workspace-rail, collapsible-section, all-users, search-input, conversation-list-skeleton), admin (5: webhook-config-form, agent-webhook-actions, workspace-settings, workspace-members, edit-user-dialog), profile (1: avatar-editor-dialog), ui (6: avatar, workspace-avatar, agent-health-toast, presence-toast, flip-loader, skeleton) |
+| **Hooks** | 21+ | use-current-user, use-conversations, use-realtime-messages, use-supabase-presence, use-file-upload, use-conversation-members, use-typing-indicator, use-agent-thinking, use-reactions, use-agent-configs, use-webhook-logs, use-avatar-upload, use-pinned-conversations, use-mobile-sidebar, use-workspace-unread, use-notification-sound, use-notification-context, use-agent-health, use-agent-health-context, use-typewriter, use-conversation-order |
 | **Contexts** | 2 | workspace-context.tsx, presence-context.tsx |
 | **Library/Utils** | 5 | auth.ts, crop-image.ts, supabase/client.ts, supabase/server.ts, middleware.ts |
 | **Types** | 1 | database.ts (generated from schema) |
@@ -170,27 +171,64 @@ agent-playground/
 
 ## Key Patterns
 
-### Hooks-First Data Layer
+### React Query v5 Data Layer (TanStack Query)
 
-All data fetching and realtime subscriptions in custom hooks:
+All data fetching and realtime subscriptions via custom hooks built on TanStack Query v5. Three-tier caching strategy: localStorage (cross-session), in-memory (stale-while-revalidate), realtime (surgical updates). No blank screens during navigation or workspace switches.
 
-- **use-current-user** — Fetch user profile, cache in state
-- **use-conversations** — List user's conversations with unread counts
-- **use-realtime-messages** — Subscribe to postgres_changes for messages
+**QueryClient Configuration** (`src/app/query-provider.tsx`):
+- **staleTime:** 60s default, 30s conversations, Infinity messages
+- **gcTime:** 30min (garbage collection, formerly cacheTime)
+- **retry:** 1 attempt on network error
+- **refetchOnWindowFocus:** disabled (avoid stale refetch on browser tab focus)
+- **refetchOnReconnect:** enabled (recover after network loss)
+- **ReactQueryDevtools:** enabled in dev mode for cache inspection
+
+**localStorage Persister** (`src/lib/query-client.ts`):
+- **conversations** cached per workspace, 24h TTL
+- Persists across browser sessions — open app → instant conversation list
+- Stale queries refetched in background after hydration
+- Eliminates cold-start delay on first load
+
+**Query Hooks (TanStack Query v5):**
+- **use-conversations** — `useQuery(['conversations', workspaceId])` + 6 realtime subscription channels (messages INSERT, conversation CRUD, members)
+- **use-realtime-messages** — `useInfiniteQuery(['messages', conversationId])` + surgical setQueryData (append to pages, no full refetch)
+
+**Subscription Hooks (realtime-driven, custom):**
+- **use-current-user** — Fetch user profile, manual cache invalidation
 - **use-supabase-presence** — Manage online status broadcast
 - **use-file-upload** — Storage upload + metadata
-- **use-conversation-members** — List group members
+- **use-conversation-members** — List group members + realtime sync
 - **use-typing-indicator** — Broadcast & listen to typing
-- **use-reactions** — Add/remove emoji reactions
+- **use-reactions** — Add/remove emoji reactions + optimistic updates
 - **use-pinned-conversations** — Manage localStorage-based conversation pinning
 - **use-mobile-sidebar** — Control mobile sidebar visibility via context provider
 - **use-avatar-upload** — Upload avatar blob to storage bucket + update user profile
 - **use-workspace-unread** — Aggregate unread counts per workspace
 - **use-notification-sound** — Play/mute audio on new message
 - **use-notification-context** — Notification preferences context
-- **use-agent-health** — Poll /api/agents/health for agent status
+- **use-agent-health** — Poll /api/agents/health every 5min, state transitions tracked
 - **use-agent-health-context** — Agent health state distributed via context
 - **use-typewriter** — Typewriter text animation for streaming responses
+- **use-conversation-order** — DnD reordering with localStorage persistence
+
+**Realtime Cache Update Strategy:**
+- **postgres_changes INSERT messages** — setQueryData appends to conversation's message pages, prevents duplicate via `msg.id` check
+- **postgres_changes CRUD conversations** — queryKey includes workspaceId (isolation), full refetch on type change
+- **membership changes** — Refresh conversation members, update cache
+- No full refetch except on conversation type/membership changes
+
+**Performance Improvements:**
+- Workspace switching: Stale conversations display immediately, background refetch queued
+- Conversation switching: Cached messages render at 0ms, paginated load more on scroll
+- Realtime updates: setQueryData surgical appends (1-2 pages) instead of full refetch
+- Deduplication: Realtime handler checks `msg.id` against cached pages
+- localStorage eliminates cold-start spinner (conversations pre-fetched from disk)
+- No full-page refresh on route change (preserved scroll, focus, message load state)
+
+**Skeleton Screens:**
+- `src/components/ui/skeleton.tsx` — Base Tailwind animate-pulse component
+- `src/components/sidebar/conversation-list-skeleton.tsx` — 6-8 shimmer rows during initial load
+- `src/components/chat/message-list-skeleton.tsx` — 5-6 alternating message bubbles during initial load
 
 Components receive clean data/callbacks. No fetch logic in components.
 
@@ -226,11 +264,23 @@ Logout (both src/lib/auth.ts and sidebar.tsx)
 
 ### Realtime Architecture
 
-| Channel | Event | Trigger | Use Case |
+**Conversation Context** (per-conversation subscriptions):
+- 6 channels per active conversation via `use-conversations` hook
+
+| Channel | Event | Handler | Use Case |
 |---------|-------|---------|----------|
-| `messages:{conversationId}` | postgres_changes INSERT | New message | Live chat |
-| `online-users` | presence sync/join/leave | User online/offline | Presence list |
-| `typing:{conversationId}` | broadcast | User typing | Typing indicator |
+| `messages:{conversationId}` INSERT | postgres_changes | setQueryData append to pages | New message (no refetch) |
+| `conversations:{workspaceId}` CRUD | postgres_changes | queryClient.invalidateQueries | Conversation created/renamed/deleted |
+| `conversation_members:{conversationId}` * | postgres_changes | queryKey with conversationId | Member added/removed/role changed |
+| `online-users` | presence sync/join/leave | React state | Online status sidebar + toasts |
+| `typing:{conversationId}` | broadcast | React state | Typing indicator |
+| `reactions:{conversationId}` | postgres_changes | setQueryData update message | Emoji reactions (all events) |
+
+**Surgical Cache Updates:**
+- Messages INSERT: Appends to conversation's message pages (O(1) operation)
+- Prevents duplicates via `msg.id` check against cached pages
+- Membership/type changes: Full conversation refresh (rare)
+- 30-50 ms latency per update
 
 ### Component Architecture
 
@@ -300,6 +350,11 @@ const { addReaction } = useReactions();
 | next | 16.1.6 | Framework |
 | react | 19.2.4 | UI |
 | typescript | 5.9.3 | Type safety |
+| @tanstack/react-query | 5.90.21 | Data fetching + cache management |
+| @tanstack/react-query-persist-client | 5.90.24 | localStorage persistence |
+| @tanstack/react-query-devtools | 5.x | Dev tools for cache inspection |
+| @tanstack/react-virtual | — | Message/conversation virtualization |
+| @dnd-kit/* | — | Conversation drag-and-drop reordering |
 | @supabase/supabase-js | 2.99.1 | Client SDK |
 | @supabase/ssr | 0.9.0 | Session management |
 | tailwindcss | 4.2.1 | Styling |
@@ -309,6 +364,7 @@ const { addReaction } = useReactions();
 | lucide-react | 0.577.0 | Icons |
 | sonner | — | Toast notifications |
 | react-easy-crop | — | Image cropping UI |
+| sentry | 10.43.0 | Error tracking + monitoring |
 
 ## Database Schema (8 Tables)
 

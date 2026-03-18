@@ -1,23 +1,34 @@
 # Project Roadmap
 
-**Last Updated:** 2026-03-17
-**Current Version:** 0.1.0
-**Status:** MVP live with mobile + presence enhancements
+**Last Updated:** 2026-03-18
+**Current Version:** 1.3.1
+**Status:** MVP live with React Query optimization + sidebar realtime sync
 
 ## Release Timeline
 
-### ✅ 0.1.0 — MVP (Current)
+### ✅ 1.3.1 — React Query Performance & Sidebar Realtime (Current)
 
-**Released:** 2026-03-17
+**Released:** 2026-03-18
 
-**Phases 1-5 Complete:**
+**Latest Enhancements:**
+- React Query v5 migration with localStorage persister (24h TTL conversations)
+- Sidebar realtime sync: 6 subscription channels per conversation (messages INSERT, CRUD, members, reactions, typing, presence)
+- Message read fixes and cache invalidation logic
+- Surgical cache updates via setQueryData (no full refetch)
+
+**Core Stack:** Phases 1-5 Complete + Phase 6 Enhancements:
 - P1: Core chat (auth, DMs, groups, realtime)
 - P2: Rich content (files, images, URLs, markdown)
 - P3: Polish (typing indicators, reactions)
 - P4: Admin (user management, setup wizard, mock flag)
 - P5: Agent webhooks (dispatch, delivery logs, @mention routing, thinking indicator)
+- P6: Mobile + workspace + agent health + notifications
 
-**Post-Phase 5 Enhancements:**
+**Previous Releases:**
+- v1.3.0 (2026-03-17) — Chat UI polish, snippet cards, sidebar search
+- v1.3.0 — Initial release with chat, workspaces, agent health
+
+**Post-Phase 6 Enhancements:**
 
 Mobile & Presence:
 - Mobile responsive layout (sm/md/lg breakpoints)
@@ -50,10 +61,12 @@ Workspace:
 
 **Technology Stack:**
 - Next.js 16, React 19, TypeScript 5.9
+- React Query v5 (TanStack) with localStorage persister
 - Tailwind CSS 4.2
 - Supabase (PostgreSQL, Realtime, Auth, Storage, Edge Functions)
 - Markdown: react-markdown + remark-gfm + rehype-highlight
-- UI: Lucide icons, Sonner toasts, TanStack React Virtual
+- UI: Lucide icons, Sonner toasts, TanStack React Virtual, DnD Kit
+- Monitoring: Sentry 10.43.0
 
 See `docs/codebase-summary.md` for current file counts and project structure.
 

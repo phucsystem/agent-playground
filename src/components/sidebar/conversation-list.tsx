@@ -90,7 +90,7 @@ interface SortableSectionProps {
   onlineUserIds: string[];
   pinnedSet: Set<string>;
   onTogglePin: (id: string) => void;
-  onReorder: (fromIndex: number, toIndex: number) => void;
+  onReorder: (fromId: string, toId: string) => void;
   getAgentHealthStatus?: (agentId: string) => AgentHealthStatus;
 }
 
@@ -112,12 +112,7 @@ function SortableSection({
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
-
-    const fromIndex = unpinned.findIndex((conv) => conv.id === active.id);
-    const toIndex = unpinned.findIndex((conv) => conv.id === over.id);
-    if (fromIndex !== -1 && toIndex !== -1) {
-      onReorder(fromIndex, toIndex);
-    }
+    onReorder(String(active.id), String(over.id));
   }
 
   return (

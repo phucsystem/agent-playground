@@ -5,7 +5,7 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { MessageItem } from "./message-item";
 import { TypingIndicator } from "./typing-indicator";
 import { ArrowDown } from "lucide-react";
-import { FlipLoader } from "@/components/ui/flip-loader";
+import { MessageListSkeleton } from "./message-list-skeleton";
 import type { MessageWithSender } from "@/types/database";
 import type { ReactionGroup } from "@/hooks/use-reactions";
 
@@ -86,17 +86,16 @@ export function MessageList({
   });
 
   const scrollToBottom = useCallback((smooth = true) => {
-    if (messages.length === 0) return;
-    virtualizer.scrollToIndex(messages.length - 1, {
-      align: "end",
-      behavior: smooth ? "smooth" : "auto",
-    });
-  }, [virtualizer, messages.length]);
+    const container = parentRef.current;
+    if (!container) return;
+    container.scrollTo({ top: container.scrollHeight, behavior: smooth ? "smooth" : "auto" });
+  }, []);
 
   useEffect(() => {
     if (prevConversationId.current !== conversationId) {
       prevConversationId.current = conversationId;
       prevMessageCount.current = 0;
+      isInitialLoad.current = true;
       setVisible(false);
     }
   }, [conversationId]);
@@ -117,9 +116,8 @@ export function MessageList({
     }
 
     if (messages.length > prevMessageCount.current && isAtBottomRef.current) {
-      virtualizer.scrollToIndex(messages.length - 1, {
-        align: "end",
-        behavior: "smooth",
+      requestAnimationFrame(() => {
+        parentRef.current?.scrollTo({ top: parentRef.current.scrollHeight, behavior: "smooth" });
       });
     }
     prevMessageCount.current = messages.length;
@@ -141,6 +139,15 @@ export function MessageList({
     if (visible) isInitialLoad.current = false;
   }, [virtualizer.getTotalSize(), visible, messages.length, virtualizer]);
 
+  // Scroll to bottom when typing indicator appears so it's visible
+  useEffect(() => {
+    if ((agentThinking || typingUsers.length > 0) && isAtBottomRef.current) {
+      requestAnimationFrame(() => {
+        parentRef.current?.scrollTo({ top: parentRef.current.scrollHeight, behavior: "smooth" });
+      });
+    }
+  }, [agentThinking, typingUsers.length]);
+
   function handleScroll() {
     const container = parentRef.current;
     if (!container) return;
@@ -156,11 +163,7 @@ export function MessageList({
   }
 
   if (loading && messages.length === 0) {
-    return (
-      <div className="flex-1 flex items-center justify-center">
-        <FlipLoader size="lg" label="Loading messages..." />
-      </div>
-    );
+    return <MessageListSkeleton />;
   }
 
   const virtualItems = virtualizer.getVirtualItems();

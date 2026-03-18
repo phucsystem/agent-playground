@@ -39,8 +39,11 @@ export function useConversationOrder(
   }, [userId, workspaceId, section]);
 
   const reorder = useCallback(
-    (fromIndex: number, toIndex: number) => {
+    (fromId: string, toId: string) => {
       setOrderedIds((prev) => {
+        const fromIndex = prev.indexOf(fromId);
+        const toIndex = prev.indexOf(toId);
+        if (fromIndex === -1 || toIndex === -1) return prev;
         const next = [...prev];
         const [moved] = next.splice(fromIndex, 1);
         next.splice(toIndex, 0, moved);

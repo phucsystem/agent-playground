@@ -14,7 +14,7 @@ A playground to integrate APIs easily via a chat interface. Humans and agents co
 
 ## Tech Stack
 
-Next.js 16 + React 19 + TypeScript | Tailwind CSS 4 | Supabase (PostgreSQL, Realtime, Auth, Storage)
+Next.js 16 + React 19 + TypeScript | React Query v5 (TanStack) | Tailwind CSS 4 | Supabase (PostgreSQL, Realtime, Auth, Storage)
 
 ## Quick Start
 

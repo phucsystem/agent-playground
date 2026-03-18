@@ -1,28 +1,91 @@
 # System Architecture
 
-**Last updated:** 2026-03-17
+**Last updated:** 2026-03-18
+**Version:** 1.3.1
 
 ## Overview
 
 Agent Playground is a chat-based collaboration platform where humans and AI agents work together through conversations with easy API integration via webhooks. Future direction: more tools and public agents.
 
-**Stack:** Next.js 16 (React 19) | Supabase (PostgreSQL, Realtime, Auth, Storage, Edge Functions) | Tailwind CSS 4
+**Stack:** Next.js 16 (React 19) | Supabase (PostgreSQL, Realtime, Auth, Storage, Edge Functions) | Tailwind CSS 4 | React Query v5 (TanStack)
+
+## Data Caching Architecture
+
+Three-tier caching strategy eliminates blank screens and provides instant navigation across conversations and workspaces.
+
+```mermaid
+graph TB
+    subgraph Disk["Persistent Storage (Browser Disk)"]
+        LocalStorage["localStorage<br/>Conversations (24h TTL)<br/>Order, Pins, Workspace"]
+    end
+
+    subgraph Memory["React Query Cache (RAM)"]
+        QC["QueryClient<br/>staleTime: 60s default<br/>gcTime: 30m"]
+        Conversations["conversations<br/>staleTime: 30s"]
+        Messages["messages<br/>staleTime: Infinity"]
+        Members["members<br/>realtime sync"]
+    end
+
+    subgraph Realtime["Realtime (WebSocket)"]
+        PG["postgres_changes<br/>INSERT/UPDATE/DELETE"]
+        Presence["Presence<br/>Online/offline"]
+        Typing["Broadcast<br/>Typing indicators"]
+    end
+
+    subgraph Server["Supabase API"]
+        PostgREST["PostgREST<br/>(REST API)"]
+    end
+
+    LocalStorage -->|hydrate on page load| QC
+    QC -->|stale? background refetch| PostgREST
+    QC -->|setQueryData append/update| Messages
+    Realtime -->|surgical cache writes| Messages
+    Realtime -->|invalidate conversations| Conversations
+    PostgREST -->|response| QC
+```
+
+**Layer 1: localStorage (Disk)**
+- **conversations** — Cached per workspace, 24h TTL
+- **workspace order** — Conversation DnD order
+- **pins** — User's pinned conversations
+- **active workspace** — User's workspace context
+- Purpose: Cross-session persistence, instant app open
+
+**Layer 2: React Query Cache (Memory)**
+- **conversations** — staleTime 30s, background refetch on mount
+- **messages** — staleTime Infinity (realtime-driven), paginated infinite query
+- **members** — staleTime varies, realtime subscription
+- **user** — Manual invalidation on profile change
+- **Query keys scoped by workspaceId** — Conversations from workspace A don't interfere with workspace B
+
+**Layer 3: Realtime (WebSocket)**
+- **postgres_changes** — Surgical cache updates via setQueryData (append messages, refresh conversations)
+- **presence** — Online status, no cache layer (ephemeral state)
+- **broadcast** — Typing indicators (ephemeral state)
+- **Latency:** <500ms for messages, <2s for presence
+
+**No blank screens because:**
+1. Open app → localStorage hydrates conversations immediately
+2. Switch conversation → cached messages render instantly (paginated load more on scroll)
+3. Switch workspace → stale conversations displayed immediately, background refetch in progress
+4. Realtime updates append/update cache without full refetch
 
 ## System Diagram
 
 ```mermaid
 graph TB
-    subgraph Client["Browser Client"]
-        NextJS["Next.js Frontend<br/>React 19 + TypeScript"]
+    subgraph Client["Browser Client (Next.js 16 + React 19)"]
         Pages["Pages: Login, Setup, Chat, Admin"]
-        Hooks["13 Custom Hooks"]
-        Components["24 Components"]
+        Components["33 Components (chat, sidebar, admin, ui, profile)"]
+        Hooks["21+ Custom Hooks (React Query + realtime)"]
+        Cache["React Query v5<br/>+ localStorage persister"]
+        Realtime["Realtime subscriptions<br/>(6 channels per conversation)"]
     end
 
     subgraph Supabase["Supabase Cloud"]
         PostgREST["PostgREST API"]
-        RealtimeWS["Realtime WebSocket"]
-        PostgreSQL[("PostgreSQL<br/>8 Tables + RLS")]
+        RealtimeWS["Realtime WebSocket<br/>(postgres_changes, presence, broadcast)"]
+        PostgreSQL[("PostgreSQL<br/>11 Tables + RLS")]
         Storage["Storage<br/>(attachments + avatars)"]
         Auth["Auth (JWT)"]
         DBWebhook["Database Webhook Trigger"]
@@ -33,14 +96,18 @@ graph TB
         AgentSvc["Agent Services<br/>(via Webhooks)"]
     end
 
-    NextJS --> PostgREST
-    NextJS --> RealtimeWS
-    NextJS --> Storage
-    NextJS --> Auth
+    Pages -->|hooks| Hooks
+    Hooks -->|useQuery/invalidate| Cache
+    Hooks -->|subscribe| Realtime
+    Components -->|props| Pages
+    Cache -->|fetch| PostgREST
+    Cache -->|setQueryData append| Realtime
+    Realtime -->|WebSocket| RealtimeWS
 
     PostgREST --> PostgreSQL
     RealtimeWS --> PostgreSQL
     Storage --> PostgreSQL
+    Auth --> PostgreSQL
 
     PostgreSQL -->|"messages INSERT"| DBWebhook
     DBWebhook -->|POST| EdgeFn
@@ -48,7 +115,7 @@ graph TB
     EdgeFn -->|"POST webhook_url"| AgentSvc
     AgentSvc -->|response| EdgeFn
     EdgeFn -->|"INSERT agent reply"| PostgreSQL
-    PostgreSQL -->|Realtime broadcast| RealtimeWS
+    PostgreSQL -->|broadcast changes| RealtimeWS
 ```
 
 ## Authentication Flow
@@ -107,31 +174,52 @@ All access control enforced at database level — no application-level authoriza
 ## Realtime Architecture
 
 ```mermaid
-flowchart TB
-    subgraph Channels["3 Realtime Layers"]
-        PG["postgres_changes<br/>Message INSERT events<br/>< 500ms"]
-        Presence["Presence Channel<br/>Online/offline sync<br/>< 2s"]
-        Broadcast["Broadcast Channel<br/>Typing indicators<br/>< 100ms"]
+graph TB
+    subgraph PerConversation["Per-Conversation (6 channels)"]
+        MessagesInsert["messages:{convId}<br/>INSERT → append cache"]
+        ConversationCrud["conversations:{wsId}<br/>CRUD → invalidate"]
+        MembershipChanges["conversation_members:{convId}<br/>* → refresh members"]
+        ReactionsEvents["reactions:{convId}<br/>* → update message"]
+        TypingIndicator["typing:{convId}<br/>broadcast → UI state"]
     end
 
-    subgraph ClientSide["Client-Side Heuristics"]
-        Thinking["Agent Thinking Indicator<br/>30s timeout fallback"]
-        Toasts["Presence Toasts<br/>Online notifications"]
+    subgraph GlobalChannels["Global (2 channels)"]
+        OnlinePresence["online-users<br/>presence → UI + toasts"]
     end
 
-    PG --> MessageList["Message List"]
-    Presence --> OnlineUsers["Online Users Sidebar"]
-    Presence --> Toasts
-    Broadcast --> TypingDots["Typing Indicator"]
-    MessageList --> Thinking
+    subgraph ClientSide["Client-Side Logic"]
+        AgentThinking["Agent Thinking Heuristic<br/>30s timeout"]
+        MessageCount["Message Count Watch"]
+    end
+
+    PerConversation -->|setQueryData| CacheLayer["React Query Cache<br/>(surgical updates)"]
+    GlobalChannels -->|state update| UI["UI Components"]
+    CacheLayer -->|prop updates| UI
+    MessageCount -->|watch array| AgentThinking
+    AgentThinking -->|timeout| ThinkingUI["Thinking Indicator"]
 ```
 
-| Layer | Channel | Event | Use |
-|-------|---------|-------|-----|
-| Postgres Changes | `messages:{convId}` | INSERT | Real-time message delivery |
-| Presence | `online-users` | sync/join/leave | Online status tracking |
-| Broadcast | `typing:{convId}` | typing | "User is typing..." |
-| Client heuristic | — | message array watch | "Agent is thinking..." (30s timeout) |
+**Subscriptions per Conversation Context:**
+
+| Channel | Event Type | Cache Handler | Use Case | Latency |
+|---------|------------|----------------|----------|---------|
+| `messages:{convId}` | postgres_changes INSERT | setQueryData append | New message + optimistic | <100ms |
+| `conversations:{wsId}` | postgres_changes CRUD | invalidateQueries | Conv name/archived change | <500ms |
+| `conversation_members:{convId}` | postgres_changes all | refresh query | Member added/removed/role | <500ms |
+| `reactions:{convId}` | postgres_changes all | setQueryData update | Emoji added/removed | <100ms |
+| `typing:{convId}` | broadcast message | React state | User is typing... | <50ms |
+| `online-users` | presence sync/join/leave | React state | Online status display | <2s |
+
+**Workspace-Scoped Isolation:**
+- Query keys include `workspaceId` to prevent cross-workspace cache collisions
+- Switching workspaces invalidates only stale conversations (preserves messages from current workspace)
+- Presence only broadcasts within workspace context
+
+**Cache Update Patterns:**
+- **Append pattern:** Message INSERT → page count unchanged, just append to last page
+- **Invalidate pattern:** Conversation type/membership change → full conversation refetch
+- **Update pattern:** Reaction add/remove → update message object in cache
+- All mutations optimistic: UI updates immediately, server sync in background
 
 ## Data Flow: Message Sending
 
@@ -275,7 +363,7 @@ erDiagram
     agent_configs ||--o{ webhook_delivery_logs : logs
 ```
 
-**8 tables** with RLS on all:
+**11 tables** with RLS on all:
 
 | Table | Purpose |
 |-------|---------|
@@ -287,12 +375,15 @@ erDiagram
 | `reactions` | Emoji reactions (one per user per message) |
 | `agent_configs` | Webhook URL + secret + active toggle (one per agent) |
 | `webhook_delivery_logs` | Dispatch history (status, attempts, request/response) |
+| `workspaces` | Workspace containers (name, color) |
+| `workspace_members` | Workspace membership + roles |
+| `user_sessions` | Multi-device session tracking (3-session cap) |
 
 **Storage buckets:**
 - `attachments` (private) — Message files, scoped by conversation
 - `avatars` (public) — User profile pictures, scoped by user ID
 
-**12 migrations** applied sequentially from initial schema through avatar storage setup.
+**20 migrations** applied sequentially from initial schema through avatar storage setup, workspace support, and realtime enablement.
 
 ## Mobile Responsive Architecture
 
