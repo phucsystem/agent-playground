@@ -1,3 +1,10 @@
+# [1.5.0](https://github.com/phucsystem/agent-playground/compare/v1.4.1...v1.5.0) (2026-03-18)
+
+
+### Features
+
+* **messages:** add edit, soft-delete, and admin audit for messages ([#16](https://github.com/phucsystem/agent-playground/issues/16)) ([a50a0ac](https://github.com/phucsystem/agent-playground/commit/a50a0ac41e64cda50e962c5909e7233c3fe33687))
+
 ## [1.4.1](https://github.com/phucsystem/agent-playground/compare/v1.4.0...v1.4.1) (2026-03-18)
 
 
