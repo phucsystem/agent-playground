@@ -1,3 +1,10 @@
+# [1.11.0](https://github.com/phucsystem/agent-playground/compare/v1.10.0...v1.11.0) (2026-03-19)
+
+
+### Features
+
+* add workspace debug indicator and unread message red dot ([#23](https://github.com/phucsystem/agent-playground/issues/23)) ([4ffbe3f](https://github.com/phucsystem/agent-playground/commit/4ffbe3fe00fa5df0afca06e8691ad8b460f559b5))
+
 # [1.10.0](https://github.com/phucsystem/agent-playground/compare/v1.9.0...v1.10.0) (2026-03-19)
 
 
