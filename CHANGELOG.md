@@ -1,3 +1,10 @@
+# [1.9.0](https://github.com/phucsystem/agent-playground/compare/v1.8.0...v1.9.0) (2026-03-19)
+
+
+### Features
+
+* add version reload banner and confirm delete dialog ([#20](https://github.com/phucsystem/agent-playground/issues/20)) ([eef57e2](https://github.com/phucsystem/agent-playground/commit/eef57e2353d6db21b7085fd7baaca749a393dcec)), closes [#19](https://github.com/phucsystem/agent-playground/issues/19)
+
 # [1.8.0](https://github.com/phucsystem/agent-playground/compare/v1.7.0...v1.8.0) (2026-03-18)
 
 
