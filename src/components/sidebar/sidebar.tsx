@@ -72,17 +72,6 @@ export function Sidebar({
         </button>
       </div>
 
-      {activeWorkspace && (
-        <div className="px-3 py-1.5 bg-amber-50 border-b border-amber-200 flex items-center gap-2 text-[11px] text-amber-700 font-mono">
-          <span
-            className="w-2.5 h-2.5 rounded-full shrink-0 border border-amber-300"
-            style={{ backgroundColor: activeWorkspace.color ?? "#6b7280" }}
-          />
-          <span className="truncate font-medium">{activeWorkspace.name}</span>
-          <span className="text-amber-400 ml-auto shrink-0">{activeWorkspace.id.slice(0, 8)}</span>
-        </div>
-      )}
-
       <div className="flex-1 overflow-y-auto">
         <ConversationList
           conversations={conversations}
