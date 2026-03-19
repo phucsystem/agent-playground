@@ -1,3 +1,10 @@
+# [1.10.0](https://github.com/phucsystem/agent-playground/compare/v1.9.0...v1.10.0) (2026-03-19)
+
+
+### Features
+
+* enable debug UI for all users ([#22](https://github.com/phucsystem/agent-playground/issues/22)) ([8181aa7](https://github.com/phucsystem/agent-playground/commit/8181aa79f36abfd6132d9a9bb3616d7287683373))
+
 # [1.9.0](https://github.com/phucsystem/agent-playground/compare/v1.8.0...v1.9.0) (2026-03-19)
 
 
