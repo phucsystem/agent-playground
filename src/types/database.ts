@@ -3,6 +3,7 @@ export type MemberRole = "admin" | "member";
 export type ContentType = "text" | "file" | "image" | "url";
 export type UserRole = "admin" | "user" | "agent";
 export type DeliveryStatus = "pending" | "delivered" | "failed";
+export type AgentCategory = "writing" | "code" | "research" | "data" | "support" | "creative" | "ops" | "general";
 
 export interface User {
   id: string;
@@ -99,6 +100,11 @@ export interface AgentConfig {
   webhook_secret: string | null;
   is_webhook_active: boolean;
   health_check_url: string | null;
+  description: string | null;
+  tags: string[] | null;
+  category: AgentCategory | null;
+  sample_prompts: string[] | null;
+  is_featured: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -173,6 +179,24 @@ export interface Database {
       create_group: { Args: { group_name: string; member_ids: string[]; ws_id: string }; Returns: string };
       edit_message: { Args: { msg_id: string; new_content: string }; Returns: void };
       delete_message: { Args: { msg_id: string }; Returns: void };
+      get_agent_stats: {
+        Args: { agent_ids: string[]; days_back?: number };
+        Returns: { agent_id: string; total_deliveries: number; successful_deliveries: number; avg_response_ms: number | null }[];
+      };
+      get_agent_catalog: {
+        Args: { ws_id: string };
+        Returns: {
+          config_id: string;
+          user_id: string;
+          is_webhook_active: boolean;
+          health_check_url: string | null;
+          description: string | null;
+          tags: string[] | null;
+          category: string | null;
+          sample_prompts: string[] | null;
+          is_featured: boolean;
+        }[];
+      };
     };
   };
 }

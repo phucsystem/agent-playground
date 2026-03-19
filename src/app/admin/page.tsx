@@ -23,7 +23,7 @@ import {
   MoreHorizontal,
   Building2,
 } from "lucide-react";
-import type { User, Workspace } from "@/types/database";
+import type { User, Workspace, AgentCategory } from "@/types/database";
 import { WorkspaceSettings } from "@/components/admin/workspace-settings";
 import { WorkspaceMembers } from "@/components/admin/workspace-members";
 import { WorkspaceAvatar } from "@/components/ui/workspace-avatar";
@@ -192,6 +192,11 @@ export default function AdminPage() {
   const [webhookUrl, setWebhookUrl] = useState("");
   const [webhookSecret, setWebhookSecret] = useState("");
   const [healthCheckUrl, setHealthCheckUrl] = useState("");
+  const [agentDescription, setAgentDescription] = useState("");
+  const [agentCategory, setAgentCategory] = useState<AgentCategory | "">("");
+  const [agentTags, setAgentTags] = useState("");
+  const [agentSamplePrompts, setAgentSamplePrompts] = useState("");
+  const [agentIsFeatured, setAgentIsFeatured] = useState(false);
   const { configs, createConfig, updateConfig, toggleWebhook } = useAgentConfigs();
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [editingWebhookUserId, setEditingWebhookUserId] = useState<string | null>(null);
@@ -310,7 +315,14 @@ export default function AdminPage() {
       }
 
       if (newUserData) {
-        const configResult = await createConfig(newUserData.id, webhookUrl, webhookSecret || undefined, healthCheckUrl || undefined);
+        const metadata = {
+          description: agentDescription.trim() || undefined,
+          tags: agentTags.trim() ? agentTags.split(",").map((tag) => tag.trim()).filter(Boolean) : undefined,
+          category: agentCategory || undefined,
+          sample_prompts: agentSamplePrompts.trim() ? agentSamplePrompts.split("\n").map((prompt) => prompt.trim()).filter(Boolean).slice(0, 5) : undefined,
+          is_featured: agentIsFeatured || undefined,
+        };
+        const configResult = await createConfig(newUserData.id, webhookUrl, webhookSecret || undefined, healthCheckUrl || undefined, metadata);
         if (configResult.error) {
           alert(`User created but webhook config failed: ${configResult.error}`);
         }
@@ -330,6 +342,11 @@ export default function AdminPage() {
     setWebhookUrl("");
     setWebhookSecret("");
     setHealthCheckUrl("");
+    setAgentDescription("");
+    setAgentCategory("");
+    setAgentTags("");
+    setAgentSamplePrompts("");
+    setAgentIsFeatured(false);
   }
 
   async function toggleUserActive(userId: string, currentlyActive: boolean) {
@@ -610,14 +627,81 @@ export default function AdminPage() {
                 />
 
                 {inviteType === "agent" && (
-                  <WebhookConfigForm
-                    webhookUrl={webhookUrl}
-                    webhookSecret={webhookSecret}
-                    healthCheckUrl={healthCheckUrl}
-                    onUrlChange={setWebhookUrl}
-                    onSecretChange={setWebhookSecret}
-                    onHealthCheckUrlChange={setHealthCheckUrl}
-                  />
+                  <>
+                    <WebhookConfigForm
+                      webhookUrl={webhookUrl}
+                      webhookSecret={webhookSecret}
+                      healthCheckUrl={healthCheckUrl}
+                      onUrlChange={setWebhookUrl}
+                      onSecretChange={setWebhookSecret}
+                      onHealthCheckUrlChange={setHealthCheckUrl}
+                    />
+
+                    <details className="mt-3 border-t border-neutral-100 pt-3">
+                      <summary className="text-xs font-medium text-neutral-500 cursor-pointer hover:text-neutral-700 transition">
+                        Agent Profile (optional)
+                      </summary>
+                      <div className="space-y-3 mt-3">
+                        <div>
+                          <label className="block text-xs font-medium text-neutral-500 mb-1">Description</label>
+                          <textarea
+                            value={agentDescription}
+                            onChange={(event) => setAgentDescription(event.target.value)}
+                            placeholder="What does this agent do? (supports markdown)"
+                            maxLength={1000}
+                            rows={3}
+                            className="w-full px-3 py-2 border border-neutral-200 rounded-lg text-sm text-neutral-800 placeholder:text-neutral-400 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/15 transition resize-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-neutral-500 mb-1">Category</label>
+                          <select
+                            value={agentCategory}
+                            onChange={(event) => setAgentCategory(event.target.value as AgentCategory | "")}
+                            className="w-full px-3 py-2 border border-neutral-200 rounded-lg text-sm text-neutral-800 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/15 transition"
+                          >
+                            <option value="">Select category...</option>
+                            <option value="writing">Writing</option>
+                            <option value="code">Code</option>
+                            <option value="research">Research</option>
+                            <option value="data">Data</option>
+                            <option value="support">Support</option>
+                            <option value="creative">Creative</option>
+                            <option value="ops">Ops</option>
+                            <option value="general">General</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-neutral-500 mb-1">Tags (comma-separated)</label>
+                          <input
+                            value={agentTags}
+                            onChange={(event) => setAgentTags(event.target.value)}
+                            placeholder="e.g. python, code-review, debugging"
+                            className="w-full px-3 py-2 border border-neutral-200 rounded-lg text-sm text-neutral-800 placeholder:text-neutral-400 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/15 transition"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-neutral-500 mb-1">Sample prompts (one per line, max 5)</label>
+                          <textarea
+                            value={agentSamplePrompts}
+                            onChange={(event) => setAgentSamplePrompts(event.target.value)}
+                            placeholder={"Review this PR for security issues\nExplain this error message\nRefactor this function"}
+                            rows={3}
+                            className="w-full px-3 py-2 border border-neutral-200 rounded-lg text-sm text-neutral-800 placeholder:text-neutral-400 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/15 transition resize-none"
+                          />
+                        </div>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={agentIsFeatured}
+                            onChange={(event) => setAgentIsFeatured(event.target.checked)}
+                            className="rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
+                          />
+                          <span className="text-xs text-neutral-600">Featured agent (show in spotlight)</span>
+                        </label>
+                      </div>
+                    </details>
+                  </>
                 )}
 
                 <div className="flex gap-2 mt-4">
@@ -726,23 +810,38 @@ function InlineWebhookEditor({
   userId: string;
   config: import("@/types/database").AgentConfig | undefined;
   onClose: () => void;
-  onUpdate: (userId: string, updates: { webhook_url?: string; webhook_secret?: string; health_check_url?: string | null }) => Promise<{ error: string | null }>;
+  onUpdate: (userId: string, updates: Record<string, unknown>) => Promise<{ error: string | null }>;
   onToggle: (userId: string, isActive: boolean) => Promise<{ error: string | null }>;
 }) {
   const [editUrl, setEditUrl] = useState(config?.webhook_url || "");
   const [editSecret, setEditSecret] = useState("");
   const [editHealthUrl, setEditHealthUrl] = useState(config?.health_check_url || "");
+  const [editDescription, setEditDescription] = useState(config?.description || "");
+  const [editCategory, setEditCategory] = useState(config?.category || "");
+  const [editTags, setEditTags] = useState(config?.tags?.join(", ") || "");
+  const [editSamplePrompts, setEditSamplePrompts] = useState(config?.sample_prompts?.join("\n") || "");
+  const [editIsFeatured, setEditIsFeatured] = useState(config?.is_featured || false);
   const [saving, setSaving] = useState(false);
 
   if (!config) return null;
 
   async function handleSave() {
     setSaving(true);
-    const updates: { webhook_url?: string; webhook_secret?: string; health_check_url?: string | null } = {};
+    const updates: Record<string, unknown> = {};
     if (editUrl !== config!.webhook_url) updates.webhook_url = editUrl;
     if (editSecret) updates.webhook_secret = editSecret;
     const newHealthUrl = editHealthUrl.trim() || null;
     if (newHealthUrl !== (config!.health_check_url || null)) updates.health_check_url = newHealthUrl;
+
+    const newDesc = editDescription.trim() || null;
+    if (newDesc !== (config!.description || null)) updates.description = newDesc;
+    const newCategory = editCategory || null;
+    if (newCategory !== (config!.category || null)) updates.category = newCategory;
+    const newTags = editTags.trim() ? editTags.split(",").map((tag) => tag.trim()).filter(Boolean) : null;
+    if (JSON.stringify(newTags) !== JSON.stringify(config!.tags || null)) updates.tags = newTags;
+    const newPrompts = editSamplePrompts.trim() ? editSamplePrompts.split("\n").map((prompt) => prompt.trim()).filter(Boolean).slice(0, 5) : null;
+    if (JSON.stringify(newPrompts) !== JSON.stringify(config!.sample_prompts || null)) updates.sample_prompts = newPrompts;
+    if (editIsFeatured !== config!.is_featured) updates.is_featured = editIsFeatured;
 
     if (Object.keys(updates).length > 0) {
       const result = await onUpdate(userId, updates);
@@ -802,6 +901,71 @@ function InlineWebhookEditor({
               className="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
             />
           </div>
+
+          <details className="border-t border-neutral-100 pt-3">
+            <summary className="text-xs font-medium text-neutral-500 cursor-pointer hover:text-neutral-700 transition">
+              Agent Profile
+            </summary>
+            <div className="space-y-3 mt-3">
+              <div>
+                <label className="block text-xs font-medium text-neutral-500 mb-1">Description</label>
+                <textarea
+                  value={editDescription}
+                  onChange={(event) => setEditDescription(event.target.value)}
+                  placeholder="What does this agent do?"
+                  maxLength={1000}
+                  rows={2}
+                  className="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 resize-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-neutral-500 mb-1">Category</label>
+                <select
+                  value={editCategory}
+                  onChange={(event) => setEditCategory(event.target.value)}
+                  className="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+                >
+                  <option value="">None</option>
+                  <option value="writing">Writing</option>
+                  <option value="code">Code</option>
+                  <option value="research">Research</option>
+                  <option value="data">Data</option>
+                  <option value="support">Support</option>
+                  <option value="creative">Creative</option>
+                  <option value="ops">Ops</option>
+                  <option value="general">General</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-neutral-500 mb-1">Tags (comma-separated)</label>
+                <input
+                  value={editTags}
+                  onChange={(event) => setEditTags(event.target.value)}
+                  placeholder="python, code-review"
+                  className="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-neutral-500 mb-1">Sample prompts (one per line)</label>
+                <textarea
+                  value={editSamplePrompts}
+                  onChange={(event) => setEditSamplePrompts(event.target.value)}
+                  placeholder={"Review this PR\nExplain this error"}
+                  rows={2}
+                  className="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 resize-none"
+                />
+              </div>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={editIsFeatured}
+                  onChange={(event) => setEditIsFeatured(event.target.checked)}
+                  className="rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
+                />
+                <span className="text-xs text-neutral-600">Featured agent</span>
+              </label>
+            </div>
+          </details>
         </div>
 
         <div className="flex items-center justify-between">

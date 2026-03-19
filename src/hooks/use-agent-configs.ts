@@ -12,7 +12,7 @@ export function useAgentConfigs() {
     const supabase = createBrowserSupabaseClient();
     const { data } = await supabase
       .from("agent_configs")
-      .select("id, user_id, webhook_url, is_webhook_active, health_check_url, created_at, updated_at")
+      .select("id, user_id, webhook_url, is_webhook_active, health_check_url, description, tags, category, sample_prompts, is_featured, created_at, updated_at")
       .order("created_at", { ascending: true });
 
     if (data) {
@@ -34,6 +34,7 @@ export function useAgentConfigs() {
     webhookUrl: string,
     webhookSecret?: string,
     healthCheckUrl?: string,
+    metadata?: { description?: string; tags?: string[]; category?: string; sample_prompts?: string[]; is_featured?: boolean },
   ): Promise<{ error: string | null }> {
     const supabase = createBrowserSupabaseClient();
     const { error } = await supabase.from("agent_configs").insert({
@@ -42,6 +43,11 @@ export function useAgentConfigs() {
       webhook_secret: webhookSecret || null,
       health_check_url: healthCheckUrl || null,
       is_webhook_active: true,
+      ...(metadata?.description && { description: metadata.description }),
+      ...(metadata?.tags && { tags: metadata.tags }),
+      ...(metadata?.category && { category: metadata.category }),
+      ...(metadata?.sample_prompts && { sample_prompts: metadata.sample_prompts }),
+      ...(metadata?.is_featured !== undefined && { is_featured: metadata.is_featured }),
     });
 
     if (error) return { error: error.message };
@@ -51,7 +57,16 @@ export function useAgentConfigs() {
 
   async function updateConfig(
     userId: string,
-    updates: { webhook_url?: string; webhook_secret?: string; health_check_url?: string | null },
+    updates: {
+      webhook_url?: string;
+      webhook_secret?: string;
+      health_check_url?: string | null;
+      description?: string | null;
+      tags?: string[] | null;
+      category?: string | null;
+      sample_prompts?: string[] | null;
+      is_featured?: boolean;
+    },
   ): Promise<{ error: string | null }> {
     const supabase = createBrowserSupabaseClient();
     const { error } = await supabase
