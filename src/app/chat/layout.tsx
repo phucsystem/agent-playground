@@ -25,6 +25,8 @@ import { FlipLoader } from "@/components/ui/flip-loader";
 import { useWorkspaceUnread } from "@/hooks/use-workspace-unread";
 import { ConversationListSkeleton } from "@/components/sidebar/conversation-list-skeleton";
 import { MessageListSkeleton } from "@/components/chat/message-list-skeleton";
+import { useVersionCheck } from "@/hooks/use-version-check";
+import { UpdateBanner } from "@/components/ui/update-banner";
 
 function ConversationsProviderWrapper({ children }: { children: React.ReactNode }) {
   const { activeWorkspace } = useWorkspaceContext();
@@ -38,6 +40,7 @@ function ConversationsProviderWrapper({ children }: { children: React.ReactNode 
 function ChatLayoutContent({ children, currentUser, onRefreshUser }: { children: React.ReactNode; currentUser: User; onRefreshUser: () => void }) {
   const pathname = usePathname();
   const router = useRouter();
+  const { showBanner, newVersion, dismiss, reload } = useVersionCheck();
   const { workspaces, activeWorkspace, switchWorkspace, loading: workspaceLoading } = useWorkspaceContext();
   const { onlineUsers, newlyOnlineUsers, clearNewlyOnline, markUserOnline } = useSupabasePresence(currentUser, activeWorkspace?.id ?? null);
   const { conversations, refetch: refetchConversations } = useConversationsContext();
@@ -166,7 +169,11 @@ function ChatLayoutContent({ children, currentUser, onRefreshUser }: { children:
   }
 
   return (
-    <div className="flex h-dvh">
+    <div className="flex flex-col h-dvh">
+      {showBanner && newVersion && (
+        <UpdateBanner version={newVersion} onReload={reload} onDismiss={dismiss} />
+      )}
+      <div className="flex flex-1 min-h-0">
       {/* Mobile sidebar overlay backdrop */}
       {isOpen && (
         <div
@@ -235,7 +242,7 @@ function ChatLayoutContent({ children, currentUser, onRefreshUser }: { children:
       </div>
 
       {/* Main content area */}
-      <main className="flex-1 flex flex-col min-h-dvh ml-0 md:ml-0">
+      <main className="flex-1 flex flex-col min-h-0 ml-0 md:ml-0">
         <PresenceProvider value={{ onlineUsers, onlineUserIds }}>
           <AgentHealthContext.Provider value={{ getStatus: getAgentHealthStatus, markActive }}>
             <NotificationContext.Provider value={{ triggerTestNotification }}>
@@ -273,6 +280,7 @@ function ChatLayoutContent({ children, currentUser, onRefreshUser }: { children:
           },
         }}
       />
+      </div>
     </div>
   );
 }
