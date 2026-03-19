@@ -55,6 +55,13 @@ function ChatLayoutContent({ children, currentUser, onRefreshUser }: { children:
 
   const activeConversationId = pathname.split("/chat/")[1];
 
+  useEffect(() => {
+    const totalUnread = Object.values(unreadByWorkspace).reduce((sum, count) => sum + count, 0);
+    const label = totalUnread > 99 ? "99+" : totalUnread;
+    document.title = totalUnread > 0 ? `(${label}) Agent Playground` : "Agent Playground";
+    return () => { document.title = "Agent Playground"; };
+  }, [unreadByWorkspace]);
+
   // Detect workspace switch
   useEffect(() => {
     if (activeWorkspace?.id && activeWorkspace.id !== previousWorkspaceId.current) {

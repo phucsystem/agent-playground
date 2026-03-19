@@ -110,6 +110,8 @@ export function MessageList({
       prevConversationId.current = conversationId;
       prevMessageCount.current = 0;
       isInitialLoad.current = true;
+      isAtBottomRef.current = true;
+      setShowScrollDown(false);
       setVisible(false);
     }
   }, [conversationId]);
@@ -123,7 +125,11 @@ export function MessageList({
           align: "end",
           behavior: "auto",
         });
-        requestAnimationFrame(() => setVisible(true));
+        requestAnimationFrame(() => {
+          scrollToBottom(false);
+          isAtBottomRef.current = true;
+          setVisible(true);
+        });
       });
       prevMessageCount.current = messages.length;
       return;
@@ -131,7 +137,7 @@ export function MessageList({
 
     if (messages.length > prevMessageCount.current && isAtBottomRef.current) {
       requestAnimationFrame(() => {
-        parentRef.current?.scrollTo({ top: parentRef.current.scrollHeight, behavior: "smooth" });
+        virtualizer.scrollToIndex(messages.length - 1, { align: "end", behavior: "smooth" });
       });
     }
     prevMessageCount.current = messages.length;
