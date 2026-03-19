@@ -79,15 +79,13 @@ export function UserProfile({ currentUser, onLogout, onAvatarSaved }: UserProfil
         </p>
       </div>
       <div className="flex items-center gap-0.5">
-        {currentUser.role === "admin" && (
-          <button
-            onClick={() => setShowDebugPanel(true)}
-            className="p-1.5 rounded-md text-neutral-400 hover:text-amber-500 hover:bg-amber-50 transition cursor-pointer"
-            title="Debug notifications"
-          >
-            <Bug className="w-4 h-4" />
-          </button>
-        )}
+        <button
+          onClick={() => setShowDebugPanel(true)}
+          className="p-1.5 rounded-md text-neutral-400 hover:text-amber-500 hover:bg-amber-50 transition cursor-pointer"
+          title="Debug notifications"
+        >
+          <Bug className="w-4 h-4" />
+        </button>
         <button
           onClick={handleToggleNotification}
           disabled={toggling}
