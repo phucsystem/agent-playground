@@ -1,3 +1,10 @@
+## [1.11.1](https://github.com/phucsystem/agent-playground/compare/v1.11.0...v1.11.1) (2026-03-19)
+
+
+### Bug Fixes
+
+* reset chat auto-scroll state on conversation switch ([#24](https://github.com/phucsystem/agent-playground/issues/24)) ([8c89c8f](https://github.com/phucsystem/agent-playground/commit/8c89c8f368aed6c4ea5d1e2be1be1d379578e815))
+
 # [1.11.0](https://github.com/phucsystem/agent-playground/compare/v1.10.0...v1.11.0) (2026-03-19)
 
 
