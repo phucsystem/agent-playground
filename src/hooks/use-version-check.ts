@@ -47,6 +47,7 @@ export function useVersionCheck() {
       }
     };
 
+    poll();
     const intervalId = setInterval(poll, POLL_INTERVAL_MS);
     return () => clearInterval(intervalId);
   }, [handleNewVersion]);

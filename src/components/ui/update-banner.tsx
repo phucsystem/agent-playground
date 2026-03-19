@@ -10,7 +10,7 @@ interface UpdateBannerProps {
 
 export function UpdateBanner({ version, onReload, onDismiss }: UpdateBannerProps) {
   return (
-    <div className="flex items-center justify-between gap-3 px-4 py-2 bg-sky-50 border-b border-sky-200 text-sky-800 text-sm">
+    <div role="status" className="flex items-center justify-between gap-3 px-4 py-2 bg-sky-50 border-b border-sky-200 text-sky-800 text-sm">
       <div className="flex items-center gap-2 min-w-0">
         <RefreshCw className="w-4 h-4 shrink-0" />
         <span className="truncate">
