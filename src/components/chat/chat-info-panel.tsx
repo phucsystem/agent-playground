@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { X, LogOut, Archive, ArchiveRestore, UserPlus, Check, Search, Trash2, Pencil, FileText, FileImage, FileSpreadsheet, File, Download } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { useConversationMembers } from "@/hooks/use-conversation-members";
@@ -460,9 +461,37 @@ function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+async function downloadFile(url: string, fileName: string) {
+  let blobUrl: string | null = null;
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error("Download failed");
+    const blob = await response.blob();
+    blobUrl = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = blobUrl;
+    anchor.download = fileName;
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+  } finally {
+    if (blobUrl) setTimeout(() => URL.revokeObjectURL(blobUrl!), 200);
+  }
+}
+
 function SharedFilesSection({ files, loading }: { files: SharedFile[]; loading: boolean }) {
   const images = files.filter((file) => file.fileType.startsWith("image/"));
   const documents = files.filter((file) => !file.fileType.startsWith("image/"));
+  const [lightboxImage, setLightboxImage] = useState<SharedFile | null>(null);
+
+  useEffect(() => {
+    if (!lightboxImage) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setLightboxImage(null);
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [lightboxImage]);
 
   if (loading) {
     return (
@@ -490,19 +519,17 @@ function SharedFilesSection({ files, loading }: { files: SharedFile[]; loading: 
           </p>
           <div className="grid grid-cols-3 gap-1.5 mb-4">
             {images.map((image) => (
-              <a
+              <button
                 key={image.messageId}
-                href={image.fileUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="aspect-square rounded-lg overflow-hidden bg-neutral-100 hover:opacity-80 transition"
+                onClick={() => setLightboxImage(image)}
+                className="aspect-square rounded-lg overflow-hidden bg-neutral-100 hover:opacity-80 transition cursor-pointer"
               >
                 <img
                   src={image.fileUrl}
                   alt={image.fileName}
                   className="w-full h-full object-cover"
                 />
-              </a>
+              </button>
             ))}
           </div>
         </>
@@ -517,28 +544,58 @@ function SharedFilesSection({ files, loading }: { files: SharedFile[]; loading: 
             {documents.map((doc) => {
               const Icon = getFileIcon(doc.fileType);
               return (
-                <a
+                <button
                   key={doc.messageId}
-                  href={doc.fileUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-neutral-50 transition group"
+                  onClick={() => downloadFile(doc.fileUrl, doc.fileName)}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-neutral-50 transition group cursor-pointer"
                 >
                   <div className="w-8 h-8 rounded-lg bg-neutral-100 flex items-center justify-center shrink-0">
                     <Icon className="w-4 h-4 text-neutral-500" />
                   </div>
-                  <div className="flex-1 min-w-0">
+                  <div className="flex-1 min-w-0 text-left">
                     <p className="text-sm text-neutral-700 truncate">{doc.fileName}</p>
                     <p className="text-[10px] text-neutral-400">
                       {formatFileSize(doc.fileSize)} &middot; {doc.senderName}
                     </p>
                   </div>
                   <Download className="w-3.5 h-3.5 text-neutral-400 opacity-0 group-hover:opacity-100 transition shrink-0" />
-                </a>
+                </button>
               );
             })}
           </div>
         </>
+      )}
+
+      {lightboxImage && createPortal(
+        <div
+          className="fixed inset-0 z-[200] bg-black/80 flex items-center justify-center p-8"
+          onClick={() => setLightboxImage(null)}
+        >
+          <button
+            onClick={() => setLightboxImage(null)}
+            className="absolute top-4 right-4 p-2 bg-white/10 hover:bg-white/20 rounded-full text-white transition"
+            aria-label="Close"
+          >
+            <X className="w-6 h-6" />
+          </button>
+          <button
+            onClick={(event) => {
+              event.stopPropagation();
+              downloadFile(lightboxImage.fileUrl, lightboxImage.fileName);
+            }}
+            className="absolute top-4 right-16 p-2 bg-white/10 hover:bg-white/20 rounded-full text-white transition"
+            aria-label="Download"
+          >
+            <Download className="w-6 h-6" />
+          </button>
+          <img
+            src={lightboxImage.fileUrl}
+            alt={lightboxImage.fileName}
+            className="max-w-full max-h-full object-contain rounded-lg"
+            onClick={(event) => event.stopPropagation()}
+          />
+        </div>,
+        document.body
       )}
     </div>
   );
