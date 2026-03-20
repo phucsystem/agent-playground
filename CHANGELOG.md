@@ -1,3 +1,10 @@
+# [1.12.0](https://github.com/phucsystem/agent-playground/compare/v1.11.1...v1.12.0) (2026-03-20)
+
+
+### Features
+
+* add clickable shared media in conversation info panel ([#26](https://github.com/phucsystem/agent-playground/issues/26)) ([d4cd7cf](https://github.com/phucsystem/agent-playground/commit/d4cd7cf4b8f400520101733967985282d2d2936d))
+
 ## [1.11.1](https://github.com/phucsystem/agent-playground/compare/v1.11.0...v1.11.1) (2026-03-19)
 
 
