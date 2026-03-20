@@ -5,7 +5,7 @@ import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { UserProfile } from "./user-profile";
 import { AllUsers } from "./all-users";
 import { ConversationList } from "./conversation-list";
-import { Settings, X } from "lucide-react";
+import { Settings, X, Bot } from "lucide-react";
 import Link from "next/link";
 import packageJson from "../../../package.json";
 import { useMobileSidebar } from "@/hooks/use-mobile-sidebar";
@@ -89,6 +89,14 @@ export function Sidebar({
       </div>
 
       <div className="p-3 border-t border-neutral-200 space-y-1.5">
+        <Link
+          href="/chat/agents"
+          className="w-full flex items-center justify-center gap-2 py-2 px-4 text-neutral-500 text-sm font-medium rounded-lg hover:bg-neutral-100 transition min-h-[44px]"
+        >
+          <Bot className="w-4 h-4" />
+          Discover Agents
+        </Link>
+
         {currentUser.role === "admin" && (
           <button
             onClick={onCreateGroup}

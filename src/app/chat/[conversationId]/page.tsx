@@ -1,6 +1,6 @@
 "use client";
 
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ChatHeader } from "@/components/chat/chat-header";
 import { MessageList } from "@/components/chat/message-list";
@@ -22,9 +22,18 @@ import { toast } from "sonner";
 
 export default function ConversationPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
+  const routerNav = useRouter();
   const conversationId = params.conversationId as string;
+  const promptParam = searchParams.get("prompt");
 
   const { currentUser } = useCurrentUser();
+
+  useEffect(() => {
+    if (promptParam) {
+      routerNav.replace(`/chat/${conversationId}`, { scroll: false });
+    }
+  }, [promptParam, conversationId, routerNav]);
 
   const { onlineUsers, onlineUserIds } = usePresenceContext();
   const { messages, loading, hasMore, loadMore, markAsRead, addOptimisticMessage, editMessage, deleteMessage } =
@@ -216,6 +225,7 @@ export default function ConversationPage() {
             editingMessage={editingMessage}
             onCancelEdit={handleCancelEdit}
             onConfirmEdit={handleConfirmEdit}
+            initialPrompt={promptParam ?? undefined}
           />
         )}
       </div>

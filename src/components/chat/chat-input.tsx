@@ -35,6 +35,7 @@ interface ChatInputProps {
   editingMessage?: EditingMessage | null;
   onCancelEdit?: () => void;
   onConfirmEdit?: (messageId: string, newContent: string) => void;
+  initialPrompt?: string;
 }
 
 export function ChatInput({
@@ -47,6 +48,7 @@ export function ChatInput({
   editingMessage,
   onCancelEdit,
   onConfirmEdit,
+  initialPrompt,
 }: ChatInputProps) {
   const [content, setContent] = useState("");
   const [sending, setSending] = useState(false);
@@ -197,6 +199,18 @@ export function ChatInput({
       }
     }
   }, [editingMessage, adjustHeight]);
+
+  const initialPromptApplied = useRef(false);
+  useEffect(() => {
+    if (initialPrompt && !initialPromptApplied.current) {
+      initialPromptApplied.current = true;
+      setContent(initialPrompt);
+      requestAnimationFrame(() => {
+        textareaRef.current?.focus();
+        adjustHeight();
+      });
+    }
+  }, [initialPrompt, adjustHeight]);
 
   async function sendMessage(
     messageContent: string,
