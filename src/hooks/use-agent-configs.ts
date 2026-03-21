@@ -12,7 +12,7 @@ export function useAgentConfigs() {
     const supabase = createBrowserSupabaseClient();
     const { data } = await supabase
       .from("agent_configs")
-      .select("id, user_id, webhook_url, is_webhook_active, health_check_url, created_at, updated_at")
+      .select("id, user_id, webhook_url, is_webhook_active, health_check_url, metadata, created_at, updated_at")
       .order("created_at", { ascending: true });
 
     if (data) {
@@ -34,6 +34,7 @@ export function useAgentConfigs() {
     webhookUrl: string,
     webhookSecret?: string,
     healthCheckUrl?: string,
+    metadata?: Record<string, unknown>,
   ): Promise<{ error: string | null }> {
     const supabase = createBrowserSupabaseClient();
     const { error } = await supabase.from("agent_configs").insert({
@@ -41,6 +42,7 @@ export function useAgentConfigs() {
       webhook_url: webhookUrl,
       webhook_secret: webhookSecret || null,
       health_check_url: healthCheckUrl || null,
+      metadata: metadata || {},
       is_webhook_active: true,
     });
 
@@ -51,7 +53,7 @@ export function useAgentConfigs() {
 
   async function updateConfig(
     userId: string,
-    updates: { webhook_url?: string; webhook_secret?: string; health_check_url?: string | null },
+    updates: { webhook_url?: string; webhook_secret?: string; health_check_url?: string | null; metadata?: Record<string, unknown> },
   ): Promise<{ error: string | null }> {
     const supabase = createBrowserSupabaseClient();
     const { error } = await supabase

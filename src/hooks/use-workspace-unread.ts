@@ -30,7 +30,7 @@ export function useWorkspaceUnread(_activeWorkspaceId: string | null) {
     queryKey: WORKSPACE_UNREAD_KEY,
     queryFn: async () => {
       const supabase = createBrowserSupabaseClient();
-      const { data, error } = await supabase.rpc("get_my_conversations");
+      const { data, error } = await supabase.rpc("get_my_conversations", { ws_id: null });
 
       if (error || !data) return {};
 
