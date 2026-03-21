@@ -61,6 +61,7 @@ export function WebhookConfigForm({
       setFlashingFields(newFlashing);
       setTimeout(() => setFlashingFields(new Set()), 1000);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- auto-fill triggers only on key change, tracked via ref
   }, [goclawAgentKey]);
 
   function handleUrlManualChange(value: string) {
