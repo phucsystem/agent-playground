@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useCallback } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { createElement } from "react";
 import { MessageToast } from "@/components/ui/message-toast";
@@ -23,6 +24,7 @@ export function useNotificationSound(
   currentUser: User | null,
   conversations: ConversationWithDetails[]
 ) {
+  const queryClient = useQueryClient();
   const lastSoundTimeRef = useRef<number>(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const broadcastRef = useRef<BroadcastChannel | null>(null);
@@ -168,6 +170,9 @@ export function useNotificationSound(
           const avatarUrl = isDm ? (conversation.other_user?.avatar_url ?? null) : null;
           const preview = message.content?.slice(0, 80) || "New message";
 
+          // Invalidate messages cache so data is fresh when user navigates to this conversation
+          queryClient.invalidateQueries({ queryKey: ["messages", message.conversation_id] });
+
           if (document.hidden || !document.hasFocus()) {
             // Tab not focused (hidden, minimized, or user in another app): play sound + desktop notification
             playSound();
@@ -197,7 +202,7 @@ export function useNotificationSound(
     return () => {
       channel.unsubscribe();
     };
-  }, [currentUser?.id, currentUser?.notification_enabled, currentUser?.display_name, playSound, showNativeNotification]);
+  }, [currentUser?.id, currentUser?.notification_enabled, currentUser?.display_name, playSound, showNativeNotification, queryClient]);
 
   const triggerTestNotification = useCallback(async (senderName: string) => {
     await requestPermission();
