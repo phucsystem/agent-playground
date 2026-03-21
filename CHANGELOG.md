@@ -1,3 +1,10 @@
+## [1.14.2](https://github.com/phucsystem/agent-playground/compare/v1.14.1...v1.14.2) (2026-03-21)
+
+
+### Bug Fixes
+
+* invalidate messages cache when notification arrives for unseen conversation ([#37](https://github.com/phucsystem/agent-playground/issues/37)) ([c8fa527](https://github.com/phucsystem/agent-playground/commit/c8fa527ab1a40c193ce80f0f46f759273c1cfe56))
+
 ## [1.14.1](https://github.com/phucsystem/agent-playground/compare/v1.14.0...v1.14.1) (2026-03-21)
 
 
