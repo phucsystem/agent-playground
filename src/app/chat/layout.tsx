@@ -210,24 +210,25 @@ function ChatLayoutContent({ children, currentUser, onRefreshUser }: { children:
           md:translate-x-0 md:relative md:z-auto md:shrink-0
         `}
       >
-        {/* Mobile workspace strip */}
-        <div className="md:hidden flex items-center gap-1 px-2 py-1.5 bg-gradient-to-r from-[#1e1b4b] to-[#4c1d95] overflow-x-auto">
+        {/* Mobile workspace strip — 44px touch targets */}
+        <div className="md:hidden flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-[#1e1b4b] to-[#4c1d95] overflow-x-auto" style={{ paddingTop: "calc(0.5rem + var(--sai-top, 0px))" }}>
           {workspaces.map((workspace) => {
             const unreadCount = unreadByWorkspace[workspace.id] ?? 0;
+            const isActive = workspace.id === activeWorkspace?.id;
             return (
               <button
                 key={workspace.id}
                 onClick={() => switchWorkspace(workspace.id)}
-                className={`relative shrink-0 rounded-full transition cursor-pointer ${
-                  workspace.id === activeWorkspace?.id
-                    ? "ring-2 ring-primary-300"
-                    : ""
+                className={`relative shrink-0 rounded-full transition-all cursor-pointer min-w-[44px] min-h-[44px] flex items-center justify-center ${
+                  isActive
+                    ? "ring-2 ring-primary-300 scale-110"
+                    : "active:scale-95"
                 }`}
                 title={workspace.name}
               >
                 <WorkspaceAvatar workspace={workspace} size="sm" />
                 {unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 min-w-[14px] h-[14px] flex items-center justify-center bg-error text-white text-[8px] font-bold rounded-full px-0.5">
+                  <span className="absolute -top-1 -right-1 min-w-[16px] h-[16px] flex items-center justify-center bg-error text-white text-[9px] font-bold rounded-full px-0.5">
                     {unreadCount > 99 ? "99+" : unreadCount}
                   </span>
                 )}
@@ -269,10 +270,11 @@ function ChatLayoutContent({ children, currentUser, onRefreshUser }: { children:
       )}
 
       <Toaster
-        position="top-right"
+        position="bottom-center"
         visibleToasts={3}
         expand={true}
         gap={8}
+        className="md:!bottom-auto md:!top-4 md:!right-4 md:!left-auto md:!transform-none"
         toastOptions={{
           duration: 3000,
           unstyled: true,
@@ -280,12 +282,13 @@ function ChatLayoutContent({ children, currentUser, onRefreshUser }: { children:
             toast: "pointer-events-auto",
             title: "text-sm font-medium",
             description: "text-xs opacity-80",
-            error: "flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg border backdrop-blur-sm w-[360px] bg-red-50 border-red-200 text-red-800",
-            success: "flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg border backdrop-blur-sm w-[360px] bg-emerald-50 border-emerald-200 text-emerald-800",
-            info: "flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg border backdrop-blur-sm w-[360px] bg-sky-50 border-sky-200 text-sky-800",
-            warning: "flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg border backdrop-blur-sm w-[360px] bg-amber-50 border-amber-200 text-amber-800",
+            error: "flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg border backdrop-blur-sm w-[calc(100vw-2rem)] max-w-[360px] mx-auto bg-red-50 border-red-200 text-red-800",
+            success: "flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg border backdrop-blur-sm w-[calc(100vw-2rem)] max-w-[360px] mx-auto bg-emerald-50 border-emerald-200 text-emerald-800",
+            info: "flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg border backdrop-blur-sm w-[calc(100vw-2rem)] max-w-[360px] mx-auto bg-sky-50 border-sky-200 text-sky-800",
+            warning: "flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg border backdrop-blur-sm w-[calc(100vw-2rem)] max-w-[360px] mx-auto bg-amber-50 border-amber-200 text-amber-800",
           },
         }}
+        style={{ paddingBottom: "var(--sai-bottom, 0px)" }}
       />
       </div>
     </div>
