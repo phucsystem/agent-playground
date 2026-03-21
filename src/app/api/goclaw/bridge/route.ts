@@ -129,6 +129,11 @@ export async function POST(request: NextRequest) {
 
   const senderName = sender || "Unknown";
 
+  // Extract sender_id from history (last non-agent sender, which is the current message author)
+  const senderId = (history || [])
+    .filter((item) => !item.is_agent)
+    .at(-1)?.sender_id || "unknown";
+
   const authHeader = request.headers.get("authorization");
   const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
   if (!bearerToken) {
@@ -249,7 +254,8 @@ export async function POST(request: NextRequest) {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${GOCLAW_TOKEN}`,
-        "X-GoClaw-User-Id": agentId,
+        "X-GoClaw-User-Id": senderId,
+        "X-GoClaw-Conversation-Id": conversationId,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
