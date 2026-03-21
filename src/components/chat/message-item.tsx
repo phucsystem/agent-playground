@@ -9,9 +9,14 @@ import { SnippetCard } from "./snippet-card";
 import { MessageReactions } from "./message-reactions";
 import type { MessageWithSender } from "@/types/database";
 import { Heart, Pencil, Trash2, MoreHorizontal, Eye, History } from "lucide-react";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import type { ReactionGroup } from "@/hooks/use-reactions";
 import { useTypewriter } from "@/hooks/use-typewriter";
+import { useLongPress } from "@/hooks/use-long-press";
+import { useSwipeGesture } from "@/hooks/use-swipe-gesture";
+import { MobileContextMenu } from "./mobile-context-menu";
+import { MessageSquare as ReplyIcon } from "lucide-react";
+import { toast } from "sonner";
 
 const MAX_TRACKED_IDS = 500;
 const animatedMessageIds = new Set<string>();
@@ -316,10 +321,78 @@ export function MessageItem({
   memberNames,
 }: MessageItemProps) {
   const skipBubble = isBubblelessMessage(message);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
+
+  const canEditMsg = isCurrentUser && message.content_type === "text" && !message.is_deleted;
+  const canDeleteMsg = (isCurrentUser || canDelete) && !message.is_deleted;
+
+  const handleLongPress = useCallback((event: React.TouchEvent | React.MouseEvent) => {
+    if (message.is_deleted) return;
+    const clientX = "touches" in event ? event.touches[0]?.clientX ?? 0 : event.clientX;
+    const clientY = "touches" in event ? event.touches[0]?.clientY ?? 0 : event.clientY;
+    setContextMenu({ x: clientX, y: clientY });
+  }, [message.is_deleted]);
+
+  const handleCopy = useCallback(() => {
+    navigator.clipboard.writeText(message.content);
+    toast.success("Copied to clipboard");
+  }, [message.content]);
+
+  const longPressHandlers = useLongPress({
+    onLongPress: handleLongPress,
+    threshold: 500,
+  });
+
+  const { swipeOffset, isSwiping, handlers: swipeHandlers } = useSwipeGesture({
+    threshold: 60,
+    onSwipeRight: () => {
+      // Copy message content as a quick-reply affordance
+      navigator.clipboard.writeText(message.content);
+      toast.success("Copied — paste to reply");
+    },
+    enabled: !message.is_deleted,
+  });
+
+  const combinedTouchHandlers = {
+    onTouchStart: (event: React.TouchEvent) => {
+      longPressHandlers.onTouchStart(event);
+      swipeHandlers.onTouchStart(event);
+    },
+    onTouchMove: (event: React.TouchEvent) => {
+      longPressHandlers.onTouchMove(event);
+      swipeHandlers.onTouchMove(event);
+    },
+    onTouchEnd: () => {
+      longPressHandlers.onTouchEnd();
+      swipeHandlers.onTouchEnd();
+    },
+    onContextMenu: longPressHandlers.onContextMenu,
+  };
 
   if (isCurrentUser) {
     return (
-      <div className="flex justify-end items-end relative group px-2 py-1">
+      <div
+        className="flex justify-end items-end relative group px-2 py-1"
+        {...combinedTouchHandlers}
+        style={{ transform: swipeOffset > 0 ? `translateX(${swipeOffset}px)` : undefined, transition: isSwiping ? "none" : "transform 200ms ease-out" }}
+      >
+        {/* Swipe reply indicator */}
+        {swipeOffset > 20 && (
+          <div className="absolute -left-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-primary-100 flex items-center justify-center" style={{ opacity: Math.min(swipeOffset / 60, 1) }}>
+            <ReplyIcon className="w-3.5 h-3.5 text-primary-500" />
+          </div>
+        )}
+        <MobileContextMenu
+          isOpen={contextMenu !== null}
+          position={contextMenu ?? { x: 0, y: 0 }}
+          onClose={() => setContextMenu(null)}
+          onReaction={(emoji) => onToggleReaction(message.id, emoji)}
+          onCopy={handleCopy}
+          onEdit={canEditMsg ? () => onStartEdit?.(message.id, message.content) : undefined}
+          onDelete={canDeleteMsg ? () => onDeleteMessage?.(message.id) : undefined}
+          canEdit={canEditMsg}
+          canDelete={canDeleteMsg}
+        />
         {!message.is_deleted && (
           <div className="-mr-5 z-10 self-end flex items-center gap-0.5">
             <MessageActions
@@ -377,7 +450,28 @@ export function MessageItem({
   }
 
   return (
-    <div className="flex gap-2.5 px-2 py-1 relative group">
+    <div
+      className="flex gap-2.5 px-2 py-1 relative group"
+      {...combinedTouchHandlers}
+      style={{ transform: swipeOffset > 0 ? `translateX(${swipeOffset}px)` : undefined, transition: isSwiping ? "none" : "transform 200ms ease-out" }}
+    >
+      {/* Swipe reply indicator */}
+      {swipeOffset > 20 && (
+        <div className="absolute -left-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-primary-100 flex items-center justify-center" style={{ opacity: Math.min(swipeOffset / 60, 1) }}>
+          <ReplyIcon className="w-3.5 h-3.5 text-primary-500" />
+        </div>
+      )}
+      <MobileContextMenu
+        isOpen={contextMenu !== null}
+        position={contextMenu ?? { x: 0, y: 0 }}
+        onClose={() => setContextMenu(null)}
+        onReaction={(emoji) => onToggleReaction(message.id, emoji)}
+        onCopy={handleCopy}
+        onEdit={canEditMsg ? () => onStartEdit?.(message.id, message.content) : undefined}
+        onDelete={canDeleteMsg ? () => onDeleteMessage?.(message.id) : undefined}
+        canEdit={canEditMsg}
+        canDelete={canDeleteMsg}
+      />
       {!isGrouped ? (
         <Avatar
           displayName={message.sender.display_name}

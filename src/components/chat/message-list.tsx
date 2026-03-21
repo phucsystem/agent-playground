@@ -192,7 +192,7 @@ export function MessageList({
     <div
       ref={parentRef}
       onScroll={handleScroll}
-      className={`flex-1 overflow-y-auto pb-8 transition-opacity duration-200 flex flex-col ${visible ? "opacity-100" : "opacity-0"}`}
+      className={`flex-1 overflow-y-auto overscroll-contain pb-8 transition-opacity duration-200 flex flex-col ${visible ? "opacity-100" : "opacity-0"}`}
     >
       <div className="flex-1" />
       <div
@@ -259,6 +259,7 @@ export function MessageList({
         <button
           onClick={() => scrollToBottom()}
           className="fixed bottom-20 right-4 md:bottom-24 md:right-8 w-9 h-9 bg-white/90 backdrop-blur-sm border border-neutral-200 rounded-full shadow-lg flex items-center justify-center hover:bg-white hover:scale-105 active:scale-95 transition-all cursor-pointer z-30"
+          style={{ marginBottom: "var(--sai-bottom, 0px)" }}
         >
           <ArrowDown className="w-4 h-4 text-neutral-600" />
         </button>
