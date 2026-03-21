@@ -463,6 +463,59 @@ flowchart LR
 
 **Checklist:** Supabase project, env vars, migrations, seed data, RLS enabled, Realtime on messages, Storage bucket, Edge Function deployed, DB webhook connected, CORS configured.
 
+## GoClaw Bridge Integration
+
+Bridge API route connecting webhook-dispatch to GoClaw's OpenAI-compatible REST API. Each agent in `agent_configs` can optionally map to a GoClaw agent via `metadata.goclaw_agent_key`.
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Supabase as Supabase DB
+    participant EdgeFn as webhook-dispatch
+    participant Bridge as /api/goclaw/bridge
+    participant GoClaw as GoClaw Server
+
+    User->>Supabase: INSERT message
+    Supabase->>EdgeFn: DB Webhook trigger
+    EdgeFn->>Bridge: POST (payload + history)
+    Bridge->>Bridge: Validate auth (webhook_secret)
+    Bridge->>Supabase: Query agent_configs.metadata
+    Bridge->>Bridge: Build system prompt + map history
+    Bridge->>GoClaw: POST /v1/chat/completions
+    GoClaw-->>Bridge: {payload: {content, usage}}
+    Bridge-->>EdgeFn: {reply: "agent response"}
+    EdgeFn->>Supabase: INSERT agent reply
+```
+
+### Environment Variables
+
+| Variable | Purpose |
+|----------|---------|
+| `GOCLAW_URL` | GoClaw server base URL (server-side only) |
+| `GOCLAW_GATEWAY_TOKEN` | Auth token for GoClaw API (server-side only) |
+| `NEXT_PUBLIC_GOCLAW_URL` | GoClaw URL for admin UI auto-fill (public) |
+
+### Setup
+
+1. Deploy GoClaw server (or use existing)
+2. Set `GOCLAW_URL` and `GOCLAW_GATEWAY_TOKEN` in `.env`
+3. Set `NEXT_PUBLIC_GOCLAW_URL` in `.env` (for admin UI auto-fill)
+4. Run migration `023_agent_configs_metadata.sql`
+5. Create agent in Admin panel
+6. Set webhook URL to `https://<your-app>/api/goclaw/bridge`
+7. Set webhook secret (required for GoClaw agents)
+8. Set health check URL to `https://<goclaw-server>/health`
+9. Set GoClaw Agent Key to match agent key in GoClaw config
+10. Send a message to test
+
+### Key Files
+
+| File | Purpose |
+|------|---------|
+| `src/app/api/goclaw/bridge/route.ts` | Bridge API route (auth, mapping, forwarding) |
+| `src/app/api/goclaw/test/route.ts` | Health check proxy for admin UI |
+| `supabase/migrations/023_agent_configs_metadata.sql` | Adds metadata JSONB column |
+
 ## Future Direction
 
 - More tools integration (beyond webhooks)

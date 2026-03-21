@@ -2,11 +2,19 @@
 
 ## Observability & Instrumentation
 - [ ] Add Sentry performance monitoring (beyond error tracking)
-- [ ] Implement webhook latency tracking in webhook_delivery_logs
+- [ ] Implement webhook latency tracking in webhook_delivery_logs (includes GoClaw bridge hop — bridge logs latency internally but delivery_logs lack end-to-end timing)
 - [ ] Basic usage analytics (MAU, conversation creation rate)
 - [ ] Consider bundling with 0.2.0 Rate Limiting release
-- **Why:** Success metrics in roadmap promise measurements that can't be taken today. Sentry is installed but only tracks errors.
+- **Why:** Success metrics in roadmap promise measurements that can't be taken today. Sentry is installed but only tracks errors. GoClaw bridge adds an extra hop that's only visible in console logs, not in delivery_logs.
 - **Context:** Roadmap now tags metrics as "measurable today" vs "needs instrumentation". This TODO unblocks the "needs instrumentation" items.
+
+## GoClaw WebSocket Streaming (Phase 2)
+- [ ] Replace REST bridge with WebSocket connection to GoClaw's `chat.stream` method
+- [ ] Implement streaming message insertion (progressive token display in chat UI)
+- [ ] Add streaming state management (partial message, typing indicator, abort)
+- [ ] Support GoClaw's 64 WebSocket RPC methods for full agent lifecycle control
+- **Why:** Current REST bridge waits for full LLM response before displaying — can be 5-30s of blank screen. WebSocket streaming shows tokens in real-time.
+- **Context:** Depends on GoClaw webhook bridge (Phase 1) shipping first. Effort: L (human) / M (CC). Priority: P3. Reference: `plans/reports/researcher-260320-goclaw-integration.md` (Option B: WebSocket RPC).
 
 ## Update codebase-summary.md
 - [ ] Add workspace components/hooks (workspace-rail, workspace-settings, use-workspaces, etc.)
