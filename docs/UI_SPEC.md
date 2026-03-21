@@ -589,6 +589,46 @@
 | Toggle Webhook | Enable/disable webhook delivery without removing config. Visual indicator: green dot = active, grey = paused. |
 | View Logs | Opens S-08 Webhook Logs filtered to this agent. |
 
+**GoClaw Integration Mode (Phase 7 — shown when "Is agent?" is checked):**
+
+```
+┌───────────────────────────────────────────┐
+│ Generate Token                            │
+│                                           │
+│ ☑ Is agent?                               │
+│                                           │
+│ ◯ Custom Webhook    ◉ GoClaw Agent       │
+│                                           │
+│ [GoClaw badge] — Auto-configured         │
+│ Webhook URL: https://goclaw/api/bridge   │
+│ Health Check: https://goclaw/health      │
+│ Webhook Secret (required) *               │
+│ ┌───────────────────────────────────────┐ │
+│ │ (auto-filled from GoClaw config)      │ │
+│ └───────────────────────────────────────┘ │
+│                                           │
+│ GoClaw Agent Key *                        │
+│ ┌───────────────────────────────────────┐ │
+│ │ uuid-of-goclaw-agent-config          │ │
+│ └───────────────────────────────────────┘ │
+│                                           │
+│ Test Connection: [✓ Healthy] (45ms)      │
+│                                           │
+│ [Cancel]              [Generate Token →]  │
+└───────────────────────────────────────────┘
+```
+
+**GoClaw Mode Features:**
+- Radio toggle: "Custom Webhook" (default) vs "GoClaw Agent"
+- When GoClaw selected:
+  - Webhook URL field becomes read-only (set to `/api/goclaw/bridge`)
+  - Health Check URL becomes read-only (set to NEXT_PUBLIC_GOCLAW_URL)
+  - "GoClaw" badge appears next to agent name
+  - Webhook Secret field required (auto-filled from GOCLAW_GATEWAY_TOKEN config, user can override)
+  - New "GoClaw Agent Key" field required (UUID of agent in GoClaw server)
+  - Test Connection button calls GET `/api/goclaw/test` (shows latency + status)
+- Stores config: `agent_configs { webhook_url: ..., webhook_secret: ..., metadata: { goclaw_agent_key: "..." } }`
+
 **Interactions:**
 - Toggle Enable/Disable: immediate state update, reflected in sidebar presence
 - Delete: confirm dialog, remove user from all conversations

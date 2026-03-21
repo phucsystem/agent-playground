@@ -62,6 +62,8 @@
 | PATCH | `/rest/v1/users?id=eq.{id}` (notification_enabled) | FR-34 | S-02 | P6 |
 | WS | Realtime: workspace presence channel | FR-31 | S-09 | P6 |
 | WS | Realtime: `postgres_changes` on conversations (DELETE) | FR-04 | S-02 | P6 |
+| POST | `/api/goclaw/bridge` | FR-35 | — (Webhook Bridge) | P7 |
+| GET | `/api/goclaw/test` | FR-35 | S-06 | P7 |
 
 ## 2. Endpoint Details
 
@@ -999,6 +1001,122 @@ After 3 failed attempts, status set to `failed`. No further retries.
 
 ---
 
+### POST /api/goclaw/bridge (Phase 7)
+
+**Description:** Webhook-callable bridge to GoClaw `/v1/chat/completions`. Called by Edge Function when messages are sent to agents configured with GoClaw integration. Handles authentication via Bearer token (webhook_secret), system prompt composition (DM vs group context), history mapping to OpenAI format, error handling, and logging.
+
+**Feature:** FR-35 (GoClaw integration)
+**Screen:** — (Backend service)
+**Auth:** Bearer token (webhook_secret from agent_configs, no JWT required)
+
+**Implementation:** Next.js Route Handler (`src/app/api/goclaw/bridge/route.ts`)
+
+**Request:**
+```json
+{
+  "message": { "content": "Hello agent" },
+  "sender": "Alice",
+  "conversation_id": "conv-uuid",
+  "message_id": "msg-uuid",
+  "history": [
+    {
+      "sender_id": "user-uuid-1",
+      "sender_name": "Alice",
+      "is_agent": false,
+      "content": "What is the weather?",
+      "content_type": "text"
+    },
+    {
+      "sender_id": "agent-uuid-1",
+      "sender_name": "WeatherBot",
+      "is_agent": true,
+      "content": "It is sunny.",
+      "content_type": "text"
+    }
+  ]
+}
+```
+
+**Response (200) — Success:**
+```json
+{
+  "reply": "The weather is nice today!"
+}
+```
+
+**Error Responses:**
+| Code | Body | Condition |
+|------|------|-----------|
+| 400 | `{ "error": "Missing required fields" }` | message.content, conversation_id, or message_id missing |
+| 400 | `{ "error": "No GoClaw agent key configured" }` | Agent's metadata.goclaw_agent_key not set |
+| 401 | `{ "error": "Unauthorized" }` | Bearer token missing or invalid |
+| 500 | `{ "error": "GoClaw not configured" }` | GOCLAW_URL or GOCLAW_GATEWAY_TOKEN not set |
+| 500 | `{ "error": "Database unavailable" }` | DB query failed |
+| 502 | `{ "error": "GoClaw authentication failed" }` | GoClaw returned 401 |
+| 502 | `{ "error": "GoClaw error: {status}" }` | GoClaw returned non-OK response |
+| 502 | `{ "error": "GoClaw returned invalid response" }` | GoClaw response not valid JSON |
+| 502 | `{ "error": "GoClaw returned empty response" }` | No content in GoClaw response |
+| 504 | `{ "error": "GoClaw timeout" }` | Request exceeded 25s timeout |
+| 429 | `{ "error": "GoClaw rate limited" }` | GoClaw rate limit hit, includes `retry-after` header |
+
+**Key Implementation Details:**
+- **Auth:** Timing-safe comparison of Bearer token against webhook_secret (prevents timing attacks)
+- **Lookup:** Targeted lookup using agent IDs from history (fast path), fallback to full table scan
+- **System Prompt:** DM context = simple greeting, group context = lists member names + group name
+- **History Mapping:** Filters to text-only messages, prefixes group messages with sender name
+- **Messages Format:** OpenAI-compatible array with system prompt + history + current message
+- **GoClaw Model Key:** Sent as `model: "goclaw:{goclaw_agent_key}"` header
+- **Response Extract:** Prefers `payload.content`, falls back to `choices[0].message.content`
+- **Logging:** Structured logs with latency, token counts, agent key (no secrets)
+- **SSRF Protection:** Blocks internal IPs, localhost, .local/.internal domains, metadata endpoints
+- **Timeout:** 25s (within webhook-dispatch's 30s timeout)
+
+**Calling Context:**
+- Invoked by Supabase Edge Function (`dispatch_webhook`) when messages are sent to GoClaw agents
+- Edge Function includes `authorization: Bearer {webhook_secret}` header
+- Bridge extracts agent config from database, queries GoClaw, returns agent reply for insertion as message
+
+---
+
+### GET /api/goclaw/test (Phase 7)
+
+**Description:** Test connection to GoClaw health check endpoint. Session-authenticated endpoint for admin UI to validate GoClaw server availability before configuring agents.
+
+**Feature:** FR-35 (GoClaw integration)
+**Screen:** S-06 (Admin panel)
+**Auth:** Bearer JWT (session-authenticated)
+
+**Implementation:** Next.js Route Handler (`src/app/api/goclaw/test/route.ts`)
+
+**Response (200) — GoClaw Healthy:**
+```json
+{
+  "ok": true,
+  "latencyMs": 45
+}
+```
+
+**Response (200) — GoClaw Unhealthy:**
+```json
+{
+  "ok": false,
+  "latencyMs": 120,
+  "error": "Health check returned 503"
+}
+```
+
+**Response (401):** User not authenticated
+
+**Response (500):** GOCLAW_URL not configured
+
+**Key Details:**
+- Calls `{GOCLAW_URL}/health` (simple GET, no auth)
+- Timeout: 5 seconds
+- Returns latency in milliseconds for UI feedback
+- Used in webhook config UI to validate server before saving
+
+---
+
 ### GET /api/conversations/[conversationId] (Phase 6)
 
 **Description:** Get conversation details.
@@ -1247,6 +1365,8 @@ Agent uses Supabase JS/Python client to subscribe to `postgres_changes` on messa
 | `PATCH /rest/v1/users` (notification_enabled) | FR-34 | S-02 | P6 |
 | Realtime: workspace presence | FR-31 | S-09 | P6 |
 | Realtime: conversations DELETE | FR-04 | S-02 | P6 |
+| `POST /api/goclaw/bridge` | FR-35 | — | P7 |
+| `GET /api/goclaw/test` | FR-35 | S-06 | P7 |
 
 ---
 

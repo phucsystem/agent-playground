@@ -84,6 +84,7 @@ erDiagram
         text webhook_secret
         text health_check_url
         boolean is_webhook_active
+        jsonb metadata
         timestamptz created_at
         timestamptz updated_at
     }
@@ -310,6 +311,7 @@ Webhook configuration per agent user. One-to-one with users (only agent users). 
 | `webhook_secret` | `text` | NULLABLE | `NULL` | Shared secret for HMAC-SHA256 signature. If set, `X-Webhook-Signature` header included in requests. |
 | `health_check_url` | `text` | NULLABLE | `NULL` | Optional URL polled to check if the agent is reachable/healthy. |
 | `is_webhook_active` | `boolean` | NOT NULL | `true` | Admin toggle. False = agent stays in conversations but receives no webhooks. |
+| `metadata` | `jsonb` | NULLABLE | `'{}'` | Extensible configuration for agent integrations. Used by GoClaw bridge: `{ "goclaw_agent_key": "agent-key-uuid" }`. |
 | `created_at` | `timestamptz` | NOT NULL | `now()` | Config creation time |
 | `updated_at` | `timestamptz` | NOT NULL | `now()` | Last modification time |
 
@@ -772,6 +774,8 @@ const signedUrl = data?.signedUrl;
 | `006_fix_rls_recursion.sql` | ✅ Applied | Replace recursive RLS policies with DEFINER helpers |
 | `007_agent_webhooks.sql` | ✅ Applied | Create `delivery_status` enum, `agent_configs` table, `webhook_delivery_logs` table, RLS policies, `notify_webhook_dispatch` trigger |
 | `008_webhook_debug_columns.sql` | ✅ Applied (Idempotent) | Add `request_payload` (jsonb), `response_body` (text), `webhook_url` (text) columns to `webhook_delivery_logs` (debug support). Includes IF NOT EXISTS guards. |
+| ... (migrations 009-022 omitted for brevity) | ✅ Applied | Various features: group creation, user sessions, agent health checks, notifications, workspaces, avatar storage |
+| `023_agent_configs_metadata.sql` | ✅ Applied | Add `metadata` (jsonb DEFAULT '{}') column to `agent_configs` for extensible agent integration config (GoClaw support) |
 
 **Running Migrations:**
 ```bash
@@ -946,7 +950,7 @@ supabase.channel('typing:{conversation_id}')
 | messages | E-04 | FR-06, FR-07, FR-08, FR-10, FR-12, FR-14 |
 | attachments | E-05 | FR-10, FR-11 |
 | reactions | E-06 | FR-18 |
-| agent_configs | E-07 | FR-22, FR-26 |
+| agent_configs | E-07 | FR-22, FR-26, FR-35 |
 | webhook_delivery_logs | E-08 | FR-23, FR-25, FR-27 |
 | workspaces | E-09 | — |
 | workspace_members | E-10 | — |

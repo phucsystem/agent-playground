@@ -2,24 +2,24 @@
 
 **Generated:** 2026-03-18
 **Repomix output:** `./repomix-output.xml`
-**Version:** 1.3.1
-**Status:** ✅ Phases 1-6 complete + React Query v5 performance migration + localStorage persister. All core features + workspace support + agent health + notifications + mobile responsiveness + optimized data caching implemented.
+**Version:** 1.4.0
+**Status:** ✅ Phases 1-6 complete + GoClaw webhook bridge integration (Phase 7). React Query v5 performance migration + localStorage persister. All core features + workspace support + agent health + notifications + mobile responsiveness + optimized data caching + GoClaw agent integration implemented.
 
 ## Overview
 
-Agent Playground is a ~7,500 LOC Next.js chat application with Supabase backend + webhook agent integration + workspace support + notifications + multi-device sessions. Organized into 75+ source files across app pages, components, hooks, contexts, utilities, 20 database migrations, and 1 Supabase Edge Function.
+Agent Playground is a ~8,000 LOC Next.js chat application with Supabase backend + webhook agent integration + GoClaw bridge + workspace support + notifications + multi-device sessions. Organized into 77+ source files across app pages, components, hooks, contexts, utilities, 23 database migrations, and 1 Supabase Edge Function.
 
 ## File Counts & Distribution
 
 | Category | Count | Files |
 |----------|-------|-------|
-| **App Pages** | 13 | login/page.tsx, chat/layout.tsx, chat/page.tsx, [conversationId]/page.tsx, setup/page.tsx, admin/page.tsx, admin/webhooks/page.tsx, changelog/layout.tsx, changelog/page.tsx, api/auth/login/route.ts, api/auth/logout/route.ts, api/agents/health/route.ts, api/conversations/[conversationId]/route.ts, global-error.tsx, middleware.ts |
+| **App Pages** | 15 | login/page.tsx, chat/layout.tsx, chat/page.tsx, [conversationId]/page.tsx, setup/page.tsx, admin/page.tsx, admin/webhooks/page.tsx, changelog/layout.tsx, changelog/page.tsx, api/auth/login/route.ts, api/auth/logout/route.ts, api/agents/health/route.ts, api/conversations/[conversationId]/route.ts, api/goclaw/bridge/route.ts, api/goclaw/test/route.ts, global-error.tsx, middleware.ts |
 | **Components** | 34 | chat (18: message-list, message-item, chat-input, chat-header, markdown-content, file-card, image-preview, url-preview, chat-info-panel, message-reactions, typing-indicator, emoji-picker, gif-picker, mention-picker, snippet-modal, message-list-skeleton, agent-thinking-indicator, confirm-delete-dialog), sidebar (10: sidebar, user-profile, online-users, conversation-list, create-group-dialog, workspace-rail, collapsible-section, all-users, search-input, conversation-list-skeleton), admin (5: webhook-config-form, agent-webhook-actions, workspace-settings, workspace-members, edit-user-dialog), changelog (1: release-body), profile (1: avatar-editor-dialog), ui (6: avatar, workspace-avatar, agent-health-toast, presence-toast, flip-loader, skeleton) |
 | **Hooks** | 21+ | use-current-user, use-conversations, use-realtime-messages, use-supabase-presence, use-file-upload, use-conversation-members, use-typing-indicator, use-agent-thinking, use-reactions, use-agent-configs, use-webhook-logs, use-avatar-upload, use-pinned-conversations, use-mobile-sidebar, use-workspace-unread, use-notification-sound, use-notification-context, use-agent-health, use-agent-health-context, use-typewriter, use-conversation-order |
 | **Contexts** | 2 | workspace-context.tsx, presence-context.tsx |
 | **Library/Utils** | 5 | auth.ts, crop-image.ts, supabase/client.ts, supabase/server.ts, middleware.ts |
 | **Types** | 1 | database.ts (generated from schema) |
-| **Migrations** | 20 | 001_initial, 002_user_role, 003_admin_management, 004_mock_flag, 005_security_fixes, 006_fix_rls_recursion, 007_agent_webhooks, 008_webhook_debug_columns, 009_create_group_function, 010_archive_group, 011_get_conversation_members_fn, 012_admin_only_create_group, 013_user_sessions, 014_agent_health_check_url, 015_notification_preferences, 016_admin_delete_conversation, 017_conversations_realtime, 018_workspaces, 019_workspace_color, 020_avatar_storage |
+| **Migrations** | 23 | 001_initial, 002_user_role, 003_admin_management, 004_mock_flag, 005_security_fixes, 006_fix_rls_recursion, 007_agent_webhooks, 008_webhook_debug_columns, 009_create_group_function, 010_archive_group, 011_get_conversation_members_fn, 012_admin_only_create_group, 013_user_sessions, 014_agent_health_check_url, 015_notification_preferences, 016_admin_delete_conversation, 017_conversations_realtime, 018_workspaces, 019_workspace_color, 020_avatar_storage, 021_*, 022_*, 023_agent_configs_metadata |
 | **Edge Functions** | 1 | webhook-dispatch/index.ts |
 | **Seed Data** | 1 | seed.sql (6 users, 2 conversations, 10 messages, 2 webhook configs) |
 | **Config** | 4 | tsconfig.json, package.json, next.config.ts, postcss.config.mjs |
@@ -48,6 +48,9 @@ agent-playground/
 │   │   ├── api/auth/logout/route.ts     # POST /api/auth/logout
 │   │   ├── api/agents/health/route.ts   # GET /api/agents/health
 │   │   ├── api/conversations/[conversationId]/route.ts  # DELETE conversation (admin)
+│   │   ├── api/goclaw/
+│   │   │   ├── bridge/route.ts          # POST /api/goclaw/bridge (webhook bridge to GoClaw)
+│   │   │   └── test/route.ts            # GET /api/goclaw/test (health check proxy)
 │   │   ├── layout.tsx                   # Root layout
 │   │   ├── page.tsx                     # Redirect to /chat
 │   │   ├── middleware.ts                # Auth guard
@@ -473,6 +476,8 @@ See `docs/API_SPEC.md` for complete reference.
 | GET | `/rest/v1/agent_configs` | List webhook configs | P5 |
 | GET | `/rest/v1/webhook_delivery_logs` | Query delivery logs | P5 |
 | — | Edge Function: webhook-dispatch | Dispatch webhooks | P5 |
+| POST | `/api/goclaw/bridge` | Webhook bridge to GoClaw | P7 |
+| GET | `/api/goclaw/test` | GoClaw health check proxy | P7 |
 
 ## Implementation Phases
 
@@ -484,6 +489,7 @@ See `docs/API_SPEC.md` for complete reference.
 | **P4: Admin** | ✅ Complete | User management, setup wizard, mock flag | src/app/setup, src/app/admin, use-current-user |
 | **P5: Webhooks** | ✅ Complete | Agent webhook config, dispatch, delivery logs | src/app/admin/webhooks, src/hooks/use-agent-configs, src/hooks/use-webhook-logs, supabase/functions/webhook-dispatch |
 | **P6: Workspace + Polish** | ✅ Complete | Workspace support, agent health, notifications, mobile UX | workspace-rail, workspace-avatar, workspace-settings, workspace-members, all-users, collapsible-section, use-workspace-unread, use-pinned-conversations, use-mobile-sidebar, use-notification-sound, use-agent-health, flip-loader, presence-toast, agent-health-toast |
+| **P7: GoClaw Integration** | ✅ Complete | GoClaw webhook bridge, agent metadata config, Bearer token auth, SSRF protection | src/app/api/goclaw/bridge, src/app/api/goclaw/test, webhook-config-form (GoClaw toggle), migration 023_agent_configs_metadata, middleware auth bypass |
 
 ## Important Notes
 

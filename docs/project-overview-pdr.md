@@ -1,8 +1,8 @@
 # Project Overview & Product Development Requirements
 
-**Project:** Agent Playground v1.3.1
-**Last Updated:** 2026-03-18
-**Status:** MVP complete (Phases 1-6) with React Query v5 performance optimization and sidebar realtime sync.
+**Project:** Agent Playground v1.4.0
+**Last Updated:** 2026-03-21
+**Status:** MVP complete (Phases 1-6) with GoClaw webhook bridge integration (Phase 7).
 
 ## Vision
 
@@ -38,6 +38,7 @@ Agent Playground is a chat-based playground for easy API integration. Humans and
 - Deno runtime for Edge Functions
 - PostgreSQL compatibility (14+)
 - Node.js 18+ for development
+- GoClaw server (for Phase 7 GoClaw agent integration, optional)
 
 ### Business Constraints
 - Invite-only model (no viral growth initially)
