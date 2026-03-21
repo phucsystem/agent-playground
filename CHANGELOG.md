@@ -1,3 +1,10 @@
+## [1.14.1](https://github.com/phucsystem/agent-playground/compare/v1.14.0...v1.14.1) (2026-03-21)
+
+
+### Bug Fixes
+
+* send human sender ID and conversation ID to GoClaw ([#35](https://github.com/phucsystem/agent-playground/issues/35)) ([178d8e1](https://github.com/phucsystem/agent-playground/commit/178d8e1d880f97b1a808bee5cfaf58ae4d387b60))
+
 # [1.14.0](https://github.com/phucsystem/agent-playground/compare/v1.13.1...v1.14.0) (2026-03-21)
 
 
