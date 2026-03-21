@@ -1,12 +1,29 @@
 # Project Roadmap
 
-**Last Updated:** 2026-03-18
-**Current Version:** 1.3.1
-**Status:** MVP live with React Query optimization + sidebar realtime sync
+**Last Updated:** 2026-03-21
+**Current Version:** 1.4.0
+**Status:** MVP + GoClaw integration complete
 
 ## Release Timeline
 
-### ✅ 1.3.1 — React Query Performance & Sidebar Realtime (Current)
+### ✅ 1.4.0 — GoClaw Integration (Current)
+
+**Released:** 2026-03-21
+
+**Phase 7 — GoClaw Webhook Bridge:**
+- GoClaw agent integration via `/api/goclaw/bridge` (webhook-callable bridge)
+- Bearer token authentication with timing-safe comparison
+- System prompt composition for DM vs group context
+- History mapping to OpenAI format (text-only messages)
+- SSRF protection (blocks internal IPs, .local/.internal domains, metadata endpoints)
+- Structured logging with latency, token counts, no secrets
+- Health check proxy at `/api/goclaw/test` for UI validation
+- Agent metadata config: `agent_configs.metadata.goclaw_agent_key`
+- Custom/GoClaw agent mode toggle in admin webhook config form
+- GoClaw-mode fields auto-fill and lock (webhook URL, secret, health check)
+- Database migration 023: Added metadata JSONB column to agent_configs
+
+### ✅ 1.3.1 — React Query Performance & Sidebar Realtime
 
 **Released:** 2026-03-18
 
