@@ -58,7 +58,7 @@ export function Sidebar({
   }
 
   return (
-    <aside className="w-full h-full bg-white border-r border-neutral-200 flex flex-col z-50 overflow-hidden">
+    <aside className="w-full flex-1 min-h-0 bg-white border-r border-neutral-200 flex flex-col z-50 overflow-hidden">
       <div className="flex items-center">
         <div className="flex-1">
           <UserProfile currentUser={currentUser} onLogout={handleLogout} onAvatarSaved={onAvatarSaved} />
