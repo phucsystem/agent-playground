@@ -9,7 +9,8 @@ import { GifPicker } from "./gif-picker";
 import { SnippetModal } from "./snippet-modal";
 import { MentionPicker } from "./mention-picker";
 import type { MentionCandidate } from "./mention-picker";
-import { Send, Paperclip, Loader2, X, Smile, ImageIcon, FileCode, Upload, Check, Pencil } from "lucide-react";
+import { Send, Paperclip, Loader2, X, Smile, ImageIcon, FileCode, Upload, Check, Pencil, Plus } from "lucide-react";
+import { InputActionsSheet } from "./input-actions-sheet";
 import { toast } from "sonner";
 import type { ContentType, MessageWithSender } from "@/types/database";
 
@@ -58,6 +59,7 @@ export function ChatInput({
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const dragCounterRef = useRef(0);
   const [snippetInitialContent, setSnippetInitialContent] = useState("");
+  const [showActionsSheet, setShowActionsSheet] = useState(false);
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const [mentionIndex, setMentionIndex] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -173,7 +175,8 @@ export function ChatInput({
       const textarea = textareaRef.current;
       if (!textarea) return;
       textarea.style.height = "0px";
-      const maxHeight = 200;
+      const isMobile = window.innerWidth < 768;
+      const maxHeight = isMobile ? 120 : 200;
       const newHeight = Math.min(textarea.scrollHeight, maxHeight);
       textarea.style.height = `${newHeight}px`;
       textarea.style.overflowY = textarea.scrollHeight > maxHeight ? "auto" : "hidden";
@@ -503,7 +506,7 @@ export function ChatInput({
         </div>
       )}
 
-      <div className={`relative flex items-end gap-1.5 bg-neutral-100 rounded-2xl px-3 py-2.5 ${(pendingFiles.length > 0 || editingMessage) ? "rounded-t-none" : ""}`}>
+      <div className={`relative flex items-end gap-1.5 bg-neutral-100 rounded-2xl px-3 py-2.5 ${(pendingFiles.length > 0 || editingMessage) ? "rounded-t-none" : ""}`} style={{ paddingBottom: "calc(0.625rem + var(--sai-bottom, 0px))" }}>
         {mentionCandidates.length > 0 && (
           <MentionPicker
             candidates={mentionCandidates}
@@ -511,6 +514,37 @@ export function ChatInput({
             onSelect={insertMention}
           />
         )}
+
+        {/* Mobile: single "+" button */}
+        {!editingMessage && (
+          <>
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              onChange={handleFileSelect}
+              accept="*/*"
+              className="hidden"
+            />
+            <button
+              onClick={() => setShowActionsSheet(true)}
+              className="md:hidden p-1.5 text-neutral-400 hover:text-neutral-600 active:text-primary-500 transition shrink-0 cursor-pointer"
+              aria-label="More actions"
+            >
+              <Plus className="w-5 h-5" />
+            </button>
+            <InputActionsSheet
+              isOpen={showActionsSheet}
+              onClose={() => setShowActionsSheet(false)}
+              onAttachFile={() => fileInputRef.current?.click()}
+              onOpenEmoji={() => { setShowEmojiPicker(true); setShowGifPicker(false); }}
+              onOpenGif={() => { setShowGifPicker(true); setShowEmojiPicker(false); }}
+              onOpenSnippet={() => { setSnippetInitialContent(""); setShowSnippetModal(true); }}
+            />
+          </>
+        )}
+
+        {/* Desktop: full toolbar */}
         {!editingMessage && (
           <>
             <input
@@ -523,7 +557,7 @@ export function ChatInput({
             />
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="p-1.5 text-neutral-400 hover:text-neutral-600 transition shrink-0 cursor-pointer"
+              className="hidden md:block p-1.5 text-neutral-400 hover:text-neutral-600 transition shrink-0 cursor-pointer"
             >
               <Paperclip className="w-5 h-5" />
             </button>
@@ -531,7 +565,7 @@ export function ChatInput({
         )}
 
         {!editingMessage && (
-        <div ref={pickerContainerRef} className="flex items-center gap-0.5 shrink-0">
+        <div ref={pickerContainerRef} className="hidden md:flex items-center gap-0.5 shrink-0">
           <div className="relative">
             <button
               onClick={() => {

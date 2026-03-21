@@ -92,7 +92,7 @@ export function useNotificationSound(
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "messages" },
-        (payload) => {
+        async (payload) => {
           const message = payload.new as IncomingMessage;
 
           if (message.sender_id === currentUser.id) return;
@@ -105,10 +105,40 @@ export function useNotificationSound(
 
           if (handledMessageIds.current.has(message.id)) return;
 
-          const conversation = conversationsRef.current.find(
+          // Look up conversation in current workspace first, then fetch cross-workspace
+          let conversation = conversationsRef.current.find(
             (conv) => conv.id === message.conversation_id
           );
-          if (!conversation) return;
+          if (!conversation) {
+            const { data } = await supabase
+              .from("conversations")
+              .select("id, type, name, workspace_id")
+              .eq("id", message.conversation_id)
+              .single();
+            if (!data) return;
+
+            // For cross-workspace DMs, fetch the other user info
+            let otherUser = null;
+            if (data.type === "dm") {
+              const { data: members } = await supabase
+                .from("conversation_members")
+                .select("user_id, users:user_id(display_name, avatar_url)")
+                .eq("conversation_id", data.id)
+                .neq("user_id", currentUser.id)
+                .limit(1);
+              const member = members?.[0];
+              if (member?.users) {
+                const userData = member.users as unknown as { display_name: string; avatar_url: string | null };
+                otherUser = { display_name: userData.display_name, avatar_url: userData.avatar_url };
+              }
+            }
+
+            conversation = {
+              ...data,
+              other_user: otherUser,
+              updated_at: new Date().toISOString(),
+            } as ConversationWithDetails;
+          }
 
           const isDm = conversation.type === "dm";
           const hasMention = message.content
@@ -150,7 +180,7 @@ export function useNotificationSound(
             toast.custom(
               () =>
                 createElement(MessageToast, {
-                  senderName: isDm ? senderName : (conversation.other_user?.display_name || senderName),
+                  senderName: isDm ? senderName : (conversation!.other_user?.display_name || senderName),
                   avatarUrl,
                   preview,
                   conversationName: isDm ? undefined : senderName,

@@ -1,3 +1,31 @@
+# [1.14.0](https://github.com/phucsystem/agent-playground/compare/v1.13.1...v1.14.0) (2026-03-21)
+
+
+### Features
+
+* add 9 mobile UX enhancements for better touch experience ([#31](https://github.com/phucsystem/agent-playground/issues/31)) ([635225b](https://github.com/phucsystem/agent-playground/commit/635225bf04e7ccb9419e0da564f766d813f68578))
+
+## [1.13.1](https://github.com/phucsystem/agent-playground/compare/v1.13.0...v1.13.1) (2026-03-21)
+
+
+### Bug Fixes
+
+* GoClaw bridge middleware exclusion and UI improvements ([#32](https://github.com/phucsystem/agent-playground/issues/32)) ([1e1949b](https://github.com/phucsystem/agent-playground/commit/1e1949b05e35d80545355352936d8ccfc3bf0c57))
+
+# [1.13.0](https://github.com/phucsystem/agent-playground/compare/v1.12.1...v1.13.0) (2026-03-21)
+
+
+### Features
+
+* add GoClaw webhook bridge integration ([#30](https://github.com/phucsystem/agent-playground/issues/30)) ([b818604](https://github.com/phucsystem/agent-playground/commit/b81860475894f8f1c373d9fa12d256c7f20a02eb))
+
+## [1.12.1](https://github.com/phucsystem/agent-playground/compare/v1.12.0...v1.12.1) (2026-03-21)
+
+
+### Bug Fixes
+
+* resolve workspace unread badge and cross-workspace notifications ([#28](https://github.com/phucsystem/agent-playground/issues/28)) ([93393bf](https://github.com/phucsystem/agent-playground/commit/93393bfb4758df24eb66f5665260d7f976df2a29))
+
 # [1.12.0](https://github.com/phucsystem/agent-playground/compare/v1.11.1...v1.12.0) (2026-03-20)
 
 
