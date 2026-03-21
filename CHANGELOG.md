@@ -1,3 +1,10 @@
+## [1.12.1](https://github.com/phucsystem/agent-playground/compare/v1.12.0...v1.12.1) (2026-03-21)
+
+
+### Bug Fixes
+
+* resolve workspace unread badge and cross-workspace notifications ([#28](https://github.com/phucsystem/agent-playground/issues/28)) ([93393bf](https://github.com/phucsystem/agent-playground/commit/93393bfb4758df24eb66f5665260d7f976df2a29))
+
 # [1.12.0](https://github.com/phucsystem/agent-playground/compare/v1.11.1...v1.12.0) (2026-03-20)
 
 
