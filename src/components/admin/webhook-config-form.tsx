@@ -1,15 +1,25 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { Eye, EyeOff, Info, HeartPulse, Puzzle } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Eye, EyeOff, Info, HeartPulse, Puzzle, Bot, Webhook } from "lucide-react";
+
+export type AgentMode = "custom" | "goclaw";
 
 const GOCLAW_AGENT_KEY_PATTERN = /^[a-zA-Z0-9_-]*$/;
 
+function generateWebhookSecret(): string {
+  const array = new Uint8Array(32);
+  crypto.getRandomValues(array);
+  return "whsec_" + Array.from(array, (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
 interface WebhookConfigFormProps {
+  agentMode: AgentMode;
   webhookUrl: string;
   webhookSecret: string;
   healthCheckUrl: string;
   goclawAgentKey: string;
+  onModeChange: (mode: AgentMode) => void;
   onUrlChange: (url: string) => void;
   onSecretChange: (secret: string) => void;
   onHealthCheckUrlChange: (url: string) => void;
@@ -17,69 +27,43 @@ interface WebhookConfigFormProps {
 }
 
 export function WebhookConfigForm({
+  agentMode,
   webhookUrl,
   webhookSecret,
   healthCheckUrl,
   goclawAgentKey,
+  onModeChange,
   onUrlChange,
   onSecretChange,
   onHealthCheckUrlChange,
   onGoclawAgentKeyChange,
 }: WebhookConfigFormProps) {
   const [showSecret, setShowSecret] = useState(false);
-  const [autoFilledFields, setAutoFilledFields] = useState<Set<string>>(new Set());
-  const [flashingFields, setFlashingFields] = useState<Set<string>>(new Set());
-  const prevKeyRef = useRef(goclawAgentKey);
+  const isGoclaw = agentMode === "goclaw";
 
   useEffect(() => {
-    const previousKey = prevKeyRef.current;
-    prevKeyRef.current = goclawAgentKey;
+    if (!isGoclaw) return;
 
-    if (!goclawAgentKey || goclawAgentKey === previousKey) return;
-
-    const bridgeUrl = `${window.location.origin}/api/goclaw/bridge`;
+    const origin = window.location.origin;
+    const isHttps = origin.startsWith("https://");
+    const bridgeUrl = isHttps ? `${origin}/api/goclaw/bridge` : "";
     const goclawUrl = process.env.NEXT_PUBLIC_GOCLAW_URL || "";
-    const healthUrl = goclawUrl ? `${goclawUrl}/health` : "";
+    const healthUrl = goclawUrl?.startsWith("https://") ? `${goclawUrl}/health` : "";
 
-    const newAutoFilled = new Set(autoFilledFields);
-    const newFlashing = new Set<string>();
+    if (bridgeUrl) onUrlChange(bridgeUrl);
+    if (healthUrl) onHealthCheckUrlChange(healthUrl);
+    if (!webhookSecret) onSecretChange(generateWebhookSecret());
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- only trigger on mode switch
+  }, [isGoclaw]);
 
-    if (!webhookUrl || autoFilledFields.has("webhookUrl")) {
-      onUrlChange(bridgeUrl);
-      newAutoFilled.add("webhookUrl");
-      newFlashing.add("webhookUrl");
+  function handleModeChange(mode: AgentMode) {
+    if (mode === "custom") {
+      onUrlChange("");
+      onSecretChange("");
+      onHealthCheckUrlChange("");
+      onGoclawAgentKeyChange("");
     }
-
-    if (healthUrl && (!healthCheckUrl || autoFilledFields.has("healthCheckUrl"))) {
-      onHealthCheckUrlChange(healthUrl);
-      newAutoFilled.add("healthCheckUrl");
-      newFlashing.add("healthCheckUrl");
-    }
-
-    setAutoFilledFields(newAutoFilled);
-    if (newFlashing.size > 0) {
-      setFlashingFields(newFlashing);
-      setTimeout(() => setFlashingFields(new Set()), 1000);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- auto-fill triggers only on key change, tracked via ref
-  }, [goclawAgentKey]);
-
-  function handleUrlManualChange(value: string) {
-    setAutoFilledFields((previous) => {
-      const next = new Set(previous);
-      next.delete("webhookUrl");
-      return next;
-    });
-    onUrlChange(value);
-  }
-
-  function handleHealthUrlManualChange(value: string) {
-    setAutoFilledFields((previous) => {
-      const next = new Set(previous);
-      next.delete("healthCheckUrl");
-      return next;
-    });
-    onHealthCheckUrlChange(value);
+    onModeChange(mode);
   }
 
   function handleGoclawKeyChange(value: string) {
@@ -90,23 +74,52 @@ export function WebhookConfigForm({
 
   return (
     <div className="space-y-3 pt-3 border-t border-neutral-100">
-      <div>
-        <label className="block text-sm font-medium text-neutral-700 mb-1">
-          GoClaw Agent Key
-          <span className="text-neutral-400 font-normal ml-1">(optional)</span>
-        </label>
-        <input
-          type="text"
-          value={goclawAgentKey}
-          onChange={(event) => handleGoclawKeyChange(event.target.value)}
-          placeholder="e.g. playground-assistant"
-          className="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg font-mono focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-        />
-        <p className="flex items-center gap-1 mt-1 text-xs text-neutral-400">
-          <Puzzle className="w-3 h-3" />
-          Maps this agent to a GoClaw agent (from GoClaw config)
-        </p>
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={() => handleModeChange("custom")}
+          className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition cursor-pointer border ${
+            agentMode === "custom"
+              ? "border-primary-500 bg-primary-50 text-primary-700"
+              : "border-neutral-200 text-neutral-500 hover:border-neutral-300"
+          }`}
+        >
+          <Webhook className="w-4 h-4" />
+          Custom Webhook
+        </button>
+        <button
+          type="button"
+          onClick={() => handleModeChange("goclaw")}
+          className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition cursor-pointer border ${
+            agentMode === "goclaw"
+              ? "border-primary-500 bg-primary-50 text-primary-700"
+              : "border-neutral-200 text-neutral-500 hover:border-neutral-300"
+          }`}
+        >
+          <Bot className="w-4 h-4" />
+          GoClaw Agent
+        </button>
       </div>
+
+      {isGoclaw && (
+        <div>
+          <label className="block text-sm font-medium text-neutral-700 mb-1">
+            GoClaw Agent Key <span className="text-error">*</span>
+          </label>
+          <input
+            type="text"
+            value={goclawAgentKey}
+            onChange={(event) => handleGoclawKeyChange(event.target.value)}
+            placeholder="e.g. playground-assistant"
+            className="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg font-mono focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+            required
+          />
+          <p className="flex items-center gap-1 mt-1 text-xs text-neutral-400">
+            <Puzzle className="w-3 h-3" />
+            Must match the agent key in your GoClaw config
+          </p>
+        </div>
+      )}
 
       <div>
         <label className="block text-sm font-medium text-neutral-700 mb-1">
@@ -115,22 +128,29 @@ export function WebhookConfigForm({
         <input
           type="url"
           value={webhookUrl}
-          onChange={(event) => handleUrlManualChange(event.target.value)}
-          placeholder="https://your-agent.com/webhook"
-          className={`w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors duration-500 ${
-            flashingFields.has("webhookUrl") ? "bg-primary-50" : ""
+          onChange={(event) => onUrlChange(event.target.value)}
+          placeholder={isGoclaw ? "https://your-domain.com/api/goclaw/bridge" : "https://your-agent.com/webhook"}
+          className={`w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+            isGoclaw && webhookUrl ? "bg-neutral-50 text-neutral-500 cursor-not-allowed" : ""
           }`}
+          readOnly={isGoclaw && !!webhookUrl}
           required
         />
-        {autoFilledFields.has("webhookUrl") && (
-          <p className="mt-1 text-xs text-primary-500">Auto-filled from GoClaw key</p>
+        {isGoclaw && (
+          <p className="mt-1 text-xs text-neutral-400">
+            {webhookUrl ? "Auto-configured for GoClaw bridge" : "Enter your deployment URL + /api/goclaw/bridge"}
+          </p>
         )}
       </div>
 
       <div>
         <label className="block text-sm font-medium text-neutral-700 mb-1">
           Webhook Secret
-          <span className="text-neutral-400 font-normal ml-1">(optional)</span>
+          {isGoclaw ? (
+            <span className="text-error ml-1">*</span>
+          ) : (
+            <span className="text-neutral-400 font-normal ml-1">(optional)</span>
+          )}
         </label>
         <div className="relative">
           <input
@@ -138,7 +158,10 @@ export function WebhookConfigForm({
             value={webhookSecret}
             onChange={(event) => onSecretChange(event.target.value)}
             placeholder="whsec_..."
-            className="w-full px-3 py-2 pr-10 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent font-mono"
+            className={`w-full px-3 py-2 pr-10 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent font-mono ${
+              isGoclaw ? "bg-neutral-50 text-neutral-500 cursor-not-allowed" : ""
+            }`}
+            readOnly={isGoclaw}
           />
           <button
             type="button"
@@ -150,7 +173,7 @@ export function WebhookConfigForm({
         </div>
         <p className="flex items-center gap-1 mt-1 text-xs text-neutral-400">
           <Info className="w-3 h-3" />
-          Sent as Bearer token in Authorization header
+          {isGoclaw ? "Auto-generated — used to authenticate bridge requests" : "Sent as Bearer token in Authorization header"}
         </p>
       </div>
 
@@ -162,20 +185,17 @@ export function WebhookConfigForm({
         <input
           type="url"
           value={healthCheckUrl}
-          onChange={(event) => handleHealthUrlManualChange(event.target.value)}
+          onChange={(event) => onHealthCheckUrlChange(event.target.value)}
           placeholder="https://your-agent.com/health"
-          className={`w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors duration-500 ${
-            flashingFields.has("healthCheckUrl") ? "bg-primary-50" : ""
+          className={`w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+            isGoclaw && healthCheckUrl ? "bg-neutral-50 text-neutral-500 cursor-not-allowed" : ""
           }`}
+          readOnly={isGoclaw && !!healthCheckUrl}
         />
-        {autoFilledFields.has("healthCheckUrl") ? (
-          <p className="mt-1 text-xs text-primary-500">Auto-filled from GoClaw key</p>
-        ) : (
-          <p className="flex items-center gap-1 mt-1 text-xs text-neutral-400">
-            <HeartPulse className="w-3 h-3" />
-            GET endpoint returning 200 = agent is available
-          </p>
-        )}
+        <p className="flex items-center gap-1 mt-1 text-xs text-neutral-400">
+          <HeartPulse className="w-3 h-3" />
+          {isGoclaw && healthCheckUrl ? "Auto-configured from GoClaw server" : "GET endpoint returning 200 = agent is available"}
+        </p>
       </div>
     </div>
   );

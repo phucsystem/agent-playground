@@ -31,7 +31,7 @@ import { WorkspaceSettings } from "@/components/admin/workspace-settings";
 import { WorkspaceMembers } from "@/components/admin/workspace-members";
 import { WorkspaceAvatar } from "@/components/ui/workspace-avatar";
 import { useAgentConfigs } from "@/hooks/use-agent-configs";
-import { WebhookConfigForm } from "@/components/admin/webhook-config-form";
+import { WebhookConfigForm, type AgentMode } from "@/components/admin/webhook-config-form";
 import {
   AgentWebhookIndicator,
 } from "@/components/admin/agent-webhook-actions";
@@ -196,6 +196,7 @@ export default function AdminPage() {
   const [webhookSecret, setWebhookSecret] = useState("");
   const [healthCheckUrl, setHealthCheckUrl] = useState("");
   const [goclawAgentKey, setGoclawAgentKey] = useState("");
+  const [agentMode, setAgentMode] = useState<AgentMode>("custom");
   const { configs, createConfig, updateConfig, toggleWebhook } = useAgentConfigs();
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [editingWebhookUserId, setEditingWebhookUserId] = useState<string | null>(null);
@@ -307,12 +308,6 @@ export default function AdminPage() {
     }
 
     if (isAgent && webhookUrl) {
-      if (healthCheckUrl && !healthCheckUrl.startsWith("https://")) {
-        alert("Health check URL must start with https://");
-        setCreating(false);
-        return;
-      }
-
       if (newUserData) {
         const metadata = goclawAgentKey ? { goclaw_agent_key: goclawAgentKey } : undefined;
         const configResult = await createConfig(newUserData.id, webhookUrl, webhookSecret || undefined, healthCheckUrl || undefined, metadata);
@@ -336,6 +331,7 @@ export default function AdminPage() {
     setWebhookSecret("");
     setHealthCheckUrl("");
     setGoclawAgentKey("");
+    setAgentMode("custom");
   }
 
   async function toggleUserActive(userId: string, currentlyActive: boolean) {
@@ -617,10 +613,12 @@ export default function AdminPage() {
 
                 {inviteType === "agent" && (
                   <WebhookConfigForm
+                    agentMode={agentMode}
                     webhookUrl={webhookUrl}
                     webhookSecret={webhookSecret}
                     healthCheckUrl={healthCheckUrl}
                     goclawAgentKey={goclawAgentKey}
+                    onModeChange={setAgentMode}
                     onUrlChange={setWebhookUrl}
                     onSecretChange={setWebhookSecret}
                     onHealthCheckUrlChange={setHealthCheckUrl}
@@ -737,12 +735,13 @@ function InlineWebhookEditor({
   onUpdate: (userId: string, updates: { webhook_url?: string; webhook_secret?: string; health_check_url?: string | null; metadata?: Record<string, unknown> }) => Promise<{ error: string | null }>;
   onToggle: (userId: string, isActive: boolean) => Promise<{ error: string | null }>;
 }) {
+  const existingGoclawKey = (config?.metadata as Record<string, unknown>)?.goclaw_agent_key as string || "";
+  const isGoclawAgent = !!existingGoclawKey;
+
   const [editUrl, setEditUrl] = useState(config?.webhook_url || "");
   const [editSecret, setEditSecret] = useState("");
   const [editHealthUrl, setEditHealthUrl] = useState(config?.health_check_url || "");
-  const [editGoclawKey, setEditGoclawKey] = useState(
-    (config?.metadata as Record<string, unknown>)?.goclaw_agent_key as string || "",
-  );
+  const [editGoclawKey, setEditGoclawKey] = useState(existingGoclawKey);
   const [saving, setSaving] = useState(false);
   const [testStatus, setTestStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [testResult, setTestResult] = useState<string>("");
@@ -757,8 +756,7 @@ function InlineWebhookEditor({
     const newHealthUrl = editHealthUrl.trim() || null;
     if (newHealthUrl !== (config!.health_check_url || null)) updates.health_check_url = newHealthUrl;
 
-    const currentKey = (config!.metadata as Record<string, unknown>)?.goclaw_agent_key as string || "";
-    if (editGoclawKey !== currentKey) {
+    if (editGoclawKey !== existingGoclawKey) {
       const existingMetadata = (config!.metadata || {}) as Record<string, unknown>;
       updates.metadata = { ...existingMetadata, goclaw_agent_key: editGoclawKey || undefined };
     }
@@ -810,44 +808,64 @@ function InlineWebhookEditor({
         <h3 className="text-sm font-semibold text-neutral-800 mb-4 flex items-center gap-2">
           <Webhook className="w-4 h-4 text-neutral-400" />
           Webhook Configuration
+          {isGoclawAgent && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-primary-100 text-primary-600">
+              GoClaw
+            </span>
+          )}
         </h3>
 
         <div className="space-y-3 mb-4">
-          <div>
-            <label className="block text-xs font-medium text-neutral-500 mb-1">
-              GoClaw Agent Key <span className="text-neutral-300 font-normal">(optional)</span>
-            </label>
-            <input
-              type="text"
-              value={editGoclawKey}
-              onChange={(event) => {
-                if (/^[a-zA-Z0-9_-]*$/.test(event.target.value)) {
-                  setEditGoclawKey(event.target.value);
-                }
-              }}
-              placeholder="e.g. playground-assistant"
-              className="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg font-mono focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
-            />
-          </div>
+          {isGoclawAgent && (
+            <div>
+              <label className="block text-xs font-medium text-neutral-500 mb-1">
+                GoClaw Agent Key
+              </label>
+              <input
+                type="text"
+                value={editGoclawKey}
+                onChange={(event) => {
+                  if (/^[a-zA-Z0-9_-]*$/.test(event.target.value)) {
+                    setEditGoclawKey(event.target.value);
+                  }
+                }}
+                placeholder="e.g. playground-assistant"
+                className="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg font-mono focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+              />
+            </div>
+          )}
           <div>
             <label className="block text-xs font-medium text-neutral-500 mb-1">URL</label>
             <input
               type="url"
               value={editUrl}
               onChange={(event) => setEditUrl(event.target.value)}
-              className="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg font-mono focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+              className={`w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg font-mono focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 ${
+                isGoclawAgent ? "bg-neutral-50 text-neutral-500 cursor-not-allowed" : ""
+              }`}
+              readOnly={isGoclawAgent}
             />
+            {isGoclawAgent && (
+              <p className="mt-1 text-xs text-neutral-400">Auto-configured for GoClaw bridge</p>
+            )}
           </div>
           <div>
             <label className="block text-xs font-medium text-neutral-500 mb-1">
-              New secret <span className="text-neutral-300 font-normal">(leave empty to keep current)</span>
+              {isGoclawAgent ? (
+                <>Secret <span className="text-neutral-300 font-normal">(read-only)</span></>
+              ) : (
+                <>New secret <span className="text-neutral-300 font-normal">(leave empty to keep current)</span></>
+              )}
             </label>
             <input
               type="password"
-              value={editSecret}
+              value={isGoclawAgent ? "••••••••••••" : editSecret}
               onChange={(event) => setEditSecret(event.target.value)}
               placeholder="whsec_..."
-              className="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg font-mono focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+              className={`w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg font-mono focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 ${
+                isGoclawAgent ? "bg-neutral-50 text-neutral-500 cursor-not-allowed" : ""
+              }`}
+              readOnly={isGoclawAgent}
             />
           </div>
           <div>
@@ -859,11 +877,14 @@ function InlineWebhookEditor({
               value={editHealthUrl}
               onChange={(event) => setEditHealthUrl(event.target.value)}
               placeholder="https://your-agent.com/health"
-              className="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+              className={`w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 ${
+                isGoclawAgent ? "bg-neutral-50 text-neutral-500 cursor-not-allowed" : ""
+              }`}
+              readOnly={isGoclawAgent}
             />
           </div>
 
-          {editGoclawKey && (
+          {isGoclawAgent && (
             <div>
               <button
                 onClick={handleTestConnection}

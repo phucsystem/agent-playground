@@ -41,7 +41,7 @@ export function useAgentConfigs() {
       user_id: userId,
       webhook_url: webhookUrl,
       webhook_secret: webhookSecret || null,
-      health_check_url: healthCheckUrl || null,
+      health_check_url: healthCheckUrl?.startsWith("https://") ? healthCheckUrl : null,
       metadata: metadata || {},
       is_webhook_active: true,
     });
@@ -56,9 +56,13 @@ export function useAgentConfigs() {
     updates: { webhook_url?: string; webhook_secret?: string; health_check_url?: string | null; metadata?: Record<string, unknown> },
   ): Promise<{ error: string | null }> {
     const supabase = createBrowserSupabaseClient();
+    const sanitized = { ...updates, updated_at: new Date().toISOString() };
+    if (sanitized.health_check_url !== undefined && sanitized.health_check_url !== null && !sanitized.health_check_url.startsWith("https://")) {
+      sanitized.health_check_url = null;
+    }
     const { error } = await supabase
       .from("agent_configs")
-      .update({ ...updates, updated_at: new Date().toISOString() })
+      .update(sanitized)
       .eq("user_id", userId);
 
     if (error) return { error: error.message };
