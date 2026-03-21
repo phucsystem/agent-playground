@@ -1,3 +1,10 @@
+# [1.14.0](https://github.com/phucsystem/agent-playground/compare/v1.13.1...v1.14.0) (2026-03-21)
+
+
+### Features
+
+* add 9 mobile UX enhancements for better touch experience ([#31](https://github.com/phucsystem/agent-playground/issues/31)) ([635225b](https://github.com/phucsystem/agent-playground/commit/635225bf04e7ccb9419e0da564f766d813f68578))
+
 ## [1.13.1](https://github.com/phucsystem/agent-playground/compare/v1.13.0...v1.13.1) (2026-03-21)
 
 
