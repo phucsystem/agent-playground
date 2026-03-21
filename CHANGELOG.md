@@ -1,3 +1,24 @@
+## [1.12.1](https://github.com/phucsystem/agent-playground/compare/v1.12.0...v1.12.1) (2026-03-21)
+
+
+### Bug Fixes
+
+* resolve workspace unread badge and cross-workspace notifications ([#28](https://github.com/phucsystem/agent-playground/issues/28)) ([93393bf](https://github.com/phucsystem/agent-playground/commit/93393bfb4758df24eb66f5665260d7f976df2a29))
+
+# [1.12.0](https://github.com/phucsystem/agent-playground/compare/v1.11.1...v1.12.0) (2026-03-20)
+
+
+### Features
+
+* add clickable shared media in conversation info panel ([#26](https://github.com/phucsystem/agent-playground/issues/26)) ([d4cd7cf](https://github.com/phucsystem/agent-playground/commit/d4cd7cf4b8f400520101733967985282d2d2936d))
+
+## [1.11.1](https://github.com/phucsystem/agent-playground/compare/v1.11.0...v1.11.1) (2026-03-19)
+
+
+### Bug Fixes
+
+* reset chat auto-scroll state on conversation switch ([#24](https://github.com/phucsystem/agent-playground/issues/24)) ([8c89c8f](https://github.com/phucsystem/agent-playground/commit/8c89c8f368aed6c4ea5d1e2be1be1d379578e815))
+
 # [1.11.0](https://github.com/phucsystem/agent-playground/compare/v1.10.0...v1.11.0) (2026-03-19)
 
 
