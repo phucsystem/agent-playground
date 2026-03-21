@@ -1,3 +1,10 @@
+# [1.13.0](https://github.com/phucsystem/agent-playground/compare/v1.12.1...v1.13.0) (2026-03-21)
+
+
+### Features
+
+* add GoClaw webhook bridge integration ([#30](https://github.com/phucsystem/agent-playground/issues/30)) ([b818604](https://github.com/phucsystem/agent-playground/commit/b81860475894f8f1c373d9fa12d256c7f20a02eb))
+
 ## [1.12.1](https://github.com/phucsystem/agent-playground/compare/v1.12.0...v1.12.1) (2026-03-21)
 
 
