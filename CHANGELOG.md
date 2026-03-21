@@ -1,3 +1,10 @@
+## [1.13.1](https://github.com/phucsystem/agent-playground/compare/v1.13.0...v1.13.1) (2026-03-21)
+
+
+### Bug Fixes
+
+* GoClaw bridge middleware exclusion and UI improvements ([#32](https://github.com/phucsystem/agent-playground/issues/32)) ([1e1949b](https://github.com/phucsystem/agent-playground/commit/1e1949b05e35d80545355352936d8ccfc3bf0c57))
+
 # [1.13.0](https://github.com/phucsystem/agent-playground/compare/v1.12.1...v1.13.0) (2026-03-21)
 
 
