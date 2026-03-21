@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { X, LogOut, Archive, ArchiveRestore, UserPlus, Check, Search, Trash2, Pencil, FileText, FileImage, FileSpreadsheet, File, Download } from "lucide-react";
+import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { Avatar } from "@/components/ui/avatar";
 import { useConversationMembers } from "@/hooks/use-conversation-members";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
@@ -236,8 +237,13 @@ export function ChatInfoPanel({
         className="fixed inset-0 bg-black/40 z-40 md:hidden"
         onClick={onClose}
       />
-    <div className="fixed inset-0 z-50 md:relative md:inset-auto md:z-auto w-full md:w-[var(--info-panel-width)] border-l border-neutral-200 bg-white h-full overflow-y-auto shrink-0">
-      <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-200 sticky top-0 bg-white z-10">
+    {/* Mobile: bottom-sheet-style panel; Desktop: sidebar panel */}
+    <div className="fixed bottom-0 left-0 right-0 top-[15vh] z-50 rounded-t-2xl md:rounded-none md:relative md:inset-auto md:z-auto w-full md:w-[var(--info-panel-width)] border-l border-neutral-200 bg-white h-auto md:h-full overflow-y-auto shrink-0" style={{ paddingBottom: "var(--sai-bottom, 0px)" }}>
+      {/* Drag handle (mobile only) */}
+      <div className="md:hidden flex justify-center pt-2 pb-1">
+        <div className="w-9 h-1 rounded-full bg-neutral-300" />
+      </div>
+      <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-200 sticky top-0 bg-white z-10 rounded-t-2xl md:rounded-none">
         <h3 className="text-sm font-semibold text-neutral-800">Chat Info</h3>
         <button
           onClick={onClose}

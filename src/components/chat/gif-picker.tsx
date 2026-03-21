@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Loader2 } from "lucide-react";
+import { BottomSheet } from "@/components/ui/bottom-sheet";
 
 interface GifResult {
   id: string;
@@ -38,45 +39,20 @@ async function searchGifs(query: string): Promise<GifResult[]> {
   });
 }
 
-export function GifPicker({ onSelect, onClose }: GifPickerProps) {
-  const [query, setQuery] = useState("");
-  const [gifs, setGifs] = useState<GifResult[]>([]);
-  const [loading, setLoading] = useState(false);
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>(null);
-
-  const doSearch = useCallback(async (searchQuery: string) => {
-    setLoading(true);
-    const results = await searchGifs(searchQuery);
-    setGifs(results);
-    setLoading(false);
-  }, []);
-
-  useEffect(() => {
-    doSearch("");
-  }, [doSearch]);
-
-  function handleQueryChange(value: string) {
-    setQuery(value);
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => doSearch(value), 400);
-  }
-
-  if (!GIPHY_API_KEY) {
-    return (
-      <div className="absolute bottom-full left-0 mb-2 bg-white border border-neutral-200 rounded-xl shadow-lg w-[calc(100vw-1rem)] sm:w-[320px] max-w-[320px] z-50 p-4">
-        <p className="text-sm text-neutral-500 text-center">
-          GIF search requires NEXT_PUBLIC_GIPHY_API_KEY in .env
-        </p>
-      </div>
-    );
-  }
-
+function GifGrid({ query, gifs, loading, onQueryChange, onSelect, onClose }: {
+  query: string;
+  gifs: GifResult[];
+  loading: boolean;
+  onQueryChange: (value: string) => void;
+  onSelect: (gifUrl: string) => void;
+  onClose: () => void;
+}) {
   return (
-    <div className="absolute bottom-full left-0 mb-2 bg-white border border-neutral-200 rounded-xl shadow-lg w-[calc(100vw-1rem)] sm:w-[320px] max-w-[320px] z-50">
+    <>
       <div className="p-2 border-b border-neutral-100">
         <input
           value={query}
-          onChange={(event) => handleQueryChange(event.target.value)}
+          onChange={(event) => onQueryChange(event.target.value)}
           placeholder="Search GIFs..."
           autoFocus
           className="w-full px-3 py-1.5 bg-neutral-50 border border-neutral-200 rounded-lg text-sm outline-none focus:border-primary-400"
@@ -101,7 +77,7 @@ export function GifPicker({ onSelect, onClose }: GifPickerProps) {
                   onSelect(gif.fullUrl);
                   onClose();
                 }}
-                className="w-full mb-1.5 rounded-lg overflow-hidden hover:opacity-80 transition break-inside-avoid"
+                className="w-full mb-1.5 rounded-lg overflow-hidden hover:opacity-80 active:opacity-60 transition break-inside-avoid"
               >
                 <img
                   src={gif.previewUrl}
@@ -118,6 +94,70 @@ export function GifPicker({ onSelect, onClose }: GifPickerProps) {
       <div className="px-2 py-1 border-t border-neutral-100">
         <p className="text-[10px] text-neutral-300 text-center">Powered by GIPHY</p>
       </div>
+    </>
+  );
+}
+
+export function GifPicker({ onSelect, onClose }: GifPickerProps) {
+  const [query, setQuery] = useState("");
+  const [gifs, setGifs] = useState<GifResult[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(null);
+
+  const doSearch = useCallback(async (searchQuery: string) => {
+    setLoading(true);
+    const results = await searchGifs(searchQuery);
+    setGifs(results);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    doSearch("");
+    setIsMobile(window.innerWidth < 768);
+  }, [doSearch]);
+
+  function handleQueryChange(value: string) {
+    setQuery(value);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => doSearch(value), 400);
+  }
+
+  if (!GIPHY_API_KEY) {
+    return (
+      <div className="absolute bottom-full left-0 mb-2 bg-white border border-neutral-200 rounded-xl shadow-lg w-[calc(100vw-1rem)] sm:w-[320px] max-w-[320px] z-50 p-4">
+        <p className="text-sm text-neutral-500 text-center">
+          GIF search requires NEXT_PUBLIC_GIPHY_API_KEY in .env
+        </p>
+      </div>
+    );
+  }
+
+  if (isMobile) {
+    return (
+      <BottomSheet isOpen={true} onClose={onClose} snapPoints={[0.5]} title="GIFs">
+        <GifGrid
+          query={query}
+          gifs={gifs}
+          loading={loading}
+          onQueryChange={handleQueryChange}
+          onSelect={onSelect}
+          onClose={onClose}
+        />
+      </BottomSheet>
+    );
+  }
+
+  return (
+    <div className="absolute bottom-full left-0 mb-2 bg-white border border-neutral-200 rounded-xl shadow-lg w-[320px] max-w-[320px] z-50">
+      <GifGrid
+        query={query}
+        gifs={gifs}
+        loading={loading}
+        onQueryChange={handleQueryChange}
+        onSelect={onSelect}
+        onClose={onClose}
+      />
     </div>
   );
 }
