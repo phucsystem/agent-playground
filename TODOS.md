@@ -16,6 +16,12 @@
 - **Why:** Current REST bridge waits for full LLM response before displaying — can be 5-30s of blank screen. WebSocket streaming shows tokens in real-time.
 - **Context:** Depends on GoClaw webhook bridge (Phase 1) shipping first. Effort: L (human) / M (CC). Priority: P3. Reference: `plans/reports/researcher-260320-goclaw-integration.md` (Option B: WebSocket RPC).
 
+## Optimize webhook-dispatch history for GoClaw
+- [ ] Skip fetching 50 history messages when dispatching to GoClaw agents (GoClaw manages history server-side via `conversationId`)
+- [ ] Add `skip_history` flag to agent_configs metadata or detect GoClaw agents by presence of `goclaw_agent_key`
+- **Why:** webhook-dispatch queries 50 messages, serializes them, and sends them to the bridge — but the bridge ignores them entirely. Wasted DB query + payload bloat on every message.
+- **Context:** Low priority (P4). The history fetch is fast and doesn't break anything — just unnecessary work for GoClaw agents. Other webhook consumers may still need history.
+
 ## Update codebase-summary.md
 - [ ] Add workspace components/hooks (workspace-rail, workspace-settings, use-workspaces, etc.)
 - [ ] Add avatar upload components (avatar-editor-dialog, use-avatar-upload, crop-image)

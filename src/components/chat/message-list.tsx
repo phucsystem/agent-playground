@@ -168,6 +168,20 @@ export function MessageList({
     }
   }, [agentThinking, typingUsers.length]);
 
+  // Auto-scroll during streaming content updates (last message content grows)
+  const lastMessage = messages[messages.length - 1];
+  const lastMessageContentLength = lastMessage?.content?.length ?? 0;
+  const lastMessageMeta = lastMessage?.metadata as Record<string, unknown> | null;
+  const isLastMessageStreaming = lastMessageMeta?.streaming_status === "streaming";
+
+  useEffect(() => {
+    if (isLastMessageStreaming && isAtBottomRef.current) {
+      requestAnimationFrame(() => {
+        parentRef.current?.scrollTo({ top: parentRef.current.scrollHeight, behavior: "smooth" });
+      });
+    }
+  }, [lastMessageContentLength, isLastMessageStreaming]);
+
   function handleScroll() {
     const container = parentRef.current;
     if (!container) return;

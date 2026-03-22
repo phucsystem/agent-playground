@@ -1,10 +1,10 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 import { timingSafeEqual } from "crypto";
+import { getGoclawClient } from "@/lib/goclaw";
 
 const GOCLAW_URL = process.env.GOCLAW_URL;
 const GOCLAW_TOKEN = process.env.GOCLAW_GATEWAY_TOKEN;
-const GOCLAW_TIMEOUT_MS = 25_000;
 
 const BLOCKED_HOSTNAMES = ["localhost", "127.0.0.1", "::1", "[::1]", "metadata.google.internal"];
 const BLOCKED_IP_PREFIXES = ["10.", "172.16.", "172.17.", "172.18.", "172.19.", "172.20.", "172.21.", "172.22.", "172.23.", "172.24.", "172.25.", "172.26.", "172.27.", "172.28.", "172.29.", "172.30.", "172.31.", "192.168.", "169.254."];
@@ -44,65 +44,23 @@ function getSupabaseAdmin() {
   );
 }
 
+const CHUNK_UPDATE_DEBOUNCE_MS = 200;
+
 interface HistoryItem {
   sender_id: string;
-  sender_name: string;
   is_agent: boolean;
-  content: string;
-  content_type: string;
 }
 
 interface BridgeRequestBody {
   message: { content: string };
-  sender: string;
   conversation_id: string;
   message_id: string;
   history: HistoryItem[];
 }
 
-interface GoClawResponse {
-  type: string;
-  ok: boolean;
-  payload?: {
-    runId?: string;
-    content?: string;
-    usage?: { input_tokens?: number; output_tokens?: number };
-  };
-  choices?: { message?: { content?: string } }[];
-}
-
 interface MatchedAgentConfig {
   user_id: string;
   metadata: Record<string, unknown> | null;
-}
-
-function buildSystemPrompt(
-  conversationType: string,
-  conversationName: string | null,
-  senderName: string,
-  memberNames: string[],
-): string {
-  if (conversationType === "dm") {
-    return `You are in a direct message conversation with ${senderName}.`;
-  }
-  const nameList = memberNames.slice(0, 5).join(", ");
-  const suffix = memberNames.length > 5 ? ` and ${memberNames.length - 5} more` : "";
-  return `You are in a group conversation '${conversationName || "Unnamed"}' with ${memberNames.length} members: ${nameList}${suffix}.`;
-}
-
-function mapHistoryToMessages(
-  history: HistoryItem[],
-  isGroup: boolean,
-): { role: string; content: string }[] {
-  return history
-    .filter((item) => item.content_type === "text")
-    .map((item) => {
-      const role = item.is_agent ? "assistant" : "user";
-      const content = isGroup && !item.is_agent
-        ? `${item.sender_name}: ${item.content}`
-        : item.content;
-      return { role, content };
-    });
 }
 
 export async function POST(request: NextRequest) {
@@ -122,17 +80,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
 
-  const { message, sender, conversation_id: conversationId, message_id: messageId, history } = body;
+  const { message, conversation_id: conversationId, message_id: messageId, history } = body;
   if (!message?.content || !conversationId || !messageId) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
-
-  const senderName = sender || "Unknown";
-
-  // Extract sender_id from history (last non-agent sender, which is the current message author)
-  const senderId = (history || [])
-    .filter((item) => !item.is_agent)
-    .at(-1)?.sender_id || "unknown";
 
   const authHeader = request.headers.get("authorization");
   const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
@@ -141,9 +92,8 @@ export async function POST(request: NextRequest) {
   }
 
   const webhookId = request.headers.get("x-webhook-id") || "unknown";
-  const supabase = getSupabaseAdmin();
 
-  // Collect agent IDs from history for targeted lookup
+  // Find agent config matching the webhook secret
   const agentUserIds = new Set<string>();
   for (const item of history || []) {
     if (item.is_agent) agentUserIds.add(item.sender_id);
@@ -151,10 +101,9 @@ export async function POST(request: NextRequest) {
 
   let matchedAgent: MatchedAgentConfig | null = null;
 
-  // Try targeted lookup first (agents from history)
   const agentIdCandidates = Array.from(agentUserIds);
   if (agentIdCandidates.length > 0) {
-    const { data: configs, error: configQueryError } = await supabase
+    const { data: configs, error: configQueryError } = await getSupabaseAdmin()
       .from("agent_configs")
       .select("user_id, webhook_secret, metadata")
       .in("user_id", agentIdCandidates)
@@ -173,9 +122,8 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // Fallback: query by secret directly
   if (!matchedAgent) {
-    const { data: allConfigs, error: fallbackError } = await supabase
+    const { data: allConfigs, error: fallbackError } = await getSupabaseAdmin()
       .from("agent_configs")
       .select("user_id, webhook_secret, metadata")
       .eq("webhook_secret", bearerToken)
@@ -196,152 +144,138 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const agentId = matchedAgent.user_id;
-  const metadata = (matchedAgent.metadata || {}) as Record<string, unknown>;
-  const goclawAgentKey = metadata.goclaw_agent_key as string | undefined;
+  const agentMetadata = (matchedAgent.metadata || {}) as Record<string, unknown>;
+  const goclawAgentKey = agentMetadata.goclaw_agent_key as string | undefined;
 
   if (!goclawAgentKey) {
     return NextResponse.json({ error: "No GoClaw agent key configured" }, { status: 400 });
   }
 
-  // Get conversation details for system prompt
-  const { data: conversation } = await supabase
-    .from("conversations")
-    .select("type, name")
-    .eq("id", conversationId)
-    .single();
-
-  const conversationType = conversation?.type || "dm";
-  const conversationName = conversation?.name || null;
-
-  // Get member names for group context
-  let memberNames: string[] = [];
-  if (conversationType === "group") {
-    const { data: members } = await supabase
-      .from("conversation_members")
-      .select("users!inner(display_name)")
-      .eq("conversation_id", conversationId);
-
-    if (members) {
-      memberNames = members.map(
-        (member: { users: { display_name: string }[] }) => {
-          const userRecord = member.users[0];
-          return userRecord?.display_name || "Unknown";
-        },
-      );
-    }
-  }
-
-  const systemPrompt = buildSystemPrompt(conversationType, conversationName, senderName, memberNames);
-  const isGroup = conversationType === "group";
-
-  const messages: { role: string; content: string }[] = [
-    { role: "system", content: systemPrompt },
-    ...mapHistoryToMessages(history || [], isGroup),
-    {
-      role: "user",
-      content: isGroup ? `${senderName}: ${message.content}` : message.content,
-    },
-  ];
-
   const startTime = Date.now();
 
-  const goclawHeaders = {
-    "Authorization": `Bearer ${GOCLAW_TOKEN}`,
-    "X-GoClaw-User-Id": senderId,
-    "X-GoClaw-Conversation-Id": conversationId,
-    "Content-Type": "application/json",
-  };
+  // INSERT placeholder streaming message
+  const { data: streamingMsg, error: insertError } = await getSupabaseAdmin()
+    .from("messages")
+    .insert({
+      conversation_id: conversationId,
+      sender_id: matchedAgent.user_id,
+      content: "",
+      content_type: "text",
+      metadata: { streaming_status: "streaming" },
+    })
+    .select("id")
+    .single();
 
-  const goclawBody = {
-    model: `goclaw:${goclawAgentKey}`,
-    messages,
-  };
+  if (insertError) {
+    console.error(`[bridge] Failed to insert streaming message:`, insertError.message);
+    return NextResponse.json({ error: "Failed to create message" }, { status: 500 });
+  }
 
-  console.log(`[bridge] >>> GoClaw request (webhook ${webhookId})`, {
-    url: `${GOCLAW_URL}/v1/chat/completions`,
-    headers: { ...goclawHeaders, Authorization: "Bearer ***" },
-    body: JSON.stringify(goclawBody),
-  });
+  const streamingMessageId = streamingMsg.id;
+  let accumulatedContent = "";
+  let lastUpdateTime = 0;
+  let streamCompleted = false;
+  const eventCleanups: (() => void)[] = [];
 
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), GOCLAW_TIMEOUT_MS);
+    const goclawClient = getGoclawClient();
 
-    const goclawResponse = await fetch(`${GOCLAW_URL}/v1/chat/completions`, {
-      method: "POST",
-      headers: goclawHeaders,
-      body: JSON.stringify(goclawBody),
-      signal: controller.signal,
+    console.log(`[bridge] >>> GoClaw WS chat.stream (webhook ${webhookId})`, {
+      agentId: goclawAgentKey,
+      conversationId,
+      textLength: message.content.length,
     });
 
-    clearTimeout(timeoutId);
+    // Subscribe to agent lifecycle events during streaming
+    let lastStatusUpdateTime = 0;
+    const STATUS_DEBOUNCE_MS = 500;
 
-    if (goclawResponse.status === 401) {
-      return NextResponse.json({ error: "GoClaw authentication failed" }, { status: 502 });
-    }
+    const updateAgentStatus = (agentStatusText: string) => {
+      if (streamCompleted) return;
+      const now = Date.now();
+      if (now - lastStatusUpdateTime < STATUS_DEBOUNCE_MS) return;
+      lastStatusUpdateTime = now;
+      getSupabaseAdmin()
+        .from("messages")
+        .update({ metadata: { streaming_status: "streaming", agent_status: agentStatusText } })
+        .eq("id", streamingMessageId)
+        .then(({ error }) => {
+          if (error) console.error("[bridge] Failed to update agent status:", error.message);
+        });
+    };
 
-    if (goclawResponse.status === 429) {
-      const retryAfter = goclawResponse.headers.get("retry-after");
-      const headers: Record<string, string> = {};
-      if (retryAfter) headers["retry-after"] = retryAfter;
-      return NextResponse.json({ error: "GoClaw rate limited" }, { status: 429, headers });
-    }
+    eventCleanups.push(goclawClient.on("run.started", () => {
+      updateAgentStatus("Thinking...");
+    }));
+    eventCleanups.push(goclawClient.on("tool.call", (data) => {
+      const toolName = data.toolName as string || "tool";
+      updateAgentStatus(`Calling: ${toolName}`);
+    }));
+    eventCleanups.push(goclawClient.on("tool.result", () => {
+      updateAgentStatus("Processing results...");
+    }));
 
-    if (goclawResponse.status >= 500) {
-      return NextResponse.json(
-        { error: `GoClaw error: ${goclawResponse.status}` },
-        { status: 502 },
-      );
-    }
+    const fullContent = await goclawClient.stream(
+      "chat.stream",
+      { agentId: goclawAgentKey, conversationId, text: message.content },
+      async (chunk: string) => {
+        accumulatedContent += chunk;
+        const now = Date.now();
+        if (now - lastUpdateTime >= CHUNK_UPDATE_DEBOUNCE_MS) {
+          lastUpdateTime = now;
+          await getSupabaseAdmin()
+            .from("messages")
+            .update({ content: accumulatedContent })
+            .eq("id", streamingMessageId);
+        }
+      },
+    );
 
-    if (!goclawResponse.ok) {
-      return NextResponse.json(
-        { error: `GoClaw error: ${goclawResponse.status}` },
-        { status: 502 },
-      );
-    }
+    // Guard: prevent late status updates from overwriting 'complete'
+    streamCompleted = true;
 
-    let responseData: GoClawResponse;
-    try {
-      responseData = await goclawResponse.json();
-    } catch {
-      return NextResponse.json({ error: "GoClaw returned invalid response" }, { status: 502 });
-    }
+    // Clean up event subscriptions
+    eventCleanups.forEach((cleanup) => cleanup());
 
-    if (responseData.ok === false) {
-      const errorMsg = (responseData.payload as Record<string, unknown>)?.error || "Unknown error";
-      return NextResponse.json({ error: `GoClaw error: ${errorMsg}` }, { status: 502 });
-    }
-
-    // Extract content — prefer payload.content, fallback to choices[0]
-    let content = responseData.payload?.content;
-    if (!content && responseData.choices?.[0]?.message?.content) {
-      content = responseData.choices[0].message.content;
-    }
-
-    if (!content) {
-      return NextResponse.json({ error: "GoClaw returned empty response" }, { status: 502 });
-    }
+    // Final update with complete content
+    await getSupabaseAdmin()
+      .from("messages")
+      .update({
+        content: fullContent,
+        metadata: { streaming_status: "complete" },
+      })
+      .eq("id", streamingMessageId);
 
     const latencyMs = Date.now() - startTime;
-    console.log(`[bridge] GoClaw call completed`, {
+    console.log(`[bridge] GoClaw WS stream completed`, {
       agentKey: goclawAgentKey,
       conversationId,
       webhookId,
+      endpoint: "chat.stream",
       latencyMs,
-      inputTokens: responseData.payload?.usage?.input_tokens,
-      outputTokens: responseData.payload?.usage?.output_tokens,
-      replyLength: content.length,
+      replyLength: fullContent.length,
     });
 
-    return NextResponse.json({ reply: content });
+    return NextResponse.json({ reply: fullContent, already_inserted: true });
   } catch (error: unknown) {
-    if (error instanceof Error && error.name === "AbortError") {
-      console.error(`[bridge] GoClaw timeout after ${GOCLAW_TIMEOUT_MS}ms (webhook ${webhookId})`);
+    streamCompleted = true;
+    eventCleanups.forEach((cleanup) => cleanup());
+
+    // On stream failure: update message to error state
+    await getSupabaseAdmin()
+      .from("messages")
+      .update({
+        content: accumulatedContent || "[Agent response failed]",
+        metadata: { streaming_status: "error" },
+      })
+      .eq("id", streamingMessageId);
+
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    console.error(`[bridge] GoClaw WS stream failed (webhook ${webhookId}):`, errorMessage);
+
+    if (errorMessage.includes("timeout")) {
       return NextResponse.json({ error: "GoClaw timeout" }, { status: 504 });
     }
-    console.error(`[bridge] GoClaw request failed (webhook ${webhookId}):`, error);
     return NextResponse.json({ error: "GoClaw request failed" }, { status: 502 });
   }
 }

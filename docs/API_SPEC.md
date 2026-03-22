@@ -1003,13 +1003,13 @@ After 3 failed attempts, status set to `failed`. No further retries.
 
 ### POST /api/goclaw/bridge (Phase 7)
 
-**Description:** Webhook-callable bridge to GoClaw `/v1/chat/completions`. Called by Edge Function when messages are sent to agents configured with GoClaw integration. Handles authentication via Bearer token (webhook_secret), system prompt composition (DM vs group context), history mapping to OpenAI format, error handling, and logging.
+**Description:** Webhook-callable bridge to GoClaw WebSocket API. Called by Edge Function when messages are sent to agents configured with GoClaw integration. Creates a streaming message, subscribes to agent lifecycle events, streams response chunks into the database with real-time updates, and handles error recovery.
 
 **Feature:** FR-35 (GoClaw integration)
 **Screen:** — (Backend service)
 **Auth:** Bearer token (webhook_secret from agent_configs, no JWT required)
 
-**Implementation:** Next.js Route Handler (`src/app/api/goclaw/bridge/route.ts`)
+**Implementation:** Next.js Route Handler (`src/app/api/goclaw/bridge/route.ts`) + GoClaw WebSocket client (`src/lib/goclaw/ws-client.ts`)
 
 **Request:**
 ```json
@@ -1021,16 +1021,12 @@ After 3 failed attempts, status set to `failed`. No further retries.
   "history": [
     {
       "sender_id": "user-uuid-1",
-      "sender_name": "Alice",
       "is_agent": false,
-      "content": "What is the weather?",
       "content_type": "text"
     },
     {
       "sender_id": "agent-uuid-1",
-      "sender_name": "WeatherBot",
       "is_agent": true,
-      "content": "It is sunny.",
       "content_type": "text"
     }
   ]
@@ -1040,9 +1036,18 @@ After 3 failed attempts, status set to `failed`. No further retries.
 **Response (200) — Success:**
 ```json
 {
-  "reply": "The weather is nice today!"
+  "reply": "Streaming message inserted",
+  "already_inserted": true
 }
 ```
+
+**Response Flow:**
+1. **INSERT placeholder:** Create message with `streaming_status: "streaming"` and empty content
+2. **WebSocket stream:** Connect to GoClaw persistent WebSocket, call `chat.stream()` with agent ID, conversation ID, and user text
+3. **Chunk updates:** Stream callback receives chunks (debounced 200ms), PATCH message content incrementally
+4. **Lifecycle events:** Subscribe to `run.started`, `tool.call`, `tool.result` events, PATCH message metadata with `agent_status` text (debounced 500ms)
+5. **Stream complete:** Final PATCH sets `streaming_status: "complete"` when stream ends
+6. **Realtime broadcast:** Supabase postgres_changes fires on each content/metadata update, UI receives streaming chunks + status updates via Realtime WebSocket
 
 **Error Responses:**
 | Code | Body | Condition |
@@ -1052,29 +1057,34 @@ After 3 failed attempts, status set to `failed`. No further retries.
 | 401 | `{ "error": "Unauthorized" }` | Bearer token missing or invalid |
 | 500 | `{ "error": "GoClaw not configured" }` | GOCLAW_URL or GOCLAW_GATEWAY_TOKEN not set |
 | 500 | `{ "error": "Database unavailable" }` | DB query failed |
-| 502 | `{ "error": "GoClaw authentication failed" }` | GoClaw returned 401 |
-| 502 | `{ "error": "GoClaw error: {status}" }` | GoClaw returned non-OK response |
-| 502 | `{ "error": "GoClaw returned invalid response" }` | GoClaw response not valid JSON |
-| 502 | `{ "error": "GoClaw returned empty response" }` | No content in GoClaw response |
-| 504 | `{ "error": "GoClaw timeout" }` | Request exceeded 25s timeout |
-| 429 | `{ "error": "GoClaw rate limited" }` | GoClaw rate limit hit, includes `retry-after` header |
+
+**Message Metadata Fields:**
+| Field | Type | Purpose |
+|-------|------|---------|
+| `streaming_status` | "streaming" \| "complete" \| "error" | Stream state; used by UI to show typing dots or apply animation |
+| `agent_status` | string | Current agent action: "Thinking...", "Calling: {toolName}", "Processing results..." |
 
 **Key Implementation Details:**
 - **Auth:** Timing-safe comparison of Bearer token against webhook_secret (prevents timing attacks)
-- **Lookup:** Targeted lookup using agent IDs from history (fast path), fallback to full table scan
-- **System Prompt:** DM context = simple greeting, group context = lists member names + group name
-- **History Mapping:** Filters to text-only messages, prefixes group messages with sender name
-- **Messages Format:** OpenAI-compatible array with system prompt + history + current message
-- **GoClaw Model Key:** Sent as `model: "goclaw:{goclaw_agent_key}"` header
-- **Response Extract:** Prefers `payload.content`, falls back to `choices[0].message.content`
-- **Logging:** Structured logs with latency, token counts, agent key (no secrets)
-- **SSRF Protection:** Blocks internal IPs, localhost, .local/.internal domains, metadata endpoints
-- **Timeout:** 25s (within webhook-dispatch's 30s timeout)
+- **Agent Lookup:** Query agent_configs by user_id (from history) and webhook_secret
+- **SSRF Protection:** Blocks internal IPs, localhost, .local/.internal domains, metadata endpoints on GOCLAW_URL
+- **Singleton Connection:** GoClaw WebSocket client created once per process, reused across requests
+- **Reconnect Logic:** Exponential backoff (1s → 2s → 4s → ... → 30s max), message queue during reconnect
+- **Chunk Debounce:** Content updates limited to 200ms intervals (prevents excessive DB writes)
+- **Status Debounce:** Agent status updates limited to 500ms intervals
+- **Stream Timeout:** 120s per stream request, 25s request timeout for request/response calls
+- **Graceful Error:** On stream error, PATCH message with `streaming_status: "error"` and error text
+
+**UI Integration:**
+- **StreamingContent component:** Shows typing dots while `streaming_status: "streaming"` and content is empty
+- **AgentTextContent component:** Applies typewriter animation post-stream on complete messages
+- **Agent Status display:** Shows `agent_status` text below message during streaming (e.g., "Thinking...", "Calling: web_search")
 
 **Calling Context:**
 - Invoked by Supabase Edge Function (`dispatch_webhook`) when messages are sent to GoClaw agents
 - Edge Function includes `authorization: Bearer {webhook_secret}` header
-- Bridge extracts agent config from database, queries GoClaw, returns agent reply for insertion as message
+- Bridge returns `{ reply, already_inserted: true }` — webhook-dispatch skips INSERT since bridge handles it
+- webhook-dispatch respects `already_inserted` flag and doesn't duplicate the message
 
 ---
 

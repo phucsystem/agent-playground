@@ -167,8 +167,11 @@ async function dispatchToAgent(
         try {
           const agentResponse = JSON.parse(responseBody);
           const replyContent = agentResponse.reply || agentResponse.message || agentResponse.content;
+          const alreadyInserted = agentResponse.already_inserted === true;
 
-          if (replyContent) {
+          if (replyContent && alreadyInserted) {
+            console.log(`[webhook] Agent ${config.user_id} reply already inserted (streaming), skipping INSERT`);
+          } else if (replyContent) {
             console.log(`[webhook] Agent ${config.user_id} replied: "${replyContent.slice(0, 100)}..."`);
             const { error: insertError } = await supabase.from("messages").insert({
               conversation_id: webhookPayload.message.conversation_id,
