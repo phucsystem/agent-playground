@@ -258,11 +258,16 @@ export async function POST(request: NextRequest) {
     messages,
   };
 
-  console.log(`[bridge] >>> GoClaw request (webhook ${webhookId})`, {
+  console.log(`[bridge] >>> GoClaw request (webhook ${webhookId})`, JSON.stringify({
     url: `${GOCLAW_URL}/v1/chat/completions`,
+    senderId,
+    conversationId,
+    agentKey: goclawAgentKey,
+    messageCount: messages.length,
+    historyCount: (history || []).length,
     headers: { ...goclawHeaders, Authorization: "Bearer ***" },
-    body: JSON.stringify(goclawBody),
-  });
+    messages,
+  }, null, 2));
 
   try {
     const controller = new AbortController();
@@ -302,9 +307,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const rawResponseText = await goclawResponse.text();
+    console.log(`[bridge] <<< GoClaw response (webhook ${webhookId}) status=${goclawResponse.status}`, rawResponseText);
+
     let responseData: GoClawResponse;
     try {
-      responseData = await goclawResponse.json();
+      responseData = JSON.parse(rawResponseText);
     } catch {
       return NextResponse.json({ error: "GoClaw returned invalid response" }, { status: 502 });
     }
