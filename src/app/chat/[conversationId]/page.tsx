@@ -52,8 +52,11 @@ export default function ConversationPage() {
   const { getStatus: getAgentHealthStatus } = useAgentHealthContext();
   const { members } = useConversationMembers(conversationId);
   const hasAgent = useMemo(() => {
-    if (conversation?.other_user?.is_agent) return true;
-    return members.some((member) => member.user.is_agent);
+    const fromConv = conversation?.other_user?.is_agent === true;
+    const fromMembers = members.some((member) => member.user.is_agent);
+    const result = fromConv || fromMembers;
+    console.debug("[hasAgent] conv=%s, members=%s, result=%s (members.length=%d)", fromConv, fromMembers, result, members.length);
+    return result;
   }, [conversation, members]);
   const { agentThinking } = useAgentThinking(messages, hasAgent);
   const memberNames = useMemo(

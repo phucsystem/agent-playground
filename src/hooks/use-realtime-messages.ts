@@ -85,9 +85,18 @@ export function useRealtimeMessages(conversationId: string) {
             .eq("id", newMessage.sender_id)
             .single();
 
-          if (!senderData) return;
+          if (!senderData) {
+            console.debug("[RealtimeMsg] sender lookup FAILED for id=%s", newMessage.sender_id);
+            return;
+          }
 
           newMessage.sender = senderData;
+          console.debug(
+            "[RealtimeMsg] INSERT: id=%s, sender=%s, is_agent=%s",
+            newMessage.id,
+            senderData.display_name,
+            senderData.is_agent
+          );
           window.dispatchEvent(
             new CustomEvent("message-received", {
               detail: { senderId: senderData.id, isAgent: senderData.is_agent },
@@ -102,7 +111,11 @@ export function useRealtimeMessages(conversationId: string) {
               const exists = old.pages.some((page) =>
                 page.messages.some((msg) => msg.id === newMessage.id)
               );
-              if (exists) return old;
+              if (exists) {
+                console.debug("[RealtimeMsg] dedup HIT: id=%s already in cache", newMessage.id);
+                return old;
+              }
+              console.debug("[RealtimeMsg] dedup MISS: id=%s added to cache", newMessage.id);
 
               const updatedPages = [...old.pages];
               updatedPages[0] = {
