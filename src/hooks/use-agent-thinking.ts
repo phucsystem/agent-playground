@@ -14,10 +14,14 @@ export function useAgentThinking(
   const prevMessageCountRef = useRef(messages.length);
 
   useEffect(() => {
-    if (!hasAgent || messages.length === 0) return;
+    if (!hasAgent || messages.length === 0) {
+      console.debug("[AgentThinking] skip: hasAgent=%s, msgLen=%d", hasAgent, messages.length);
+      return;
+    }
 
     const messageCount = messages.length;
     if (messageCount <= prevMessageCountRef.current) {
+      console.debug("[AgentThinking] no-change: count=%d, prevRef=%d", messageCount, prevMessageCountRef.current);
       prevMessageCountRef.current = messageCount;
       return;
     }
@@ -25,11 +29,20 @@ export function useAgentThinking(
     const latestMessage = messages[messageCount - 1];
     prevMessageCountRef.current = messageCount;
 
+    console.debug(
+      "[AgentThinking] new-msg: count=%d, sender=%s, is_agent=%s, id=%s",
+      messageCount,
+      latestMessage.sender?.display_name ?? "unknown",
+      latestMessage.sender?.is_agent,
+      latestMessage.id
+    );
+
     if (!latestMessage.sender?.is_agent) {
       setAgentThinking(true);
 
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
       timeoutRef.current = setTimeout(() => {
+        console.debug("[AgentThinking] timeout-clear after %dms", THINKING_TIMEOUT_MS);
         setAgentThinking(false);
       }, THINKING_TIMEOUT_MS);
     } else {

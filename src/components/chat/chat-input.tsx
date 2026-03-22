@@ -273,6 +273,7 @@ export function ChatInput({
 
     if (senderInfo && onOptimisticMessage) {
       const optimisticId = crypto.randomUUID();
+      console.debug("[ChatInput] optimistic send: id=%s", optimisticId);
       onOptimisticMessage({
         id: optimisticId,
         conversation_id: conversationId,
