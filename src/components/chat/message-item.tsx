@@ -21,6 +21,23 @@ import { toast } from "sonner";
 const MAX_TRACKED_IDS = 500;
 const animatedMessageIds = new Set<string>();
 const RECENCY_THRESHOLD_MS = 30_000;
+const STREAMING_STALE_TIMEOUT_MS = 60_000;
+
+type StreamingStatus = "streaming" | "complete" | "error" | undefined;
+
+function getStreamingStatus(message: MessageWithSender): StreamingStatus {
+  const meta = message.metadata as Record<string, unknown> | null;
+  return meta?.streaming_status as StreamingStatus;
+}
+
+function getAgentStatus(message: MessageWithSender): string | undefined {
+  const meta = message.metadata as Record<string, unknown> | null;
+  return meta?.agent_status as string | undefined;
+}
+
+function isStreamingStale(message: MessageWithSender): boolean {
+  return Date.now() - new Date(message.created_at).getTime() > STREAMING_STALE_TIMEOUT_MS;
+}
 
 function trackAnimatedId(messageId: string) {
   animatedMessageIds.add(messageId);
@@ -59,12 +76,75 @@ function isRecentMessage(createdAt: string): boolean {
   return Date.now() - new Date(createdAt).getTime() < RECENCY_THRESHOLD_MS;
 }
 
+function TypingDots() {
+  return (
+    <div className="flex gap-1 py-1">
+      <span className="w-2 h-2 rounded-full bg-current animate-bounce" style={{ animationDelay: "0ms" }} />
+      <span className="w-2 h-2 rounded-full bg-current animate-bounce" style={{ animationDelay: "150ms" }} />
+      <span className="w-2 h-2 rounded-full bg-current animate-bounce" style={{ animationDelay: "300ms" }} />
+    </div>
+  );
+}
+
+function BlockCursor() {
+  return (
+    <span
+      className="inline-block w-2 h-4 bg-current ml-0.5 align-middle"
+      style={{ animation: "pulse 0.8s ease-in-out infinite" }}
+    />
+  );
+}
+
+function StreamErrorBadge() {
+  return (
+    <span className="inline-block text-xs bg-amber-50 text-amber-700 border border-amber-200 rounded-full px-2 py-0.5 ml-2">
+      Response interrupted
+    </span>
+  );
+}
+
+function StreamingAgentStatus({ status }: { status: string }) {
+  return (
+    <div className="text-xs text-neutral-400 mt-1">
+      {status}
+    </div>
+  );
+}
+
+function StreamingContent({ message, memberNames }: { message: MessageWithSender; memberNames?: string[] }) {
+  const streamingStatus = getStreamingStatus(message);
+  const agentStatus = getAgentStatus(message);
+  const isStreaming = streamingStatus === "streaming" && !isStreamingStale(message);
+  const isStreamError = streamingStatus === "error";
+
+  if (isStreaming && !message.content) {
+    return (
+      <>
+        <TypingDots />
+        {agentStatus && <StreamingAgentStatus status={agentStatus} />}
+      </>
+    );
+  }
+
+  return (
+    <>
+      {message.content && <MarkdownContent content={message.content} memberNames={memberNames} />}
+      {isStreaming && <BlockCursor />}
+      {isStreamError && <StreamErrorBadge />}
+      {isStreaming && agentStatus && <StreamingAgentStatus status={agentStatus} />}
+    </>
+  );
+}
+
 function AgentTextContent({ message, memberNames }: { message: MessageWithSender; memberNames?: string[] }) {
+  const streamingStatus = getStreamingStatus(message);
+  const isActivelyStreaming = streamingStatus === "streaming" || streamingStatus === "error";
+
   const shouldAnimateRef = useRef(
-    !animatedMessageIds.has(message.id) && isRecentMessage(message.created_at)
+    !isActivelyStreaming && !animatedMessageIds.has(message.id) && isRecentMessage(message.created_at)
   );
 
-  const { displayText, isAnimating, isComplete, skip } = useTypewriter(message.content, {
+  const { displayText, isComplete, skip } = useTypewriter(message.content, {
     enabled: shouldAnimateRef.current,
   });
 
@@ -73,6 +153,10 @@ function AgentTextContent({ message, memberNames }: { message: MessageWithSender
       trackAnimatedId(message.id);
     }
   }, [isComplete, message.id]);
+
+  if (isActivelyStreaming) {
+    return <StreamingContent message={message} memberNames={memberNames} />;
+  }
 
   if (!shouldAnimateRef.current || isComplete) {
     return <MarkdownContent content={message.content} memberNames={memberNames} />;

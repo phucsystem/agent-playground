@@ -1,10 +1,10 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 import { timingSafeEqual } from "crypto";
+import { getGoclawClient } from "@/lib/goclaw";
 
 const GOCLAW_URL = process.env.GOCLAW_URL;
 const GOCLAW_TOKEN = process.env.GOCLAW_GATEWAY_TOKEN;
-const GOCLAW_TIMEOUT_MS = 25_000;
 
 const BLOCKED_HOSTNAMES = ["localhost", "127.0.0.1", "::1", "[::1]", "metadata.google.internal"];
 const BLOCKED_IP_PREFIXES = ["10.", "172.16.", "172.17.", "172.18.", "172.19.", "172.20.", "172.21.", "172.22.", "172.23.", "172.24.", "172.25.", "172.26.", "172.27.", "172.28.", "172.29.", "172.30.", "172.31.", "192.168.", "169.254."];
@@ -42,6 +42,8 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
 
+const CHUNK_UPDATE_DEBOUNCE_MS = 200;
+
 interface HistoryItem {
   sender_id: string;
   is_agent: boolean;
@@ -59,103 +61,6 @@ interface BridgeRequestBody {
 interface MatchedAgentConfig {
   user_id: string;
   metadata: Record<string, unknown> | null;
-}
-
-interface GoclawFetchOptions {
-  webhookId: string;
-  extraHeaders?: Record<string, string>;
-}
-
-async function goclawFetch(
-  url: string,
-  body: Record<string, unknown>,
-  options: GoclawFetchOptions,
-): Promise<Response> {
-  console.log(`[bridge] >>> GoClaw request (webhook ${options.webhookId}) ${url}`, JSON.stringify(body).slice(0, 200));
-
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), GOCLAW_TIMEOUT_MS);
-
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${GOCLAW_TOKEN}`,
-      "Content-Type": "application/json",
-      ...options.extraHeaders,
-    },
-    body: JSON.stringify(body),
-    signal: controller.signal,
-  });
-
-  clearTimeout(timeoutId);
-  return response;
-}
-
-interface ResponseContext {
-  goclawAgentKey: string;
-  conversationId: string;
-  webhookId: string;
-  startTime: number;
-  endpoint: string;
-}
-
-async function handleGoclawResponse(
-  goclawResponse: Response,
-  context: ResponseContext,
-): Promise<NextResponse> {
-  const { goclawAgentKey, conversationId, webhookId, startTime, endpoint } = context;
-
-  if (goclawResponse.status === 401) {
-    return NextResponse.json({ error: "GoClaw authentication failed" }, { status: 502 });
-  }
-
-  if (goclawResponse.status === 429) {
-    const retryAfter = goclawResponse.headers.get("retry-after");
-    const responseHeaders: Record<string, string> = {};
-    if (retryAfter) responseHeaders["retry-after"] = retryAfter;
-    return NextResponse.json({ error: "GoClaw rate limited" }, { status: 429, headers: responseHeaders });
-  }
-
-  if (!goclawResponse.ok) {
-    return NextResponse.json(
-      { error: `GoClaw error: ${goclawResponse.status}` },
-      { status: 502 },
-    );
-  }
-
-  const rawResponseText = await goclawResponse.text();
-  console.log(`[bridge] <<< GoClaw response (webhook ${webhookId}) ${endpoint} status=${goclawResponse.status}`, rawResponseText);
-
-  let responseData: Record<string, unknown>;
-  try {
-    responseData = JSON.parse(rawResponseText);
-  } catch {
-    return NextResponse.json({ error: "GoClaw returned invalid response" }, { status: 502 });
-  }
-
-  // Extract reply — try all known GoClaw response fields
-  let content = (responseData.text as string)
-    || (responseData.reply as string)
-    || (responseData.content as string)
-    || ((responseData.payload as Record<string, unknown>)?.content as string)
-    || ((responseData.choices as Array<{ message?: { content?: string } }>)?.[0]?.message?.content);
-
-  if (!content) {
-    console.error(`[bridge] No content in GoClaw response (webhook ${webhookId})`, rawResponseText);
-    return NextResponse.json({ error: "GoClaw returned empty response" }, { status: 502 });
-  }
-
-  const latencyMs = Date.now() - startTime;
-  console.log(`[bridge] GoClaw call completed`, {
-    agentKey: goclawAgentKey,
-    conversationId,
-    webhookId,
-    endpoint,
-    latencyMs,
-    replyLength: content.length,
-  });
-
-  return NextResponse.json({ reply: content });
 }
 
 export async function POST(request: NextRequest) {
@@ -239,50 +144,133 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const metadata = (matchedAgent.metadata || {}) as Record<string, unknown>;
-  const goclawAgentKey = metadata.goclaw_agent_key as string | undefined;
+  const agentMetadata = (matchedAgent.metadata || {}) as Record<string, unknown>;
+  const goclawAgentKey = agentMetadata.goclaw_agent_key as string | undefined;
 
   if (!goclawAgentKey) {
     return NextResponse.json({ error: "No GoClaw agent key configured" }, { status: 400 });
   }
 
-  // Derive sender_id from history (last non-agent sender) for X-GoClaw-User-Id
-  const senderId = (history || [])
-    .filter((item) => !item.is_agent)
-    .map((item) => item.sender_id)
-    .pop() || "unknown";
-
   const startTime = Date.now();
 
+  // INSERT placeholder streaming message
+  const { data: streamingMsg, error: insertError } = await supabaseAdmin
+    .from("messages")
+    .insert({
+      conversation_id: conversationId,
+      sender_id: matchedAgent.user_id,
+      content: "",
+      content_type: "text",
+      metadata: { streaming_status: "streaming" },
+    })
+    .select("id")
+    .single();
+
+  if (insertError) {
+    console.error(`[bridge] Failed to insert streaming message:`, insertError.message);
+    return NextResponse.json({ error: "Failed to create message" }, { status: 500 });
+  }
+
+  const streamingMessageId = streamingMsg.id;
+  let accumulatedContent = "";
+  let lastUpdateTime = 0;
+  const eventCleanups: (() => void)[] = [];
+
   try {
-    // Primary: /api/chat/messages (GoClaw manages history server-side)
-    const primaryResponse = await goclawFetch(
-      `${GOCLAW_URL}/api/chat/messages`,
-      { conversationId, agentId: goclawAgentKey, text: message.content },
-      { webhookId },
+    const goclawClient = getGoclawClient();
+
+    console.log(`[bridge] >>> GoClaw WS chat.stream (webhook ${webhookId})`, {
+      agentId: goclawAgentKey,
+      conversationId,
+      textLength: message.content.length,
+    });
+
+    // Subscribe to agent lifecycle events during streaming
+    let lastStatusUpdateTime = 0;
+    const STATUS_DEBOUNCE_MS = 500;
+
+    const updateAgentStatus = (agentStatusText: string) => {
+      const now = Date.now();
+      if (now - lastStatusUpdateTime < STATUS_DEBOUNCE_MS) return;
+      lastStatusUpdateTime = now;
+      supabaseAdmin
+        .from("messages")
+        .update({ metadata: { streaming_status: "streaming", agent_status: agentStatusText } })
+        .eq("id", streamingMessageId)
+        .then(({ error }) => {
+          if (error) console.error("[bridge] Failed to update agent status:", error.message);
+        });
+    };
+
+    eventCleanups.push(goclawClient.on("run.started", () => {
+      updateAgentStatus("Thinking...");
+    }));
+    eventCleanups.push(goclawClient.on("tool.call", (data) => {
+      const toolName = data.toolName as string || "tool";
+      updateAgentStatus(`Calling: ${toolName}`);
+    }));
+    eventCleanups.push(goclawClient.on("tool.result", () => {
+      updateAgentStatus("Processing results...");
+    }));
+
+    const fullContent = await goclawClient.stream(
+      "chat.stream",
+      { agentId: goclawAgentKey, conversationId, text: message.content },
+      async (chunk: string) => {
+        accumulatedContent += chunk;
+        const now = Date.now();
+        if (now - lastUpdateTime >= CHUNK_UPDATE_DEBOUNCE_MS) {
+          lastUpdateTime = now;
+          await supabaseAdmin
+            .from("messages")
+            .update({ content: accumulatedContent })
+            .eq("id", streamingMessageId);
+        }
+      },
     );
 
-    // Fallback: /v1/chat/completions when primary returns 405
-    if (primaryResponse.status === 405) {
-      console.warn(`[bridge] /api/chat/messages returned 405, falling back to /v1/chat/completions (webhook ${webhookId})`);
-      const fallbackResponse = await goclawFetch(
-        `${GOCLAW_URL}/v1/chat/completions`,
-        {
-          model: `goclaw:${goclawAgentKey}`,
-          messages: [{ role: "user", content: message.content }],
-        },
-        { webhookId, extraHeaders: { "X-GoClaw-User-Id": senderId } },
-      );
-      return handleGoclawResponse(fallbackResponse, { goclawAgentKey, conversationId, webhookId, startTime, endpoint: "/v1/chat/completions" });
-    }
+    // Clean up event subscriptions
+    eventCleanups.forEach((cleanup) => cleanup());
 
-    return handleGoclawResponse(primaryResponse, { goclawAgentKey, conversationId, webhookId, startTime, endpoint: "/api/chat/messages" });
+    // Final update with complete content
+    await supabaseAdmin
+      .from("messages")
+      .update({
+        content: fullContent,
+        metadata: { streaming_status: "complete" },
+      })
+      .eq("id", streamingMessageId);
+
+    const latencyMs = Date.now() - startTime;
+    console.log(`[bridge] GoClaw WS stream completed`, {
+      agentKey: goclawAgentKey,
+      conversationId,
+      webhookId,
+      endpoint: "chat.stream",
+      latencyMs,
+      replyLength: fullContent.length,
+    });
+
+    return NextResponse.json({ reply: fullContent, already_inserted: true });
   } catch (error: unknown) {
-    if (error instanceof Error && error.name === "AbortError") {
-      console.error(`[bridge] GoClaw timeout after ${GOCLAW_TIMEOUT_MS}ms (webhook ${webhookId})`);
+    // Clean up event subscriptions on error
+    eventCleanups.forEach((cleanup) => cleanup());
+
+    // On stream failure: update message to error state
+    await supabaseAdmin
+      .from("messages")
+      .update({
+        content: accumulatedContent || "[Agent response failed]",
+        metadata: { streaming_status: "error" },
+      })
+      .eq("id", streamingMessageId);
+
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    console.error(`[bridge] GoClaw WS stream failed (webhook ${webhookId}):`, errorMessage);
+
+    if (errorMessage.includes("timeout")) {
       return NextResponse.json({ error: "GoClaw timeout" }, { status: 504 });
     }
-    console.error(`[bridge] GoClaw request failed (webhook ${webhookId}):`, error);
     return NextResponse.json({ error: "GoClaw request failed" }, { status: 502 });
   }
 }

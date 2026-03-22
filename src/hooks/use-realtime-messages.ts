@@ -137,7 +137,8 @@ export function useRealtimeMessages(conversationId: string) {
                   messages: page.messages.map((msg) => {
                     if (msg.id !== updated.id) return msg;
                     // Skip if already matches (optimistic update already applied)
-                    if (msg.content === updated.content && msg.edited_at === updated.edited_at && msg.is_deleted === updated.is_deleted) {
+                    const metaMatch = JSON.stringify(msg.metadata) === JSON.stringify(updated.metadata);
+                    if (msg.content === updated.content && msg.edited_at === updated.edited_at && msg.is_deleted === updated.is_deleted && metaMatch) {
                       return msg;
                     }
                     return {
@@ -154,8 +155,11 @@ export function useRealtimeMessages(conversationId: string) {
             }
           );
 
-          // Refresh sidebar last message preview
-          queryClient.invalidateQueries({ queryKey: ["conversations"] });
+          // Refresh sidebar last message preview (skip during streaming to avoid thrash)
+          const streamingStatus = (updated.metadata as Record<string, unknown> | null)?.streaming_status;
+          if (streamingStatus !== "streaming") {
+            queryClient.invalidateQueries({ queryKey: ["conversations"] });
+          }
         }
       )
       .subscribe();

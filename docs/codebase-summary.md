@@ -1,9 +1,9 @@
 # Codebase Summary
 
-**Generated:** 2026-03-18
+**Generated:** 2026-03-23
 **Repomix output:** `./repomix-output.xml`
-**Version:** 1.4.0
-**Status:** ✅ Phases 1-6 complete + GoClaw webhook bridge integration (Phase 7). React Query v5 performance migration + localStorage persister. All core features + workspace support + agent health + notifications + mobile responsiveness + optimized data caching + GoClaw agent integration implemented.
+**Version:** 1.4.1
+**Status:** ✅ Phases 1-6 complete + GoClaw WebSocket migration (Phase 7). React Query v5 performance migration + localStorage persister. All core features + workspace support + agent health + notifications + mobile responsiveness + optimized data caching + GoClaw WebSocket streaming integration with agent lifecycle events implemented.
 
 ## Overview
 
@@ -58,7 +58,7 @@ agent-playground/
 │   ├── components/
 │   │   ├── chat/
 │   │   │   ├── message-list.tsx         # Infinite scroll container
-│   │   │   ├── message-item.tsx         # Individual message (self/other)
+│   │   │   ├── message-item.tsx         # Individual message (self/other) + streaming status + agent lifecycle events (run.started, tool.call, tool.result)
 │   │   │   ├── chat-input.tsx           # Text + file attachment
 │   │   │   ├── chat-header.tsx          # Conversation title + member count
 │   │   │   ├── markdown-content.tsx     # react-markdown renderer
@@ -124,6 +124,9 @@ agent-playground/
 │   ├── lib/
 │   │   ├── auth.ts                      # getCurrentUser() helper
 │   │   ├── crop-image.ts                # getCroppedImage() canvas utility
+│   │   ├── goclaw/
+│   │   │   ├── ws-client.ts             # GoClaw WebSocket client (persistent singleton, reconnect, stream/send)
+│   │   │   └── index.ts                 # Singleton factory (getGoclawClient)
 │   │   ├── supabase/
 │   │   │   ├── client.ts                # Browser Supabase client
 │   │   │   ├── server.ts                # Server Supabase client
@@ -179,6 +182,31 @@ agent-playground/
 ```
 
 ## Key Patterns
+
+### GoClaw WebSocket Bridge
+
+Server-side persistent WebSocket connection to GoClaw for streaming agent responses. Singleton client created on first bridge request, manages connection state, reconnect with exponential backoff, message queuing, and request/response matching via request IDs.
+
+**Client Features:**
+- **Connection management:** Exponential backoff reconnect (max 30s), queued messages during reconnect, auth handshake via `token` and `user_id`
+- **Request/response:** `send()` for RPC-style requests, returns Promise
+- **Streaming:** `stream()` for chunked responses, calls `onChunk` callback per message, timeout 120s
+- **Event subscriptions:** `on(eventType, callback)` for lifecycle events (run.started, tool.call, tool.result), returns unsubscribe function
+- **Graceful shutdown:** `close()` cleans up pending requests, timers, WebSocket
+
+**Bridge Route** (`/api/goclaw/bridge`):
+1. Bearer token auth check (webhook_secret)
+2. SSRF check on GOCLAW_URL (blocks localhost, private IPs)
+3. Create streaming message with `streaming_status: "streaming"`
+4. Subscribe to lifecycle events → debounced metadata updates (500ms)
+5. `chat.stream()` with chunk callback (debounced 200ms content updates)
+6. Final PATCH with `streaming_status: "complete"`
+
+**Streaming UI:**
+- `StreamingContent` component shows typing dots while streaming
+- `AgentTextContent` applies typewriter animation post-stream
+- Metadata includes `streaming_status` ("streaming"|"complete"|"error") and `agent_status` ("Thinking..."|"Calling: toolName"|"Processing results...")
+- Real-time updates via Supabase Realtime postgres_changes
 
 ### React Query v5 Data Layer (TanStack Query)
 

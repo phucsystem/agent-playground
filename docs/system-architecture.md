@@ -1,7 +1,7 @@
 # System Architecture
 
-**Last updated:** 2026-03-18
-**Version:** 1.3.1
+**Last updated:** 2026-03-23
+**Version:** 1.4.0
 
 ## Overview
 
@@ -465,7 +465,7 @@ flowchart LR
 
 ## GoClaw Bridge Integration
 
-Bridge API route connecting webhook-dispatch to GoClaw's OpenAI-compatible REST API. Each agent in `agent_configs` can optionally map to a GoClaw agent via `metadata.goclaw_agent_key`.
+Bridge API route connecting webhook-dispatch to GoClaw's persistent WebSocket connection. Each agent in `agent_configs` can optionally map to a GoClaw agent via `metadata.goclaw_agent_key`. Streaming messages are inserted into the database with `streaming_status` metadata; agent lifecycle events (run.started, tool.call, tool.result) are captured and displayed as status text.
 
 ```mermaid
 sequenceDiagram
@@ -473,18 +473,36 @@ sequenceDiagram
     participant Supabase as Supabase DB
     participant EdgeFn as webhook-dispatch
     participant Bridge as /api/goclaw/bridge
-    participant GoClaw as GoClaw Server
+    participant WS as GoClaw WebSocket
+    participant Realtime as Supabase Realtime
 
     User->>Supabase: INSERT message
     Supabase->>EdgeFn: DB Webhook trigger
     EdgeFn->>Bridge: POST (payload + history)
-    Bridge->>Bridge: Validate auth (webhook_secret)
+    Bridge->>Bridge: Validate auth (Bearer webhook_secret)
     Bridge->>Supabase: Query agent_configs.metadata
-    Bridge->>Bridge: Build system prompt + map history
-    Bridge->>GoClaw: POST /v1/chat/completions
-    GoClaw-->>Bridge: {payload: {content, usage}}
-    Bridge-->>EdgeFn: {reply: "agent response"}
-    EdgeFn->>Supabase: INSERT agent reply
+    Bridge->>Supabase: INSERT placeholder message (streaming_status=streaming)
+    Bridge->>WS: Establish/reuse singleton WS connection
+    Bridge->>WS: chat.stream (with lifecycle event subscriptions)
+
+    par Streaming Loop
+        WS-->>Bridge: chunk data (on.("stream"))
+        Bridge->>Supabase: PATCH message content (debounced 200ms)
+    end
+
+    par Lifecycle Events
+        WS-->>Bridge: run.started
+        Bridge->>Supabase: PATCH message (agent_status: "Thinking...")
+        WS-->>Bridge: tool.call(toolName)
+        Bridge->>Supabase: PATCH message (agent_status: "Calling: toolName")
+        WS-->>Bridge: tool.result
+        Bridge->>Supabase: PATCH message (agent_status: "Processing results...")
+    end
+
+    WS-->>Bridge: EOS (stream complete)
+    Bridge->>Supabase: PATCH message (streaming_status=complete)
+    Supabase->>Realtime: Broadcast content + status updates
+    Realtime-->>User: Message appears + streams + status evolves
 ```
 
 ### Environment Variables
@@ -512,8 +530,11 @@ sequenceDiagram
 
 | File | Purpose |
 |------|---------|
-| `src/app/api/goclaw/bridge/route.ts` | Bridge API route (auth, mapping, forwarding) |
+| `src/lib/goclaw/ws-client.ts` | GoClaw WebSocket client (singleton, reconnect, stream/send) |
+| `src/lib/goclaw/index.ts` | Singleton client factory + export |
+| `src/app/api/goclaw/bridge/route.ts` | Bridge API route (auth, streaming, lifecycle events, SSRF check) |
 | `src/app/api/goclaw/test/route.ts` | Health check proxy for admin UI |
+| `src/components/chat/message-item.tsx` | UI components for streaming messages (StreamingContent, AgentTextContent) |
 | `supabase/migrations/023_agent_configs_metadata.sql` | Adds metadata JSONB column |
 
 ## Future Direction
