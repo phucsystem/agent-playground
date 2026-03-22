@@ -6,26 +6,8 @@ const GOCLAW_URL = process.env.GOCLAW_URL;
 const GOCLAW_TOKEN = process.env.GOCLAW_GATEWAY_TOKEN;
 const GOCLAW_TIMEOUT_MS = 25_000;
 
-const BLOCKED_HOSTNAMES = ["localhost", "127.0.0.1", "::1", "[::1]", "metadata.google.internal"];
-const BLOCKED_IP_PREFIXES = ["10.", "172.16.", "172.17.", "172.18.", "172.19.", "172.20.", "172.21.", "172.22.", "172.23.", "172.24.", "172.25.", "172.26.", "172.27.", "172.28.", "172.29.", "172.30.", "172.31.", "192.168.", "169.254."];
-
 if (!GOCLAW_URL || !GOCLAW_TOKEN) {
   console.error("[bridge] FATAL: GOCLAW_URL or GOCLAW_GATEWAY_TOKEN not set");
-}
-
-function isBlockedUrl(urlString: string): boolean {
-  try {
-    const parsed = new URL(urlString);
-    const hostname = parsed.hostname;
-    if (BLOCKED_HOSTNAMES.includes(hostname)) return true;
-    if (hostname.endsWith(".local") || hostname.endsWith(".internal")) return true;
-    for (const prefix of BLOCKED_IP_PREFIXES) {
-      if (hostname.startsWith(prefix)) return true;
-    }
-    return false;
-  } catch {
-    return true;
-  }
 }
 
 function safeCompare(provided: string, expected: string): boolean {
@@ -46,9 +28,7 @@ function getSupabaseAdmin() {
 
 interface HistoryItem {
   sender_id: string;
-  sender_name: string;
   is_agent: boolean;
-  content: string;
   content_type: string;
 }
 
@@ -60,58 +40,13 @@ interface BridgeRequestBody {
   history: HistoryItem[];
 }
 
-interface GoClawResponse {
-  type: string;
-  ok: boolean;
-  payload?: {
-    runId?: string;
-    content?: string;
-    usage?: { input_tokens?: number; output_tokens?: number };
-  };
-  choices?: { message?: { content?: string } }[];
-}
-
 interface MatchedAgentConfig {
   user_id: string;
   metadata: Record<string, unknown> | null;
 }
 
-function buildSystemPrompt(
-  conversationType: string,
-  conversationName: string | null,
-  senderName: string,
-  memberNames: string[],
-): string {
-  if (conversationType === "dm") {
-    return `You are in a direct message conversation with ${senderName}.`;
-  }
-  const nameList = memberNames.slice(0, 5).join(", ");
-  const suffix = memberNames.length > 5 ? ` and ${memberNames.length - 5} more` : "";
-  return `You are in a group conversation '${conversationName || "Unnamed"}' with ${memberNames.length} members: ${nameList}${suffix}.`;
-}
-
-function mapHistoryToMessages(
-  history: HistoryItem[],
-  isGroup: boolean,
-): { role: string; content: string }[] {
-  return history
-    .filter((item) => item.content_type === "text")
-    .map((item) => {
-      const role = item.is_agent ? "assistant" : "user";
-      const content = isGroup && !item.is_agent
-        ? `${item.sender_name}: ${item.content}`
-        : item.content;
-      return { role, content };
-    });
-}
-
 export async function POST(request: NextRequest) {
   if (!GOCLAW_URL || !GOCLAW_TOKEN) {
-    return NextResponse.json({ error: "GoClaw not configured" }, { status: 500 });
-  }
-
-  if (isBlockedUrl(GOCLAW_URL)) {
-    console.error("[bridge] GOCLAW_URL points to a blocked/internal address");
     return NextResponse.json({ error: "GoClaw not configured" }, { status: 500 });
   }
 
@@ -122,17 +57,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
 
-  const { message, sender, conversation_id: conversationId, message_id: messageId, history } = body;
+  const { message, conversation_id: conversationId, message_id: messageId, history } = body;
   if (!message?.content || !conversationId || !messageId) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
-
-  const senderName = sender || "Unknown";
-
-  // Extract sender_id from history (last non-agent sender, which is the current message author)
-  const senderId = (history || [])
-    .filter((item) => !item.is_agent)
-    .at(-1)?.sender_id || "unknown";
 
   const authHeader = request.headers.get("authorization");
   const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
@@ -143,7 +71,7 @@ export async function POST(request: NextRequest) {
   const webhookId = request.headers.get("x-webhook-id") || "unknown";
   const supabase = getSupabaseAdmin();
 
-  // Collect agent IDs from history for targeted lookup
+  // Find agent config matching the webhook secret
   const agentUserIds = new Set<string>();
   for (const item of history || []) {
     if (item.is_agent) agentUserIds.add(item.sender_id);
@@ -151,7 +79,6 @@ export async function POST(request: NextRequest) {
 
   let matchedAgent: MatchedAgentConfig | null = null;
 
-  // Try targeted lookup first (agents from history)
   const agentIdCandidates = Array.from(agentUserIds);
   if (agentIdCandidates.length > 0) {
     const { data: configs, error: configQueryError } = await supabase
@@ -173,7 +100,6 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // Fallback: query by secret directly
   if (!matchedAgent) {
     const { data: allConfigs, error: fallbackError } = await supabase
       .from("agent_configs")
@@ -196,7 +122,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const agentId = matchedAgent.user_id;
   const metadata = (matchedAgent.metadata || {}) as Record<string, unknown>;
   const goclawAgentKey = metadata.goclaw_agent_key as string | undefined;
 
@@ -204,79 +129,34 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "No GoClaw agent key configured" }, { status: 400 });
   }
 
-  // Get conversation details for system prompt
-  const { data: conversation } = await supabase
-    .from("conversations")
-    .select("type, name")
-    .eq("id", conversationId)
-    .single();
-
-  const conversationType = conversation?.type || "dm";
-  const conversationName = conversation?.name || null;
-
-  // Get member names for group context
-  let memberNames: string[] = [];
-  if (conversationType === "group") {
-    const { data: members } = await supabase
-      .from("conversation_members")
-      .select("users!inner(display_name)")
-      .eq("conversation_id", conversationId);
-
-    if (members) {
-      memberNames = members.map(
-        (member: { users: { display_name: string }[] }) => {
-          const userRecord = member.users[0];
-          return userRecord?.display_name || "Unknown";
-        },
-      );
-    }
-  }
-
-  const systemPrompt = buildSystemPrompt(conversationType, conversationName, senderName, memberNames);
-  const isGroup = conversationType === "group";
-
-  // GoClaw manages its own session/memory keyed by X-GoClaw-User-Id.
-  // Only send the current message — not full history — to avoid conflicting
-  // with GoClaw's internal conversation state.
-  const currentContent = isGroup ? `${senderName}: ${message.content}` : message.content;
-  const messages: { role: string; content: string }[] = [
-    { role: "user", content: currentContent },
-  ];
+  // GoClaw /api/chat/messages contract:
+  // - conversationId: ties requests to the same session (GoClaw manages history)
+  // - agentId: the GoClaw agent key
+  // - text: current message only
+  const goclawBody = {
+    conversationId,
+    agentId: goclawAgentKey,
+    text: message.content,
+  };
 
   const startTime = Date.now();
 
-  const goclawHeaders = {
-    "Authorization": `Bearer ${GOCLAW_TOKEN}`,
-    "X-GoClaw-User-Id": senderId,
-    "X-GoClaw-Conversation-Id": conversationId,
-    "Content-Type": "application/json",
-  };
-
-  const goclawBody = {
-    model: `goclaw:${goclawAgentKey}`,
-    messages,
-  };
-
   console.log(`[bridge] >>> GoClaw request (webhook ${webhookId})`, {
-    senderId,
     conversationId,
-    agentKey: goclawAgentKey,
-    model: goclawBody.model,
-    messageCount: messages.length,
-    historyCount: (history || []).length,
-    "X-GoClaw-User-Id": goclawHeaders["X-GoClaw-User-Id"],
-    "X-GoClaw-Conversation-Id": goclawHeaders["X-GoClaw-Conversation-Id"],
-    firstMessage: messages[0]?.content?.slice(0, 100),
-    lastMessage: messages[messages.length - 1]?.content?.slice(0, 100),
+    agentId: goclawAgentKey,
+    text: message.content.slice(0, 100),
   });
 
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), GOCLAW_TIMEOUT_MS);
 
-    const goclawResponse = await fetch(`${GOCLAW_URL}/v1/chat/completions`, {
+    const goclawResponse = await fetch(`${GOCLAW_URL}/api/chat/messages`, {
       method: "POST",
-      headers: goclawHeaders,
+      headers: {
+        "Authorization": `Bearer ${GOCLAW_TOKEN}`,
+        "Content-Type": "application/json",
+      },
       body: JSON.stringify(goclawBody),
       signal: controller.signal,
     });
@@ -289,16 +169,9 @@ export async function POST(request: NextRequest) {
 
     if (goclawResponse.status === 429) {
       const retryAfter = goclawResponse.headers.get("retry-after");
-      const headers: Record<string, string> = {};
-      if (retryAfter) headers["retry-after"] = retryAfter;
-      return NextResponse.json({ error: "GoClaw rate limited" }, { status: 429, headers });
-    }
-
-    if (goclawResponse.status >= 500) {
-      return NextResponse.json(
-        { error: `GoClaw error: ${goclawResponse.status}` },
-        { status: 502 },
-      );
+      const responseHeaders: Record<string, string> = {};
+      if (retryAfter) responseHeaders["retry-after"] = retryAfter;
+      return NextResponse.json({ error: "GoClaw rate limited" }, { status: 429, headers: responseHeaders });
     }
 
     if (!goclawResponse.ok) {
@@ -311,25 +184,24 @@ export async function POST(request: NextRequest) {
     const rawResponseText = await goclawResponse.text();
     console.log(`[bridge] <<< GoClaw response (webhook ${webhookId}) status=${goclawResponse.status}`, rawResponseText);
 
-    let responseData: GoClawResponse;
+    let responseData: Record<string, unknown>;
     try {
       responseData = JSON.parse(rawResponseText);
     } catch {
       return NextResponse.json({ error: "GoClaw returned invalid response" }, { status: 502 });
     }
 
-    if (responseData.ok === false) {
-      const errorMsg = (responseData.payload as Record<string, unknown>)?.error || "Unknown error";
-      return NextResponse.json({ error: `GoClaw error: ${errorMsg}` }, { status: 502 });
-    }
-
-    // Extract content — prefer payload.content, fallback to choices[0]
-    let content = responseData.payload?.content;
-    if (!content && responseData.choices?.[0]?.message?.content) {
-      content = responseData.choices[0].message.content;
-    }
+    // Extract reply — try multiple response shapes
+    const content =
+      (responseData.text as string) ||
+      (responseData.reply as string) ||
+      (responseData.content as string) ||
+      (responseData.message as string) ||
+      ((responseData.payload as Record<string, unknown>)?.content as string) ||
+      ((responseData.choices as { message?: { content?: string } }[])?.[0]?.message?.content);
 
     if (!content) {
+      console.error(`[bridge] No content in GoClaw response (webhook ${webhookId})`, rawResponseText);
       return NextResponse.json({ error: "GoClaw returned empty response" }, { status: 502 });
     }
 
@@ -339,8 +211,6 @@ export async function POST(request: NextRequest) {
       conversationId,
       webhookId,
       latencyMs,
-      inputTokens: responseData.payload?.usage?.input_tokens,
-      outputTokens: responseData.payload?.usage?.output_tokens,
       replyLength: content.length,
     });
 
