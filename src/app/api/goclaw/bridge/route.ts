@@ -61,6 +61,103 @@ interface MatchedAgentConfig {
   metadata: Record<string, unknown> | null;
 }
 
+interface GoclawFetchOptions {
+  webhookId: string;
+  extraHeaders?: Record<string, string>;
+}
+
+async function goclawFetch(
+  url: string,
+  body: Record<string, unknown>,
+  options: GoclawFetchOptions,
+): Promise<Response> {
+  console.log(`[bridge] >>> GoClaw request (webhook ${options.webhookId}) ${url}`, JSON.stringify(body).slice(0, 200));
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), GOCLAW_TIMEOUT_MS);
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${GOCLAW_TOKEN}`,
+      "Content-Type": "application/json",
+      ...options.extraHeaders,
+    },
+    body: JSON.stringify(body),
+    signal: controller.signal,
+  });
+
+  clearTimeout(timeoutId);
+  return response;
+}
+
+interface ResponseContext {
+  goclawAgentKey: string;
+  conversationId: string;
+  webhookId: string;
+  startTime: number;
+  endpoint: string;
+}
+
+async function handleGoclawResponse(
+  goclawResponse: Response,
+  context: ResponseContext,
+): Promise<NextResponse> {
+  const { goclawAgentKey, conversationId, webhookId, startTime, endpoint } = context;
+
+  if (goclawResponse.status === 401) {
+    return NextResponse.json({ error: "GoClaw authentication failed" }, { status: 502 });
+  }
+
+  if (goclawResponse.status === 429) {
+    const retryAfter = goclawResponse.headers.get("retry-after");
+    const responseHeaders: Record<string, string> = {};
+    if (retryAfter) responseHeaders["retry-after"] = retryAfter;
+    return NextResponse.json({ error: "GoClaw rate limited" }, { status: 429, headers: responseHeaders });
+  }
+
+  if (!goclawResponse.ok) {
+    return NextResponse.json(
+      { error: `GoClaw error: ${goclawResponse.status}` },
+      { status: 502 },
+    );
+  }
+
+  const rawResponseText = await goclawResponse.text();
+  console.log(`[bridge] <<< GoClaw response (webhook ${webhookId}) ${endpoint} status=${goclawResponse.status}`, rawResponseText);
+
+  let responseData: Record<string, unknown>;
+  try {
+    responseData = JSON.parse(rawResponseText);
+  } catch {
+    return NextResponse.json({ error: "GoClaw returned invalid response" }, { status: 502 });
+  }
+
+  // Extract reply — try all known GoClaw response fields
+  let content = (responseData.text as string)
+    || (responseData.reply as string)
+    || (responseData.content as string)
+    || ((responseData.payload as Record<string, unknown>)?.content as string)
+    || ((responseData.choices as Array<{ message?: { content?: string } }>)?.[0]?.message?.content);
+
+  if (!content) {
+    console.error(`[bridge] No content in GoClaw response (webhook ${webhookId})`, rawResponseText);
+    return NextResponse.json({ error: "GoClaw returned empty response" }, { status: 502 });
+  }
+
+  const latencyMs = Date.now() - startTime;
+  console.log(`[bridge] GoClaw call completed`, {
+    agentKey: goclawAgentKey,
+    conversationId,
+    webhookId,
+    endpoint,
+    latencyMs,
+    replyLength: content.length,
+  });
+
+  return NextResponse.json({ reply: content });
+}
+
 export async function POST(request: NextRequest) {
   if (!GOCLAW_URL || !GOCLAW_TOKEN) {
     return NextResponse.json({ error: "GoClaw not configured" }, { status: 500 });
@@ -149,96 +246,37 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "No GoClaw agent key configured" }, { status: 400 });
   }
 
-  // GoClaw /api/chat/messages contract:
-  // - conversationId: ties requests to the same session (GoClaw manages history)
-  // - agentId: the GoClaw agent key
-  // - text: current message only
-  const goclawBody = {
-    conversationId,
-    agentId: goclawAgentKey,
-    text: message.content,
-  };
+  // Derive sender_id from history (last non-agent sender) for X-GoClaw-User-Id
+  const senderId = (history || [])
+    .filter((item) => !item.is_agent)
+    .map((item) => item.sender_id)
+    .pop() || "unknown";
 
   const startTime = Date.now();
 
-  console.log(`[bridge] >>> GoClaw request (webhook ${webhookId})`, {
-    conversationId,
-    agentId: goclawAgentKey,
-    text: message.content.slice(0, 100),
-  });
-
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), GOCLAW_TIMEOUT_MS);
+    // Primary: /api/chat/messages (GoClaw manages history server-side)
+    const primaryResponse = await goclawFetch(
+      `${GOCLAW_URL}/api/chat/messages`,
+      { conversationId, agentId: goclawAgentKey, text: message.content },
+      { webhookId },
+    );
 
-    const goclawResponse = await fetch(`${GOCLAW_URL}/api/chat/messages`, {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${GOCLAW_TOKEN}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(goclawBody),
-      signal: controller.signal,
-    });
-
-    clearTimeout(timeoutId);
-
-    if (goclawResponse.status === 401) {
-      return NextResponse.json({ error: "GoClaw authentication failed" }, { status: 502 });
-    }
-
-    if (goclawResponse.status === 429) {
-      const retryAfter = goclawResponse.headers.get("retry-after");
-      const responseHeaders: Record<string, string> = {};
-      if (retryAfter) responseHeaders["retry-after"] = retryAfter;
-      return NextResponse.json({ error: "GoClaw rate limited" }, { status: 429, headers: responseHeaders });
-    }
-
-    if (!goclawResponse.ok) {
-      return NextResponse.json(
-        { error: `GoClaw error: ${goclawResponse.status}` },
-        { status: 502 },
+    // Fallback: /v1/chat/completions when primary returns 405
+    if (primaryResponse.status === 405) {
+      console.warn(`[bridge] /api/chat/messages returned 405, falling back to /v1/chat/completions (webhook ${webhookId})`);
+      const fallbackResponse = await goclawFetch(
+        `${GOCLAW_URL}/v1/chat/completions`,
+        {
+          model: `goclaw:${goclawAgentKey}`,
+          messages: [{ role: "user", content: message.content }],
+        },
+        { webhookId, extraHeaders: { "X-GoClaw-User-Id": senderId } },
       );
+      return handleGoclawResponse(fallbackResponse, { goclawAgentKey, conversationId, webhookId, startTime, endpoint: "/v1/chat/completions" });
     }
 
-    const rawResponseText = await goclawResponse.text();
-    console.log(`[bridge] <<< GoClaw response (webhook ${webhookId}) status=${goclawResponse.status}`, rawResponseText);
-
-    let responseData: Record<string, unknown>;
-    try {
-      responseData = JSON.parse(rawResponseText);
-    } catch {
-      return NextResponse.json({ error: "GoClaw returned invalid response" }, { status: 502 });
-    }
-
-    // Extract reply — pin to confirmed GoClaw response field, fallback with warning
-    let content = responseData.text as string | undefined;
-    if (!content) {
-      const fallback =
-        (responseData.reply as string) ||
-        (responseData.content as string) ||
-        ((responseData.payload as Record<string, unknown>)?.content as string);
-      if (fallback) {
-        console.warn(`[bridge] GoClaw response used fallback field instead of 'text' (webhook ${webhookId})`);
-        content = fallback;
-      }
-    }
-
-    if (!content) {
-      console.error(`[bridge] No content in GoClaw response (webhook ${webhookId})`, rawResponseText);
-      return NextResponse.json({ error: "GoClaw returned empty response" }, { status: 502 });
-    }
-
-    const latencyMs = Date.now() - startTime;
-    console.log(`[bridge] GoClaw call completed`, {
-      agentKey: goclawAgentKey,
-      conversationId,
-      webhookId,
-      latencyMs,
-      replyLength: content.length,
-    });
-
-    return NextResponse.json({ reply: content });
+    return handleGoclawResponse(primaryResponse, { goclawAgentKey, conversationId, webhookId, startTime, endpoint: "/api/chat/messages" });
   } catch (error: unknown) {
     if (error instanceof Error && error.name === "AbortError") {
       console.error(`[bridge] GoClaw timeout after ${GOCLAW_TIMEOUT_MS}ms (webhook ${webhookId})`);
