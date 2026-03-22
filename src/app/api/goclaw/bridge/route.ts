@@ -47,12 +47,10 @@ const CHUNK_UPDATE_DEBOUNCE_MS = 200;
 interface HistoryItem {
   sender_id: string;
   is_agent: boolean;
-  content_type: string;
 }
 
 interface BridgeRequestBody {
   message: { content: string };
-  sender: string;
   conversation_id: string;
   message_id: string;
   history: HistoryItem[];
@@ -174,6 +172,7 @@ export async function POST(request: NextRequest) {
   const streamingMessageId = streamingMsg.id;
   let accumulatedContent = "";
   let lastUpdateTime = 0;
+  let streamCompleted = false;
   const eventCleanups: (() => void)[] = [];
 
   try {
@@ -190,6 +189,7 @@ export async function POST(request: NextRequest) {
     const STATUS_DEBOUNCE_MS = 500;
 
     const updateAgentStatus = (agentStatusText: string) => {
+      if (streamCompleted) return;
       const now = Date.now();
       if (now - lastStatusUpdateTime < STATUS_DEBOUNCE_MS) return;
       lastStatusUpdateTime = now;
@@ -229,6 +229,9 @@ export async function POST(request: NextRequest) {
       },
     );
 
+    // Guard: prevent late status updates from overwriting 'complete'
+    streamCompleted = true;
+
     // Clean up event subscriptions
     eventCleanups.forEach((cleanup) => cleanup());
 
@@ -253,7 +256,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ reply: fullContent, already_inserted: true });
   } catch (error: unknown) {
-    // Clean up event subscriptions on error
+    streamCompleted = true;
     eventCleanups.forEach((cleanup) => cleanup());
 
     // On stream failure: update message to error state

@@ -15,5 +15,3 @@ export function getGoclawClient(): GoclawWSClient {
   }
   return client;
 }
-
-export { GoclawWSClient } from "./ws-client";

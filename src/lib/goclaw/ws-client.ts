@@ -64,10 +64,6 @@ export class GoclawWSClient {
     this.config = { ...DEFAULT_CONFIG, ...config };
   }
 
-  get currentState(): ClientState {
-    return this.state;
-  }
-
   async connect(): Promise<void> {
     if (this.state === "connected" && this.ws?.readyState === WebSocket.OPEN) {
       return;
