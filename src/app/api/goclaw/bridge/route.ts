@@ -6,8 +6,26 @@ const GOCLAW_URL = process.env.GOCLAW_URL;
 const GOCLAW_TOKEN = process.env.GOCLAW_GATEWAY_TOKEN;
 const GOCLAW_TIMEOUT_MS = 25_000;
 
+const BLOCKED_HOSTNAMES = ["localhost", "127.0.0.1", "::1", "[::1]", "metadata.google.internal"];
+const BLOCKED_IP_PREFIXES = ["10.", "172.16.", "172.17.", "172.18.", "172.19.", "172.20.", "172.21.", "172.22.", "172.23.", "172.24.", "172.25.", "172.26.", "172.27.", "172.28.", "172.29.", "172.30.", "172.31.", "192.168.", "169.254."];
+
 if (!GOCLAW_URL || !GOCLAW_TOKEN) {
   console.error("[bridge] FATAL: GOCLAW_URL or GOCLAW_GATEWAY_TOKEN not set");
+}
+
+function isBlockedUrl(urlString: string): boolean {
+  try {
+    const parsed = new URL(urlString);
+    const hostname = parsed.hostname;
+    if (BLOCKED_HOSTNAMES.includes(hostname)) return true;
+    if (hostname.endsWith(".local") || hostname.endsWith(".internal")) return true;
+    for (const prefix of BLOCKED_IP_PREFIXES) {
+      if (hostname.startsWith(prefix)) return true;
+    }
+    return false;
+  } catch {
+    return true;
+  }
 }
 
 function safeCompare(provided: string, expected: string): boolean {
@@ -19,12 +37,10 @@ function safeCompare(provided: string, expected: string): boolean {
   }
 }
 
-function getSupabaseAdmin() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  );
-}
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+);
 
 interface HistoryItem {
   sender_id: string;
@@ -50,6 +66,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "GoClaw not configured" }, { status: 500 });
   }
 
+  if (isBlockedUrl(GOCLAW_URL)) {
+    console.error("[bridge] GOCLAW_URL points to a blocked/internal address");
+    return NextResponse.json({ error: "GoClaw not configured" }, { status: 500 });
+  }
+
   let body: BridgeRequestBody;
   try {
     body = await request.json();
@@ -69,7 +90,6 @@ export async function POST(request: NextRequest) {
   }
 
   const webhookId = request.headers.get("x-webhook-id") || "unknown";
-  const supabase = getSupabaseAdmin();
 
   // Find agent config matching the webhook secret
   const agentUserIds = new Set<string>();
@@ -81,7 +101,7 @@ export async function POST(request: NextRequest) {
 
   const agentIdCandidates = Array.from(agentUserIds);
   if (agentIdCandidates.length > 0) {
-    const { data: configs, error: configQueryError } = await supabase
+    const { data: configs, error: configQueryError } = await supabaseAdmin
       .from("agent_configs")
       .select("user_id, webhook_secret, metadata")
       .in("user_id", agentIdCandidates)
@@ -101,7 +121,7 @@ export async function POST(request: NextRequest) {
   }
 
   if (!matchedAgent) {
-    const { data: allConfigs, error: fallbackError } = await supabase
+    const { data: allConfigs, error: fallbackError } = await supabaseAdmin
       .from("agent_configs")
       .select("user_id, webhook_secret, metadata")
       .eq("webhook_secret", bearerToken)
@@ -191,14 +211,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "GoClaw returned invalid response" }, { status: 502 });
     }
 
-    // Extract reply — try multiple response shapes
-    const content =
-      (responseData.text as string) ||
-      (responseData.reply as string) ||
-      (responseData.content as string) ||
-      (responseData.message as string) ||
-      ((responseData.payload as Record<string, unknown>)?.content as string) ||
-      ((responseData.choices as { message?: { content?: string } }[])?.[0]?.message?.content);
+    // Extract reply — pin to confirmed GoClaw response field, fallback with warning
+    let content = responseData.text as string | undefined;
+    if (!content) {
+      const fallback =
+        (responseData.reply as string) ||
+        (responseData.content as string) ||
+        ((responseData.payload as Record<string, unknown>)?.content as string);
+      if (fallback) {
+        console.warn(`[bridge] GoClaw response used fallback field instead of 'text' (webhook ${webhookId})`);
+        content = fallback;
+      }
+    }
 
     if (!content) {
       console.error(`[bridge] No content in GoClaw response (webhook ${webhookId})`, rawResponseText);

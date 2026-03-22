@@ -14,20 +14,9 @@
 ## Key Insights
 - webhook-dispatch sends simplified payload: `{message: {content}, sender, conversation_id, message_id, history[]}`
 - webhook-dispatch expects response: `{reply: "..."}` or `{message: "..."}` or `{content: "..."}`
-- GoClaw accepts: `POST /v1/chat/completions` with `{model: "goclaw:<agent_key>", messages: [{role, content}]}`
-- **CRITICAL:** GoClaw response is NOT standard OpenAI format. Actual format:
-  ```json
-  {
-    "type": "res",
-    "ok": true,
-    "payload": {
-      "runId": "uuid",
-      "content": "Response text here",
-      "usage": { "input_tokens": 150, "output_tokens": 25 }
-    }
-  }
-  ```
-- Required headers: `Authorization: Bearer TOKEN`, `X-GoClaw-User-Id: <user_id>`, `Content-Type: application/json`
+- **CONFIRMED (2026-03-22):** GoClaw accepts: `POST /api/chat/messages` with `{conversationId, agentId, text}` — GoClaw manages session history server-side via `conversationId`
+- Required headers: `Authorization: Bearer TOKEN`, `Content-Type: application/json`
+- No system prompt or history mapping needed — GoClaw handles conversation context internally
 
 ## Requirements
 
