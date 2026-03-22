@@ -246,22 +246,32 @@ export async function POST(request: NextRequest) {
 
   const startTime = Date.now();
 
+  const goclawHeaders = {
+    "Authorization": `Bearer ${GOCLAW_TOKEN}`,
+    "X-GoClaw-User-Id": senderId,
+    "X-GoClaw-Conversation-Id": conversationId,
+    "Content-Type": "application/json",
+  };
+
+  const goclawBody = {
+    model: `goclaw:${goclawAgentKey}`,
+    messages,
+  };
+
+  console.log(`[bridge] >>> GoClaw request (webhook ${webhookId})`, {
+    url: `${GOCLAW_URL}/v1/chat/completions`,
+    headers: { ...goclawHeaders, Authorization: "Bearer ***" },
+    body: JSON.stringify(goclawBody),
+  });
+
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), GOCLAW_TIMEOUT_MS);
 
     const goclawResponse = await fetch(`${GOCLAW_URL}/v1/chat/completions`, {
       method: "POST",
-      headers: {
-        "Authorization": `Bearer ${GOCLAW_TOKEN}`,
-        "X-GoClaw-User-Id": senderId,
-        "X-GoClaw-Conversation-Id": conversationId,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: `goclaw:${goclawAgentKey}`,
-        messages,
-      }),
+      headers: goclawHeaders,
+      body: JSON.stringify(goclawBody),
       signal: controller.signal,
     });
 
