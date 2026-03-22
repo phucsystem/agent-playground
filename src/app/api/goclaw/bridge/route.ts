@@ -235,13 +235,12 @@ export async function POST(request: NextRequest) {
   const systemPrompt = buildSystemPrompt(conversationType, conversationName, senderName, memberNames);
   const isGroup = conversationType === "group";
 
+  // GoClaw manages its own session/memory keyed by X-GoClaw-User-Id.
+  // Only send the current message — not full history — to avoid conflicting
+  // with GoClaw's internal conversation state.
+  const currentContent = isGroup ? `${senderName}: ${message.content}` : message.content;
   const messages: { role: string; content: string }[] = [
-    { role: "system", content: systemPrompt },
-    ...mapHistoryToMessages(history || [], isGroup),
-    {
-      role: "user",
-      content: isGroup ? `${senderName}: ${message.content}` : message.content,
-    },
+    { role: "user", content: currentContent },
   ];
 
   const startTime = Date.now();
