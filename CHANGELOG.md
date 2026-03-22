@@ -1,3 +1,10 @@
+## [1.14.3](https://github.com/phucsystem/agent-playground/compare/v1.14.2...v1.14.3) (2026-03-22)
+
+
+### Bug Fixes
+
+* mobile sidebar bottom content clipped by workspace strip overflow ([#38](https://github.com/phucsystem/agent-playground/issues/38)) ([9b8bd36](https://github.com/phucsystem/agent-playground/commit/9b8bd36ed917dc2de92c326fa700c23a678d6e3d))
+
 ## [1.14.2](https://github.com/phucsystem/agent-playground/compare/v1.14.1...v1.14.2) (2026-03-21)
 
 
