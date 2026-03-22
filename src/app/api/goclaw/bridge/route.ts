@@ -258,16 +258,18 @@ export async function POST(request: NextRequest) {
     messages,
   };
 
-  console.log(`[bridge] >>> GoClaw request (webhook ${webhookId})`, JSON.stringify({
-    url: `${GOCLAW_URL}/v1/chat/completions`,
+  console.log(`[bridge] >>> GoClaw request (webhook ${webhookId})`, {
     senderId,
     conversationId,
     agentKey: goclawAgentKey,
+    model: goclawBody.model,
     messageCount: messages.length,
     historyCount: (history || []).length,
-    headers: { ...goclawHeaders, Authorization: "Bearer ***" },
-    messages,
-  }, null, 2));
+    "X-GoClaw-User-Id": goclawHeaders["X-GoClaw-User-Id"],
+    "X-GoClaw-Conversation-Id": goclawHeaders["X-GoClaw-Conversation-Id"],
+    firstMessage: messages[0]?.content?.slice(0, 100),
+    lastMessage: messages[messages.length - 1]?.content?.slice(0, 100),
+  });
 
   try {
     const controller = new AbortController();
