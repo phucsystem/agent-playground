@@ -37,10 +37,12 @@ function safeCompare(provided: string, expected: string): boolean {
   }
 }
 
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+function getSupabaseAdmin() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  );
+}
 
 const CHUNK_UPDATE_DEBOUNCE_MS = 200;
 
@@ -101,7 +103,7 @@ export async function POST(request: NextRequest) {
 
   const agentIdCandidates = Array.from(agentUserIds);
   if (agentIdCandidates.length > 0) {
-    const { data: configs, error: configQueryError } = await supabaseAdmin
+    const { data: configs, error: configQueryError } = await getSupabaseAdmin()
       .from("agent_configs")
       .select("user_id, webhook_secret, metadata")
       .in("user_id", agentIdCandidates)
@@ -121,7 +123,7 @@ export async function POST(request: NextRequest) {
   }
 
   if (!matchedAgent) {
-    const { data: allConfigs, error: fallbackError } = await supabaseAdmin
+    const { data: allConfigs, error: fallbackError } = await getSupabaseAdmin()
       .from("agent_configs")
       .select("user_id, webhook_secret, metadata")
       .eq("webhook_secret", bearerToken)
@@ -152,7 +154,7 @@ export async function POST(request: NextRequest) {
   const startTime = Date.now();
 
   // INSERT placeholder streaming message
-  const { data: streamingMsg, error: insertError } = await supabaseAdmin
+  const { data: streamingMsg, error: insertError } = await getSupabaseAdmin()
     .from("messages")
     .insert({
       conversation_id: conversationId,
@@ -193,7 +195,7 @@ export async function POST(request: NextRequest) {
       const now = Date.now();
       if (now - lastStatusUpdateTime < STATUS_DEBOUNCE_MS) return;
       lastStatusUpdateTime = now;
-      supabaseAdmin
+      getSupabaseAdmin()
         .from("messages")
         .update({ metadata: { streaming_status: "streaming", agent_status: agentStatusText } })
         .eq("id", streamingMessageId)
@@ -221,7 +223,7 @@ export async function POST(request: NextRequest) {
         const now = Date.now();
         if (now - lastUpdateTime >= CHUNK_UPDATE_DEBOUNCE_MS) {
           lastUpdateTime = now;
-          await supabaseAdmin
+          await getSupabaseAdmin()
             .from("messages")
             .update({ content: accumulatedContent })
             .eq("id", streamingMessageId);
@@ -236,7 +238,7 @@ export async function POST(request: NextRequest) {
     eventCleanups.forEach((cleanup) => cleanup());
 
     // Final update with complete content
-    await supabaseAdmin
+    await getSupabaseAdmin()
       .from("messages")
       .update({
         content: fullContent,
@@ -260,7 +262,7 @@ export async function POST(request: NextRequest) {
     eventCleanups.forEach((cleanup) => cleanup());
 
     // On stream failure: update message to error state
-    await supabaseAdmin
+    await getSupabaseAdmin()
       .from("messages")
       .update({
         content: accumulatedContent || "[Agent response failed]",
