@@ -180,13 +180,13 @@ export async function POST(request: NextRequest) {
   try {
     const goclawClient = getGoclawClient();
 
-    console.log(`[bridge] >>> GoClaw WS chat.stream (webhook ${webhookId})`, {
+    console.log(`[bridge] >>> GoClaw WS chat.send (webhook ${webhookId})`, {
       agentId: goclawAgentKey,
       conversationId,
       textLength: message.content.length,
     });
 
-    // Subscribe to agent lifecycle events during streaming
+    // Subscribe to lifecycle events for progressive streaming UI
     let lastStatusUpdateTime = 0;
     const STATUS_DEBOUNCE_MS = 500;
 
@@ -204,32 +204,45 @@ export async function POST(request: NextRequest) {
         });
     };
 
+    // GoClaw streams chunks and lifecycle events as separate event messages
+    eventCleanups.push(goclawClient.on("chunk", (data) => {
+      const chunkContent = (data.payload as Record<string, unknown>)?.content as string;
+      if (!chunkContent || streamCompleted) return;
+      accumulatedContent += chunkContent;
+      const now = Date.now();
+      if (now - lastUpdateTime >= CHUNK_UPDATE_DEBOUNCE_MS) {
+        lastUpdateTime = now;
+        getSupabaseAdmin()
+          .from("messages")
+          .update({ content: accumulatedContent })
+          .eq("id", streamingMessageId)
+          .then(({ error }) => {
+            if (error) console.error("[bridge] Failed to update chunk:", error.message);
+          });
+      }
+    }));
     eventCleanups.push(goclawClient.on("run.started", () => {
       updateAgentStatus("Thinking...");
     }));
+    eventCleanups.push(goclawClient.on("thinking", () => {
+      updateAgentStatus("Thinking...");
+    }));
     eventCleanups.push(goclawClient.on("tool.call", (data) => {
-      const toolName = data.toolName as string || "tool";
+      const toolName = (data.payload as Record<string, unknown>)?.name as string || "tool";
       updateAgentStatus(`Calling: ${toolName}`);
     }));
-    eventCleanups.push(goclawClient.on("tool.result", () => {
-      updateAgentStatus("Processing results...");
+    eventCleanups.push(goclawClient.on("activity", (data) => {
+      const iteration = (data.payload as Record<string, unknown>)?.iteration as number;
+      if (iteration && iteration > 1) updateAgentStatus(`Processing (step ${iteration})...`);
     }));
 
-    const fullContent = await goclawClient.stream(
-      "chat.stream",
-      { agentId: goclawAgentKey, conversationId, text: message.content },
-      async (chunk: string) => {
-        accumulatedContent += chunk;
-        const now = Date.now();
-        if (now - lastUpdateTime >= CHUNK_UPDATE_DEBOUNCE_MS) {
-          lastUpdateTime = now;
-          await getSupabaseAdmin()
-            .from("messages")
-            .update({ content: accumulatedContent })
-            .eq("id", streamingMessageId);
-        }
-      },
-    );
+    // chat.send returns the full response as a single req/res
+    const response = await goclawClient.send(
+      "chat.send",
+      { agentId: goclawAgentKey, message: message.content },
+    ) as Record<string, unknown>;
+
+    const fullContent = (response.content as string) || accumulatedContent || "";
 
     // Guard: prevent late status updates from overwriting 'complete'
     streamCompleted = true;
@@ -247,11 +260,11 @@ export async function POST(request: NextRequest) {
       .eq("id", streamingMessageId);
 
     const latencyMs = Date.now() - startTime;
-    console.log(`[bridge] GoClaw WS stream completed`, {
+    console.log(`[bridge] GoClaw WS chat.send completed`, {
       agentKey: goclawAgentKey,
       conversationId,
       webhookId,
-      endpoint: "chat.stream",
+      endpoint: "chat.send",
       latencyMs,
       replyLength: fullContent.length,
     });
