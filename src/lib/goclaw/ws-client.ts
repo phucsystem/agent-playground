@@ -26,6 +26,7 @@ interface WsMessage {
   method?: string;
   params?: Record<string, unknown>;
   data?: Record<string, unknown> | null;
+  payload?: Record<string, unknown> | null;
   error?: { code: number; message: string };
 }
 
@@ -274,19 +275,20 @@ export class GoclawWSClient {
         if (message.error) {
           pendingRequest.reject(new Error(message.error.message));
         } else {
-          pendingRequest.resolve(message.data);
+          pendingRequest.resolve(message.payload ?? message.data);
         }
         return;
       }
     }
 
-    if (message.type === "event" && message.data) {
-      const eventType = message.data.type as string | undefined;
+    const eventData = message.data ?? message.payload;
+    if (message.type === "event" && eventData) {
+      const eventType = eventData.type as string | undefined;
       if (eventType) {
         const handlers = this.eventHandlers.get(eventType) || [];
         for (const handler of handlers) {
           try {
-            handler(message.data);
+            handler(eventData);
           } catch (handlerError) {
             console.error(`[goclaw-ws] Event handler error (${eventType}):`, handlerError);
           }
