@@ -205,9 +205,15 @@ export async function POST(request: NextRequest) {
     };
 
     // GoClaw streams chunks and lifecycle events as separate event messages
+    let chunkCount = 0;
     eventCleanups.push(goclawClient.on("chunk", (data) => {
-      const chunkContent = (data.payload as Record<string, unknown>)?.content as string;
+      const payload = data.payload as Record<string, unknown> | undefined;
+      const chunkContent = (payload?.content as string) || (data.content as string) || "";
       if (!chunkContent || streamCompleted) return;
+      chunkCount++;
+      if (chunkCount <= 3 || chunkCount % 10 === 0) {
+        console.log(`[bridge] chunk #${chunkCount} len=${chunkContent.length} total=${accumulatedContent.length + chunkContent.length}`);
+      }
       accumulatedContent += chunkContent;
       const now = Date.now();
       if (now - lastUpdateTime >= CHUNK_UPDATE_DEBOUNCE_MS) {
@@ -228,11 +234,13 @@ export async function POST(request: NextRequest) {
       updateAgentStatus("Thinking...");
     }));
     eventCleanups.push(goclawClient.on("tool.call", (data) => {
-      const toolName = (data.payload as Record<string, unknown>)?.name as string || "tool";
+      const toolPayload = data.payload as Record<string, unknown> | undefined;
+      const toolName = (toolPayload?.name as string) || (data.name as string) || "tool";
       updateAgentStatus(`Calling: ${toolName}`);
     }));
     eventCleanups.push(goclawClient.on("activity", (data) => {
-      const iteration = (data.payload as Record<string, unknown>)?.iteration as number;
+      const actPayload = data.payload as Record<string, unknown> | undefined;
+      const iteration = (actPayload?.iteration as number) || (data.iteration as number);
       if (iteration && iteration > 1) updateAgentStatus(`Processing (step ${iteration})...`);
     }));
 
@@ -242,7 +250,16 @@ export async function POST(request: NextRequest) {
       { agentId: goclawAgentKey, message: message.content },
     ) as Record<string, unknown>;
 
-    const fullContent = (response.content as string) || accumulatedContent || "";
+    const responseContent = response.content as string | undefined;
+    const fullContent = responseContent || accumulatedContent || "";
+
+    console.log(`[bridge] chat.send resolved`, {
+      responseHasContent: !!responseContent,
+      responseLen: responseContent?.length ?? 0,
+      chunksReceived: chunkCount,
+      accumulatedLen: accumulatedContent.length,
+      finalLen: fullContent.length,
+    });
 
     // Guard: prevent late status updates from overwriting 'complete'
     streamCompleted = true;
