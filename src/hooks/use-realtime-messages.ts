@@ -123,8 +123,47 @@ export function useRealtimeMessages(conversationId: string) {
           table: "messages",
           filter: `conversation_id=eq.${conversationId}`,
         },
-        (payload) => {
+        async (payload) => {
           const updated = payload.new as MessageWithSender;
+
+          const existingData = queryClient.getQueryData<InfiniteData<MessagesPage>>(
+            ["messages", conversationId]
+          );
+
+          const messageExists = existingData?.pages.some((page) =>
+            page.messages.some((msg) => msg.id === updated.id)
+          );
+
+          if (!messageExists) {
+            // UPDATE arrived before INSERT was processed (race condition during streaming).
+            // Fetch sender and add as new message so updates aren't silently dropped.
+            const { data: senderData } = await supabase
+              .from("users_public")
+              .select("id, display_name, avatar_url, is_agent")
+              .eq("id", updated.sender_id)
+              .single();
+
+            if (senderData) {
+              updated.sender = senderData;
+              queryClient.setQueryData<InfiniteData<MessagesPage>>(
+                ["messages", conversationId],
+                (old) => {
+                  if (!old) return old;
+                  const alreadyAdded = old.pages.some((page) =>
+                    page.messages.some((msg) => msg.id === updated.id)
+                  );
+                  if (alreadyAdded) return old;
+                  const updatedPages = [...old.pages];
+                  updatedPages[0] = {
+                    ...updatedPages[0],
+                    messages: [updated, ...updatedPages[0].messages],
+                  };
+                  return { ...old, pages: updatedPages };
+                }
+              );
+            }
+            return;
+          }
 
           queryClient.setQueryData<InfiniteData<MessagesPage>>(
             ["messages", conversationId],
@@ -136,8 +175,8 @@ export function useRealtimeMessages(conversationId: string) {
                   ...page,
                   messages: page.messages.map((msg) => {
                     if (msg.id !== updated.id) return msg;
-                    // Skip if already matches (optimistic update already applied)
-                    if (msg.content === updated.content && msg.edited_at === updated.edited_at && msg.is_deleted === updated.is_deleted) {
+                    const metaMatch = JSON.stringify(msg.metadata) === JSON.stringify(updated.metadata);
+                    if (msg.content === updated.content && msg.edited_at === updated.edited_at && msg.is_deleted === updated.is_deleted && metaMatch) {
                       return msg;
                     }
                     return {
@@ -146,7 +185,7 @@ export function useRealtimeMessages(conversationId: string) {
                       edited_at: updated.edited_at,
                       is_deleted: updated.is_deleted,
                       metadata: updated.metadata,
-                      sender: msg.sender, // Preserve sender (not in realtime payload)
+                      sender: msg.sender,
                     };
                   }),
                 })),
@@ -154,8 +193,11 @@ export function useRealtimeMessages(conversationId: string) {
             }
           );
 
-          // Refresh sidebar last message preview
-          queryClient.invalidateQueries({ queryKey: ["conversations"] });
+          // Refresh sidebar last message preview (skip during streaming to avoid thrash)
+          const streamingStatus = (updated.metadata as Record<string, unknown> | null)?.streaming_status;
+          if (streamingStatus !== "streaming") {
+            queryClient.invalidateQueries({ queryKey: ["conversations"] });
+          }
         }
       )
       .subscribe();
