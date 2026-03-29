@@ -10,6 +10,7 @@ permissions:
   contents: write
   issues: write
   pull-requests: write
+  packages: write
 
 jobs:
   typecheck:
@@ -53,12 +54,16 @@ jobs:
         env:
           NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
           NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-key
+          NEXT_PUBLIC_GIPHY_API_KEY: placeholder-key
+          NEXT_PUBLIC_GOCLAW_URL: https://placeholder.goclaw.local
 
   release:
     name: Release
     needs: build
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
+    outputs:
+      new_version: ${{ steps.release.outputs.version }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -96,3 +101,53 @@ jobs:
             -H "Content-Type: application/json" \
             -d "{\"secret\":\"${{ secrets.RELEASE_WEBHOOK_SECRET }}\",\"version\":\"${{ steps.release.outputs.version }}\"}" \
             || echo "Release notification failed (non-fatal)"
+
+  docker:
+    name: Docker
+    needs: release
+    if: needs.release.outputs.new_version != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Lowercase image name
+        id: repo
+        run: echo "name=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: production
+          push: true
+          tags: |
+            ghcr.io/${{ steps.repo.outputs.name }}:${{ needs.release.outputs.new_version }}
+            ghcr.io/${{ steps.repo.outputs.name }}:latest
+          build-args: |
+            NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+            NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+            NEXT_PUBLIC_GIPHY_API_KEY=${{ secrets.NEXT_PUBLIC_GIPHY_API_KEY }}
+            NEXT_PUBLIC_GOCLAW_URL=${{ secrets.NEXT_PUBLIC_GOCLAW_URL }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Deploy via Dokploy webhook
+        continue-on-error: true
+        run: |
+          curl -sf -X POST "${{ secrets.DOKPLOY_WEBHOOK_URL }}" \
+            -H "Content-Type: application/json" \
+            -d "{\"version\":\"${{ needs.release.outputs.new_version }}\"}" \
+            || echo "Dokploy webhook failed (non-fatal)"
